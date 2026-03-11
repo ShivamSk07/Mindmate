@@ -1,0 +1,2313 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindMate</title>
+    <link rel="icon" type="image/jpeg" href="/static/img/favicon.jpeg">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Markdown and Highlighting -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <style>
+        :root {
+            --bg-main: #09090b;
+            --bg-panel: #09090b;
+            /* True black/dark for minimal style */
+            --bg-hover: #27272a;
+            --border-color: #27272a;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --focus-ring: #52525b;
+            --user-bubble: #27272a;
+            --ai-bubble: transparent;
+            --font-size-base: 15px;
+            --radius-sm: 6px;
+            --radius-md: 10px;
+            --radius-lg: 16px;
+        }
+
+        [data-theme="light"] {
+            --bg-main: #ffffff;
+            --bg-panel: #ffffff;
+            --bg-hover: #f4f4f5;
+            --border-color: #e4e4e7;
+            --text-primary: #09090b;
+            --text-secondary: #71717a;
+            --focus-ring: #a1a1aa;
+            --user-bubble: #f4f4f5;
+            --ai-bubble: transparent;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-hover);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-color);
+        }
+
+        body {
+            background: #000000;
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            font-size: var(--font-size-base);
+            -webkit-font-smoothing: antialiased;
+            text-rendering: optimizeLegibility;
+            padding: 12px;
+            gap: 12px;
+        }
+
+        body[data-theme="light"] {
+            background: #f4f4f5;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            background: var(--bg-main);
+            z-index: 10;
+            transition: transform 0.3s ease;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 24px 20px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .new-chat-btn {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            margin: 0 20px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .new-chat-btn:hover {
+            background: var(--bg-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .new-chat-btn:active {
+            transform: translateY(0);
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 12px;
+        }
+
+        .sidebar-label {
+            padding: 0 24px;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin: 20px 0 8px;
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .sidebar-section .chat-item {
+            padding: 8px 24px;
+            font-size: 0.85rem;
+        }
+
+        .sidebar-section .chat-item i {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        .folder-group {
+            margin-bottom: 4px;
+        }
+
+        .folder-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px 8px 24px;
+            cursor: pointer;
+            border-radius: var(--radius-sm);
+            transition: all 0.2s ease;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .folder-header:hover {
+            background: var(--bg-hover);
+            padding-left: 28px;
+            /* subtle slide on hover */
+        }
+
+        .folder-chats {
+            margin-left: 12px;
+            border-left: 1px solid var(--border-color);
+            display: none;
+            transition: all 0.3s ease;
+        }
+
+        .folder-chats.show {
+            display: block;
+            animation: fadeInItems 0.3s ease-out;
+        }
+
+        @keyframes fadeInItems {
+            from {
+                opacity: 0;
+                transform: translateX(-5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .folder-chats .chat-item {
+            padding-left: 20px;
+            margin-left: 4px;
+        }
+
+        .chat-item {
+            padding: 10px 12px;
+            margin-bottom: 2px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s ease;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .chat-item:hover,
+        .chat-item.active {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+
+        .user-profile {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-main);
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .user-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .user-sub {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-logout {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 3px 8px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            transition: color 0.2s, border-color 0.2s, background 0.2s;
+            letter-spacing: 0.01em;
+        }
+
+        .btn-logout:hover {
+            color: #ef4444;
+            border-color: rgba(239, 68, 68, 0.35);
+            background: rgba(239, 68, 68, 0.06);
+        }
+
+        .xp-text {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Main Chat Area */
+        .main-chat {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            background: var(--bg-panel);
+            background-image: radial-gradient(var(--border-color) 1px, transparent 1px);
+            background-size: 24px 24px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-panel);
+            z-index: 10;
+        }
+
+        .persona-selector {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: var(--bg-hover);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.95rem;
+            font-weight: 500;
+            min-height: 48px;
+            /* Touch target */
+        }
+
+        .persona-selector:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .persona-selector:active {
+            transform: scale(0.97);
+            box-shadow: none;
+        }
+
+        .mood-indicator {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+            margin-left: 8px;
+        }
+
+        .mobile-logo-header {
+            display: none;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, var(--text-primary), var(--text-secondary));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .tools {
+            display: flex;
+            gap: 16px;
+            color: var(--text-secondary);
+        }
+
+        .tools i {
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .tools i:hover {
+            color: var(--text-primary);
+            transform: scale(1.1) translateY(-2px);
+        }
+
+        .messages-container {
+            flex: 1;
+            padding: 40px 24px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .message-wrapper {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        .message {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 32px;
+            animation: fadeIn 0.3s ease;
+            width: 100%;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.assistant {
+            align-items: flex-start;
+        }
+
+        .message-bubble {
+            padding: 12px 16px;
+            line-height: 1.6;
+            font-size: 1rem;
+            position: relative;
+            max-width: 85%;
+        }
+
+        /* Bubble Styles */
+        [data-bubble-style="modern"] .message-bubble {
+            border-radius: var(--radius-md);
+        }
+
+        [data-bubble-style="minimal"] .message-bubble {
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: transparent;
+        }
+
+        [data-bubble-style="classic"] .message-bubble {
+            font-family: 'Georgia', serif;
+            border-radius: 0;
+            background: transparent;
+            padding: 0;
+            border: none;
+        }
+
+        .message.user .message-bubble {
+            background: var(--user-bubble);
+            color: var(--text-primary);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-bubble {
+            background: var(--ai-bubble);
+            padding-left: 0;
+            padding-right: 0;
+            border: none;
+        }
+
+        .message-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 16px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        .message:hover .message-actions {
+            opacity: 1;
+        }
+
+        .message-actions i {
+            cursor: pointer;
+        }
+
+        .message-actions i:hover {
+            color: var(--text-primary);
+        }
+
+        .reactions-container {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .reaction-pill {
+            background: var(--bg-hover);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all 0.1s;
+        }
+
+        .reaction-pill:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        /* Prompt Toolbar */
+        .prompt-wrapper {
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .prompt-toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px 8px;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .prompt-toolbar::-webkit-scrollbar {
+            display: none;
+        }
+
+        .prompt-chip {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: var(--radius-lg);
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+            color: var(--text-secondary);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+        }
+
+        .prompt-chip:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--text-secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Input Area Composer */
+        .input-container {
+            padding: 0 24px 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: linear-gradient(to bottom, transparent, var(--bg-panel) 30%);
+            z-index: 10;
+        }
+
+        .composer-box {
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            width: 100%;
+            max-width: 800px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .composer-box:focus-within {
+            border-color: var(--focus-ring);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .input-row {
+            display: flex;
+            align-items: center;
+            padding: 8px 16px;
+            min-height: 56px;
+        }
+
+        .input-row textarea {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-primary);
+            font-size: 1rem;
+            padding: 10px 8px;
+            outline: none;
+            resize: none;
+            max-height: 180px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+
+        .input-row textarea::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .send-btn,
+        .action-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: var(--radius-sm);
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            margin: 0 4px;
+        }
+
+        .action-btn:active,
+        .send-btn:active {
+            transform: scale(0.85);
+        }
+
+        .send-btn {
+            background: var(--text-primary);
+            color: var(--bg-main);
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            margin-left: 8px;
+        }
+
+        .send-btn:hover {
+            opacity: 0.8;
+            transform: translateY(-1px) scale(1.05);
+        }
+
+        .action-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .footer {
+            text-align: center;
+            padding-top: 12px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            letter-spacing: 0.02em;
+        }
+
+        .footer span {
+            color: var(--text-primary);
+        }
+
+        /* Modals */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: var(--bg-main);
+            padding: 24px;
+            border-radius: var(--radius-lg);
+            max-width: 440px;
+            width: 100%;
+            border: 1px solid var(--border-color);
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.2s ease-out;
+        }
+
+        .modal-content h2 {
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        /* Persona Dropdown */
+        .persona-dropdown {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            width: 280px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            flex-direction: column;
+            overflow: hidden;
+            animation: slideDown 0.2s ease-out;
+        }
+
+        .dropdown-header {
+            padding: 12px 16px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .persona-list {
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .persona-dropdown-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .persona-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .persona-dropdown-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .persona-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--bg-panel);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+        }
+
+        .persona-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .persona-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .persona-name {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+        }
+
+        .persona-tone {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+
+        /* Forms in Modal */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-primary);
+            outline: none;
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            border-color: var(--focus-ring);
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            background: var(--text-primary);
+            color: var(--bg-main);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: opacity 0.2s;
+            margin-top: 12px;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-outline {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-top: 12px;
+        }
+
+        .btn-outline:hover {
+            background: var(--bg-hover);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: #ef4444;
+            color: white;
+            opacity: 1;
+            border-color: #ef4444;
+        }
+
+        /* Mobile Hamburger */
+        .mobile-nav {
+            display: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        /* Markdown Styles */
+        .message-bubble h1,
+        .message-bubble h2,
+        .message-bubble h3 {
+            margin: 16px 0 12px;
+            font-weight: 600;
+        }
+
+        .message-bubble h1 {
+            font-size: 1.5rem;
+        }
+
+        .message-bubble h2 {
+            font-size: 1.25rem;
+        }
+
+        .message-bubble p {
+            margin-bottom: 12px;
+        }
+
+        .message-bubble p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-bubble pre {
+            background: var(--bg-hover);
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            overflow-x: auto;
+            margin: 12px 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .message-bubble code {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-hover);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        .message-bubble pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .message-bubble ul,
+        .message-bubble ol {
+            margin-bottom: 12px;
+            padding-left: 24px;
+        }
+
+        .message-bubble table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 12px;
+        }
+
+        .message-bubble th,
+        .message-bubble td {
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+        }
+
+        .mobile-backdrop {
+            display: none;
+        }
+
+        .mobile-only-tools {
+            display: none;
+        }
+
+        /* Mobile Gesture Styles */
+        .message-wrapper {
+            position: relative;
+            transition: transform 0.2s ease;
+            touch-action: pan-y;
+        }
+
+        .swipe-indicator {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.2rem;
+            opacity: 0;
+            transition: all 0.2s ease;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .swipe-indicator.left { right: -40px; color: #ef4444; }
+        .swipe-indicator.right { left: -40px; color: var(--text-secondary); }
+
+        .zoomed-text {
+            transform-origin: left top;
+            transition: transform 0.1s ease;
+        }
+
+        /* Pull to refresh visual */
+        .ptr-indicator {
+            height: 0;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            transition: height 0.2s ease;
+            background: var(--bg-panel);
+        }
+        
+        /* Quick Persona Switcher (Swipe Up) */
+        .quick-switcher {
+            position: fixed;
+            bottom: -100%;
+            left: 0;
+            width: 100%;
+            background: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
+            border-radius: 20px 20px 0 0;
+            z-index: 2000;
+            padding: 24px;
+            transition: bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.4);
+        }
+        .quick-switcher.open { bottom: 0; }
+        .quick-switcher-handle {
+            width: 40px;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            margin: -12px auto 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .mobile-hide { display: none !important; }
+            body {
+                padding: 0;
+                gap: 0;
+            }
+
+            .sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 85%;
+                max-width: 320px;
+                height: 100vh;
+                transform: translateX(-100%);
+                z-index: 1010;
+                box-shadow: 20px 0 60px rgba(0, 0, 0, 0.8);
+                border-radius: 0;
+                border: none;
+                border-right: 1px solid var(--border-color);
+                transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .mobile-backdrop {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(2px);
+                z-index: 1000;
+                opacity: 0;
+                visibility: hidden;
+                transition: visibility 0.35s, opacity 0.35s ease;
+                pointer-events: none;
+            }
+
+            .mobile-backdrop.show {
+                opacity: 1;
+                visibility: visible;
+                pointer-events: auto;
+            }
+
+            .mobile-only-tools {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 16px;
+                border-top: 1px solid var(--border-color);
+                margin-top: auto;
+            }
+
+            .mobile-tool-item {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                color: var(--text-secondary);
+                text-decoration: none;
+                font-size: 0.95rem;
+                padding: 12px;
+                border-radius: var(--radius-sm);
+                cursor: pointer;
+                transition: background 0.2s;
+            }
+
+            .mobile-tool-item:active {
+                background: var(--bg-hover);
+                color: var(--text-primary);
+            }
+
+            .mobile-tool-item i {
+                width: 24px;
+                text-align: center;
+                font-size: 1.1rem;
+            }
+
+
+            .main-chat {
+                border-radius: 0;
+                border: none;
+                height: 100vh;
+            }
+
+            .mobile-nav {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .chat-header {
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--border-color);
+                background: var(--bg-panel);
+                backdrop-filter: none;
+                /* Removing to avoid fixed positioning issues */
+                z-index: 100;
+            }
+
+            .messages-container {
+                padding: 16px 14px 100px;
+            }
+
+            .message-bubble {
+                max-width: 92%;
+                font-size: 0.95rem;
+            }
+
+            .input-container {
+                padding: 12px;
+                background: linear-gradient(to top, var(--bg-panel) 80%, transparent);
+                position: fixed;
+                bottom: 0;
+                width: 100%;
+            }
+
+            .composer-box {
+                border-radius: 20px;
+                padding: 4px;
+            }
+
+            .prompt-toolbar {
+                padding: 12px 14px;
+                gap: 8px;
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+                display: flex;
+                align-items: center;
+                mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
+            }
+
+            .prompt-toolbar::-webkit-scrollbar {
+                display: none;
+            }
+
+            .prompt-toolbar::after {
+                content: '';
+                min-width: 40px;
+                /* More space at the end */
+                height: 1px;
+            }
+
+            .prompt-chip {
+                padding: 8px 14px;
+                font-size: 0.85rem;
+                flex-shrink: 0;
+            }
+
+            .tools {
+                display: none !important;
+            }
+
+            .header-left {
+                gap: 0 !important;
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .mobile-logo-header {
+                display: block;
+                margin-left: 14px;
+            }
+
+            .persona-container {
+                margin-left: auto;
+            }
+
+            .chat-header {
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--border-color);
+                background: var(--bg-panel);
+                backdrop-filter: none;
+                z-index: 100;
+            }
+
+            .modal-content {
+                width: 95%;
+                max-width: none;
+                margin: 20px;
+                border-radius: var(--radius-md);
+            }
+
+            .persona-dropdown {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                /* Centered modal style for mobile */
+                width: 90%;
+                max-width: 320px;
+                max-height: 70vh;
+                z-index: 9999;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+                border-radius: 16px;
+                background: var(--bg-main);
+                border: 1px solid var(--border-color);
+                margin: 0;
+            }
+
+            @keyframes popInMobile {
+                0% {
+                    opacity: 0;
+                    transform: translate(-50%, -45%) scale(0.95);
+                }
+
+                100% {
+                    opacity: 1;
+                    transform: translate(-50%, -50%) scale(1);
+                }
+            }
+
+            .persona-dropdown[style*="display: flex"] {
+                display: flex !important;
+                animation: popInMobile 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.2) forwards;
+            }
+
+            .persona-dropdown[style*="display: none"] {
+                display: none !important;
+            }
+
+            .persona-dropdown-item {
+                padding: 16px 20px;
+            }
+
+            .mood-indicator {
+                display: none;
+            }
+
+            .logo {
+                font-size: 1rem;
+            }
+
+            #activeFolderBadge {
+                display: none !important;
+            }
+
+            /* Hide on mobile to save space */
+        }
+
+        .typing {
+            display: flex;
+            gap: 4px;
+            padding: 8px 0;
+        }
+
+        .typing .dot {
+            width: 6px;
+            height: 6px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            animation: pulse 1.4s infinite alternate;
+        }
+
+        .typing .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+
+            50% {
+                transform: translateY(-3px);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body data-bubble-style="{{ profile.bubble_style|default:'modern' }}"
+    style="--font-size-base: {{ profile.font_size|default:'15' }}px;"
+    data-theme="{{ profile.theme_preference|default:'dark' }}">
+
+    <div class="mobile-backdrop" id="mobileBackdrop" onclick="toggleSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <img src="/static/img/logo.jpeg" alt="MindMate Logo" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">
+                MindMate
+            </div>
+            <i class="fas fa-times mobile-nav" onclick="toggleSidebar()"></i>
+        </div>
+
+        <button class="new-chat-btn" onclick="startNewChat()">
+            New chat <i class="fas fa-pen-to-square"></i>
+        </button>
+
+        <div class="sidebar-section" id="folderSection">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding-right:16px;">
+                <div class="sidebar-label">Folders</div>
+                <i class="fas fa-plus" style="font-size:0.7rem; color:var(--text-secondary); cursor:pointer;"
+                    onclick="createFolder()"></i>
+            </div>
+            <div id="folderList">
+                <!-- Folders and grouped chats loaded here -->
+            </div>
+        </div>
+
+        <div class="sidebar-label" style="margin-top: 16px;">Recent Chats</div>
+        <div class="sidebar-search" style="padding: 0 16px 12px;">
+            <div
+                style="background: var(--bg-hover); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-search" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                <input type="text" id="chatSearch" placeholder="Search chats..."
+                    style="background: transparent; border: none; color: var(--text-primary); outline: none; width: 100%; font-size: 0.85rem;"
+                    onkeyup="filterChats()">
+            </div>
+        </div>
+
+        <div class="chat-list" id="chatList">
+            <!-- Chats loaded here -->
+        </div>
+
+        <div class="mobile-only-tools">
+            <a href="{% url 'profile' %}" class="mobile-tool-item">
+                <i class="fas fa-sliders"></i> Settings
+            </a>
+        </div>
+
+        <div class="user-profile" style="border-top: 1px solid var(--border-color);">
+            <div class="user-info">
+                <div class="user-name">{{ user.username }}</div>
+                <div class="user-sub">MindMate Free</div>
+            </div>
+            <a href="{% url 'logout' %}" class="btn-logout" title="Sign out">
+                <i class="fas fa-arrow-right-from-bracket"></i>
+                Sign out
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Chat -->
+    <main class="main-chat">
+        <header class="chat-header">
+            <div class="header-left" style="display: flex; align-items: center; gap: 16px;">
+                <div style="display: flex; align-items: center;">
+                    <i class="fas fa-bars mobile-nav" onclick="toggleSidebar()"></i>
+                    <div class="mobile-logo-header" style="display: flex; align-items: center; gap: 8px;">
+                        <img src="/static/img/logo.jpeg" alt="Logo" style="width: 20px; height: 20px; border-radius: 3px; object-fit: cover;">
+                        MindMate
+                    </div>
+                </div>
+                <div class="persona-container" style="position: relative;">
+                    <div class="persona-selector" onclick="togglePersonaMenu(event)">
+                        <span id="currentPersonaName">Select Persona</span>
+                        <i class="fas fa-chevron-down" style="font-size: 0.75rem; color: var(--text-secondary)"></i>
+                        <span class="mood-indicator" id="moodIndicator">Ready</span>
+                        <div id="activeFolderBadge"
+                            style="margin-left:8px; font-size:0.7rem; color:var(--text-secondary); display:none; align-items:center; gap:4px; padding:2px 6px; border:1px solid var(--border-color); border-radius:4px;">
+                            <i class="fas fa-folder"></i> <span id="activeFolderName"></span>
+                        </div>
+                    </div>
+                    <div class="persona-dropdown" id="personaDropdown">
+                        <div class="dropdown-header">Select Assistant Model</div>
+                        <div class="persona-list" id="personaList">
+                            <!-- Personas loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="tools">
+                <i class="fas fa-file-export" title="Export Chat" onclick="exportChat()"></i>
+                <a href="{% url 'profile' %}" style="color: inherit; text-decoration: none;"><i class="fas fa-sliders"
+                        title="Settings"></i></a>
+                <i class="fas fa-box-archive" title="Memory Vault" onclick="openMemoryModal()"></i>
+                <i class="fas fa-trash-can" title="Clear History" onclick="clearHistory()"
+                    style="color: var(--text-secondary);"></i>
+            </div>
+        </header>
+
+        <div class="messages-container" id="messagesContainer">
+            <div id="ptrIndicator" class="ptr-indicator"><i class="fas fa-rotate-right fa-spin"></i> &nbsp; Pull to start new chat</div>
+            <!-- Messages are loaded here dynamically by startNewChat() -->
+        </div>
+
+        <!-- Quick Persona Switcher -->
+        <div id="quickSwitcher" class="quick-switcher">
+            <div class="quick-switcher-handle" onclick="toggleQuickSwitcher(false)"></div>
+            <h3 style="font-size: 1rem; margin-bottom: 20px;">Switch Persona</h3>
+            <div id="quickPersonaList" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <!-- Filled via JS -->
+            </div>
+        </div>
+
+        <div class="input-container">
+            <div class="composer-box">
+                <div class="prompt-toolbar">
+                    <div class="prompt-chip" onclick="useQuickPrompt('Provide a summary of my day')">Summarize my day
+                    </div>
+                    <div class="prompt-chip" onclick="useQuickPrompt('Give me a quick motivation boost')">Motivation
+                    </div>
+                    <div class="prompt-chip" onclick="useQuickPrompt('Review my recent chats')">Review History</div>
+                    <div class="prompt-chip" style="border-style: dashed; background: transparent;"
+                        onclick="improvePrompt()"><i class="fas fa-magic" style="margin-right:4px;"></i> Improve</div>
+                </div>
+
+                <div class="input-row">
+                    <button class="action-btn" onclick="toggleVoice()" style="margin-bottom: 2px;"
+                        title="Use Voice Input"><i class="fas fa-microphone"></i></button>
+                    <textarea id="messageInput" placeholder="Message MindMate..." rows="1"
+                        onkeypress="handleEnter(event)"
+                        oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
+                    <button class="send-btn" onclick="sendMessage()" style="margin-bottom: 4px;" title="Send Message"><i
+                            class="fas fa-arrow-up"></i></button>
+                </div>
+            </div>
+
+            <div class="footer">
+                Developed by <a href="https://www.linkedin.com/in/shivam-kothekar-10296b260/" target="_blank" style="color: inherit; text-decoration: none; font-weight: 600;">Shivam Kothekar</a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Persona Modal -->
+    <div id="personaModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="personaModalTitle">Build Custom Persona</h2>
+                <i class="fas fa-times" onclick="closeModal('personaModal')"></i>
+            </div>
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+                <p style="color: var(--text-secondary); font-size: 0.85rem;">Define a unique name, tone, and specific
+                    instructions for your new assistant.</p>
+                <input type="hidden" id="customPersonaId" value="">
+                <div>
+                    <label
+                        style="display:block; margin-bottom:8px; font-size:0.85rem; color:var(--text-secondary);">Persona
+                        Name</label>
+                    <input type="text" id="customPersonaName" placeholder="e.g. Code Mentor"
+                        style="width:100%; background:var(--bg-hover); border:1px solid var(--border-color); color:var(--text-primary); padding:10px; border-radius:6px; outline:none;">
+                </div>
+                <div>
+                    <label
+                        style="display:block; margin-bottom:8px; font-size:0.85rem; color:var(--text-secondary);">Tone /
+                        Mood</label>
+                    <input type="text" id="customPersonaTone" placeholder="e.g. Sarcastic but helpful"
+                        style="width:100%; background:var(--bg-hover); border:1px solid var(--border-color); color:var(--text-primary); padding:10px; border-radius:6px; outline:none;">
+                </div>
+                <div>
+                    <label
+                        style="display:block; margin-bottom:8px; font-size:0.85rem; color:var(--text-secondary);">System
+                        Prompt (Instructions)</label>
+                    <textarea id="customPersonaPrompt" placeholder="Describe how this AI should behave..."
+                        style="width:100%; height:120px; background:var(--bg-hover); border:1px solid var(--border-color); color:var(--text-primary); padding:10px; border-radius:6px; outline:none; resize:none;"></textarea>
+                </div>
+                <button onclick="savePersona()"
+                    style="background:var(--text-primary); color:var(--bg-main); border:none; padding:12px; border-radius:6px; font-weight:600; cursor:pointer; margin-top:8px;">Create
+                    Persona</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Memory Vault Modal -->
+    <div class="modal" id="memoryModal">
+        <div class="modal-content">
+            <h2>Memory Vault</h2>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5;">MindMate
+                automatically remembers important details across your sessions. Review or wipe them here.</p>
+
+            <textarea id="memoryBox"
+                style="width: 100%; height: 120px; background: var(--bg-main); border: 1px solid var(--border-color); color: var(--text-primary); padding: 12px; border-radius: var(--radius-sm); font-size: 0.9rem; resize: none; margin-bottom: 16px;"
+                placeholder="No memories stored yet...">{% if profile.memory_vault and profile.memory_vault != '[]' %}{{ profile.memory_vault }}{% endif %}</textarea>
+
+            <div style="display: flex; gap: 12px;">
+                <button class="btn-primary" style="flex:1; margin:0;" onclick="saveMemory()">Update</button>
+                <button class="btn-primary btn-danger" style="flex:1; margin:0;" onclick="forgetMe()">Wipe
+                    Memory</button>
+            </div>
+            <button class="btn-outline" onclick="closeModal('memoryModal')">Close</button>
+        </div>
+    </div>
+
+    <!-- Settings Modal Removed (Moved to Profile Page) -->
+
+    <script>
+        // Data State
+        let currentConversationId = null;
+        let currentPersonaId = null;
+        let personas = [];
+        let activeFolder = null;
+        let folders = ['Work', 'Personal']; // Initial default folders
+
+        const getEl = id => document.getElementById(id);
+
+        function togglePersonaMenu(event) {
+            const dropdown = getEl('personaDropdown');
+            dropdown.style.display = dropdown.style.display === 'flex' ? 'none' : 'flex';
+            event.stopPropagation();
+        }
+
+        function openMemoryModal() { getEl('memoryModal').style.display = 'flex'; }
+        function openModal(id) { getEl(id).style.display = 'flex'; }
+        function closeModal(id) { getEl(id).style.display = 'none'; }
+
+        window.onclick = function (event) {
+            if (event.target.classList.contains('modal')) event.target.style.display = "none";
+            const dropdown = getEl('personaDropdown');
+            if (dropdown && !dropdown.contains(event.target) && !event.target.closest('.persona-selector')) {
+                dropdown.style.display = 'none';
+            }
+        }
+
+        function toggleSidebar() {
+            getEl('sidebar').classList.toggle('open');
+            const backdrop = getEl('mobileBackdrop');
+            if (backdrop) backdrop.classList.toggle('show');
+        }
+
+        // Deprecated UI config handlers moved to profile page and loaded correctly natively.
+
+        function useQuickPrompt(text) {
+            getEl('messageInput').value = text;
+            sendMessage();
+        }
+        function improvePrompt() {
+            let val = getEl('messageInput').value;
+            if (!val) return;
+            getEl('messageInput').value = "Please draft a structured layout for this query: " + val;
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        }
+
+        let isRecording = false;
+        let recognition = null;
+
+        function toggleVoice() {
+            const btn = document.querySelector('.fa-microphone');
+            const input = getEl('messageInput');
+
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("Voice input is not supported in this browser.");
+                return;
+            }
+
+            if (!recognition) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                recognition.onstart = function () {
+                    isRecording = true;
+                    btn.style.color = '#ef4444';
+                    btn.classList.add('fa-beat-fade');
+                };
+
+                recognition.onresult = function (event) {
+                    let text = '';
+                    for (let i = 0; i < event.results.length; ++i) {
+                        text += event.results[i][0].transcript;
+                    }
+                    input.value = text;
+                    input.style.height = '';
+                    input.style.height = input.scrollHeight + 'px';
+                };
+
+                recognition.onerror = function (event) {
+                    console.error("Speech recognition error", event.error);
+                    stopVoice();
+                };
+
+                recognition.onend = function () {
+                    stopVoice();
+                };
+            }
+
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                input.value = '';
+                recognition.start();
+            }
+        }
+
+        function stopVoice() {
+            isRecording = false;
+            const btn = document.querySelector('.fa-microphone');
+            btn.style.color = '';
+            btn.classList.remove('fa-beat-fade');
+        }
+
+        async function exportChat() {
+            if (!currentConversationId) return;
+            window.location.href = `/api/export/${currentConversationId}/`;
+        }
+
+        async function clearHistory() {
+            if (confirm('Are you sure you want to clear your entire chat history?')) {
+                const res = await fetch('/api/conversations/clear/', { method: 'POST' });
+                if (res.ok) loadConversations();
+            }
+        }
+
+        async function messageFeedback(msgId, type, el) {
+            // UI feedback
+            el.style.color = type === 1 ? '#4CAF50' : (type === -1 ? '#ef4444' : '#fbbf24');
+            // Backend call would go here
+        }
+
+        function filterByFolder(folder) {
+            activeFolder = folder;
+            const badge = getEl('activeFolderBadge');
+            const nameEl = getEl('activeFolderName');
+            if (folder) {
+                badge.style.display = 'flex';
+                nameEl.innerText = folder;
+            } else {
+                badge.style.display = 'none';
+            }
+            loadConversations();
+        }
+
+        function createFolder() {
+            const name = prompt('Enter folder name:');
+            if (name && !folders.includes(name)) {
+                folders.push(name);
+                loadConversations();
+            }
+        }
+
+        function toggleFolder(folder) {
+            const el = document.getElementById(`folder-chats-${folder}`);
+            const icon = document.getElementById(`folder-icon-${folder}`);
+            if (el) {
+                const isShowing = el.classList.contains('show');
+                el.classList.toggle('show');
+                icon.className = isShowing ? 'fas fa-chevron-right' : 'fas fa-chevron-down';
+            }
+        }
+
+        async function saveMemory() {
+            const memoryText = getEl('memoryBox').value;
+            try {
+                await fetch('/api/memory/update/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ memory_vault: memoryText })
+                });
+                closeModal('memoryModal');
+            } catch (e) { }
+        }
+        async function forgetMe() {
+            if (confirm('Wipe all memory context?')) {
+                getEl('memoryBox').value = '';
+                await saveMemory();
+            }
+        }
+
+        function openCreatePersonaModal() {
+            getEl('customPersonaId').value = '';
+            getEl('customPersonaName').value = '';
+            getEl('customPersonaTone').value = '';
+            getEl('customPersonaPrompt').value = '';
+            getEl('personaModalTitle').innerText = 'Build Custom Persona';
+            openModal('personaModal');
+        }
+
+        function editPersona(id) {
+            const p = personas.find(x => x.id === id);
+            if (p) {
+                getEl('customPersonaId').value = p.id;
+                getEl('customPersonaName').value = p.name;
+                getEl('customPersonaTone').value = p.tone;
+                getEl('customPersonaPrompt').value = p.system_prompt;
+                getEl('personaModalTitle').innerText = 'Edit Custom Persona';
+                openModal('personaModal');
+                getEl('personaDropdown').style.display = 'none';
+            }
+        }
+
+        async function deletePersona(id) {
+            if (confirm('Are you sure you want to delete this custom persona?')) {
+                const res = await fetch(`/api/persona/delete/${id}/`, { method: 'POST' });
+                if (res.ok) {
+                    if (currentPersonaId === id) {
+                        currentPersonaId = null;
+                        getEl('currentPersonaName').innerText = 'Select Persona';
+                        getEl('moodIndicator').innerText = 'Ready';
+                    }
+                    loadPersonas();
+                }
+            }
+        }
+
+        async function savePersona() {
+            const id = getEl('customPersonaId').value;
+            const name = getEl('customPersonaName').value.trim();
+            const tone = getEl('customPersonaTone').value.trim();
+            const promptStr = getEl('customPersonaPrompt').value.trim();
+            if (!name || !promptStr) return alert('Name and System Prompt are required.');
+
+            const url = id ? `/api/persona/edit/${id}/` : '/api/persona/create/';
+
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, tone, system_prompt: promptStr })
+            });
+            if (res.ok) {
+                closeModal('personaModal');
+                loadPersonas();
+                if (id == currentPersonaId) {
+                    getEl('currentPersonaName').innerText = name;
+                    getEl('moodIndicator').innerText = tone;
+                }
+            }
+        }
+
+        async function loadPersonas() {
+            try {
+                const res = await fetch('/api/personas/');
+                const data = await res.json();
+                personas = data.personas;
+                const list = getEl('personaList');
+                list.innerHTML = '';
+                personas.forEach(p => {
+                    const avatarUrl = p.avatar_url || `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(p.name)}&backgroundColor=e2e8f0`;
+                    const el = document.createElement('div');
+                    el.className = 'persona-dropdown-item';
+                    el.innerHTML = `
+                        <div class="persona-icon">
+                            <img src="${avatarUrl}" alt="${p.name} avatar" />
+                        </div>
+                        <div class="persona-details" style="flex: 1;">
+                            <span class="persona-name">${p.name}</span>
+                            <span class="persona-tone">${p.tone}</span>
+                        </div>
+                        ${p.is_custom ? `
+                        <div class="persona-actions" style="display: flex; gap: 12px; color: var(--text-secondary);">
+                            <i class="fas fa-pen" style="cursor: pointer;" onclick="event.stopPropagation(); editPersona(${p.id})"></i>
+                            <i class="fas fa-trash" style="cursor: pointer; color: #ef4444;" onclick="event.stopPropagation(); deletePersona(${p.id})"></i>
+                        </div>
+                        ` : ''}
+                    `;
+                    el.onclick = () => selectPersona(p);
+                    list.appendChild(el);
+                });
+
+                // Add Create New Option
+                const createEl = document.createElement('div');
+                createEl.className = 'persona-dropdown-item';
+                createEl.style.borderTop = '1px solid var(--border-color)';
+                createEl.innerHTML = `
+                    <div class="persona-icon"><i class="fas fa-plus" style="color:var(--text-secondary)"></i></div>
+                    <div class="persona-details">
+                        <span class="persona-name">Create Custom Persona</span>
+                        <span class="persona-tone">Build your own AI buddy</span>
+                    </div>
+                `;
+                createEl.onclick = () => openCreatePersonaModal();
+                list.appendChild(createEl);
+                if (personas.length > 0 && !currentPersonaId) {
+                    selectPersona(personas[0], false);
+                } else if (!currentConversationId) {
+                    startNewChat();
+                }
+            } catch (e) {
+                console.error("Failed to load personas");
+            }
+        }
+
+        async function selectPersona(p, notifyServer = true) {
+            currentPersonaId = p.id;
+            getEl('currentPersonaName').innerText = p.name;
+            getEl('moodIndicator').innerText = p.tone;
+            getEl('personaDropdown').style.display = 'none';
+
+            if (!currentConversationId) {
+                startNewChat();
+            }
+
+            if (notifyServer && currentConversationId) {
+                try {
+                    await fetch('/api/persona/switch/', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ conversation_id: currentConversationId, persona_id: p.id })
+                    });
+                } catch (e) { }
+            }
+        }
+
+        async function loadConversations() {
+            try {
+                const res = await fetch('/api/conversations/');
+                const data = await res.json();
+
+                const folderList = getEl('folderList');
+                folderList.innerHTML = '';
+
+                const recentsList = getEl('chatList');
+                recentsList.innerHTML = '';
+
+                // Group chats by folder
+                const folderMap = {};
+                folders.forEach(f => folderMap[f] = []);
+                const uncategorized = [];
+
+                data.conversations.forEach(c => {
+                    if (c.folder && folderMap[c.folder]) {
+                        folderMap[c.folder].push(c);
+                    } else {
+                        uncategorized.push(c);
+                    }
+                });
+
+                // Render Folder Groups
+                folders.forEach(f => {
+                    const group = document.createElement('div');
+                    group.className = 'folder-group';
+                    const isActive = activeFolder === f ? 'background:var(--bg-hover);' : '';
+                    group.innerHTML = `
+                        <div class="folder-header" onclick="filterByFolder('${f}')" style="${isActive}">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <i class="fas fa-folder" style="color:var(--text-secondary);"></i>
+                                <span>${f}</span>
+                            </div>
+                            <i class="fas fa-chevron-right" id="folder-icon-${f}" onclick="event.stopPropagation(); toggleFolder('${f}')" style="font-size:0.7rem; opacity:0.5;"></i>
+                        </div>
+                        <div class="folder-chats" id="folder-chats-${f}"></div>
+                    `;
+                    folderList.appendChild(group);
+
+                    const chatsCont = group.querySelector('.folder-chats');
+                    folderMap[f].forEach(c => {
+                        const item = createChatItem(c);
+                        chatsCont.appendChild(item);
+                    });
+                });
+
+                // Render Recents
+                uncategorized.forEach(c => {
+                    const item = createChatItem(c);
+                    recentsList.appendChild(item);
+                });
+
+            } catch (e) { }
+        }
+
+        function createChatItem(c) {
+            const item = document.createElement('div');
+            item.className = 'chat-item';
+            if (currentConversationId === c.id) item.classList.add('active');
+            item.innerHTML = `
+                <i class="fas fa-message" style="color: var(--text-secondary); font-size: 0.8rem;"></i>
+                <span style="flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${c.title}</span>
+            `;
+            item.onclick = () => loadMessages(c.id);
+            return item;
+        }
+
+        function startNewChat() {
+            currentConversationId = null;
+            const aiName = getEl('currentPersonaName').innerText || 'Select Persona';
+            const pObj = personas.find(x => x.name === aiName);
+            const aiAvatarUrl = pObj && pObj.avatar_url ? pObj.avatar_url : `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(aiName)}&backgroundColor=e2e8f0`;
+
+            getEl('messagesContainer').innerHTML = `
+                <div class="message-wrapper">
+                    <div class="message assistant" style="margin-top: 60px; text-align: center; align-items: center;">
+                        <div style="width: 48px; height: 48px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                            ${aiName === 'Select Persona' ? '<i class="fas fa-sparkles" style="color: var(--text-primary); font-size: 1.5rem;"></i>' : `<img src="${aiAvatarUrl}" style="width: 100%; height: 100%; object-fit: cover;" />`}
+                        </div>
+                        <h2 style="font-size: 1.5rem; font-weight: 500; margin-bottom: 12px;">New Chat</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.95rem;">Say hello to ${aiName}. ${activeFolder ? `Categorized in <b>${activeFolder}</b>.` : ''}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadMessages(id) {
+            currentConversationId = id;
+            try {
+                const res = await fetch(`/api/conversations/${id}/`);
+                const data = await res.json();
+                const container = getEl('messagesContainer');
+                container.innerHTML = '';
+                data.messages.forEach(m => {
+                    appendMessage(m.role, m.content, false);
+                });
+                scrollToBottom();
+            } catch (e) { }
+        }
+
+        function filterChats() {
+            const query = getEl('chatSearch').value.toLowerCase();
+            const items = document.querySelectorAll('.chat-item');
+            items.forEach(item => {
+                const text = item.innerText.toLowerCase();
+                item.style.display = text.includes(query) ? 'flex' : 'none';
+            });
+        }
+
+        function appendMessage(role, content, allowStream = false) {
+            const container = getEl('messagesContainer');
+            if (document.querySelector('.message-wrapper .assistant[style*="text-align: center"]')) container.innerHTML = '';
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message-wrapper';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${role}`;
+
+            const contentParsed = role === 'assistant' ? marked.parse(content) : content;
+
+            const roleName = role === 'user' ? '{{ user.username|escapejs }}' : getEl('currentPersonaName').innerText;
+            const pObj = personas.find(x => x.name === roleName);
+            const aiAvatarUrl = pObj && pObj.avatar_url ? pObj.avatar_url : `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(roleName)}&backgroundColor=e2e8f0`;
+
+            const roleIcon = role === 'user' ? '<i class="fas fa-user" style="font-size: 0.75rem;"></i>' : `<img src="${aiAvatarUrl}" style="width:14px; height:14px; border-radius:3px;" />`;
+            const flexDir = role === 'user' ? 'flex-direction: row-reverse;' : '';
+
+            msgDiv.innerHTML = `
+                <div class="swipe-indicator right"><i class="fas fa-reply"></i></div>
+                <div class="swipe-indicator left"><i class="fas fa-trash"></i></div>
+                <div class="message-header" style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px; ${flexDir}">
+                    ${roleIcon} <span style="font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; font-size: 0.7rem;">${roleName}</span>
+                </div>
+                <div class="message-bubble">${contentParsed}</div>
+                <div class="message-actions">
+                    <i class="far fa-copy" onclick="navigator.clipboard.writeText(this.parentElement.previousElementSibling.innerText); this.style.color='#4CAF50'; setTimeout(()=>this.style.color='', 2000);" title="Copy"></i>
+                    ${role === 'assistant' ? `
+                        <i class="far fa-thumbs-up" onclick="messageFeedback('${role}', 1, this)" title="Good response"></i>
+                        <i class="far fa-thumbs-down" onclick="messageFeedback('${role}', -1, this)" title="Bad response"></i>
+                        <i class="far fa-flag" onclick="messageFeedback('${role}', 'flag', this)" title="Flag this response"></i>
+                    ` : '<i class="fas fa-pen" title="Edit message"></i>'}
+                </div>
+            `;
+            wrapper.appendChild(msgDiv);
+            container.appendChild(wrapper);
+            
+            // Attach Gesture Listeners
+            initMessageGestures(wrapper);
+
+            if (window.Prism) Prism.highlightAllUnder(container);
+            scrollToBottom();
+        }
+
+
+
+        async function sendMessage() {
+            const input = getEl('messageInput');
+            const text = input.value.trim();
+            if (!text) return;
+
+            appendMessage('user', text);
+            input.value = '';
+            input.style.height = 'auto'; // Reset text area height
+
+            const container = getEl('messagesContainer');
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'message-wrapper typing-wrapper';
+            const aiName = getEl('currentPersonaName').innerText;
+            const pObj = personas.find(x => x.name === aiName);
+            const aiAvatarUrl = pObj && pObj.avatar_url ? pObj.avatar_url : `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(aiName)}&backgroundColor=e2e8f0`;
+
+            wrapper.innerHTML = `
+            <div class="message assistant">
+                <div class="message-header" style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">
+                    <img src="${aiAvatarUrl}" style="width:14px; height:14px; border-radius:3px;" /> <span style="font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; font-size: 0.7rem;">${aiName}</span>
+                </div>
+                <div class="message-bubble" style="background: transparent; border: none; padding: 0;"><div class="typing" style="display: inline-flex; align-items: center; justify-content: center;"><img src="/static/img/loader.webp" style="width: 24px; height: 24px; animation: pulse 1s infinite alternate; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));" /></div></div>
+            </div>`;
+            container.appendChild(wrapper);
+            scrollToBottom();
+
+            const modifiers = {
+                devil: getEl('devilToggle') ? getEl('devilToggle').checked : false,
+                vent: getEl('ventToggle') ? getEl('ventToggle').checked : false,
+                eli5: getEl('eli5Toggle') ? getEl('eli5Toggle').checked : false
+            };
+
+            try {
+                const response = await fetch('/api/chat/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: text,
+                        conversation_id: currentConversationId,
+                        persona_id: currentPersonaId,
+                        folder: activeFolder
+                    })
+                });
+
+                wrapper.remove();
+
+                if (response.status === 401) {
+                    window.location.href = '/login/';
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+
+                const astWrapper = document.createElement('div');
+                astWrapper.className = 'message-wrapper';
+                const assistantMsgDiv = document.createElement('div');
+                assistantMsgDiv.className = 'message assistant';
+                const aiName = getEl('currentPersonaName').innerText;
+                const pObj = personas.find(x => x.name === aiName);
+                const aiAvatarUrl = pObj && pObj.avatar_url ? pObj.avatar_url : `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(aiName)}&backgroundColor=e2e8f0`;
+
+                assistantMsgDiv.innerHTML = `
+                <div class="message-header" style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">
+                    <img src="${aiAvatarUrl}" style="width:14px; height:14px; border-radius:3px;" /> <span style="font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; font-size: 0.7rem;">${aiName}</span>
+                </div>
+                <div class="message-bubble"></div>`;
+                astWrapper.appendChild(assistantMsgDiv);
+                container.appendChild(astWrapper);
+
+                let bubble = assistantMsgDiv.querySelector('.message-bubble');
+                let fullText = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n\n');
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            const dataStr = line.substring(6).trim();
+                            if (dataStr) {
+                                try {
+                                    const data = JSON.parse(dataStr);
+                                    if (data.content) {
+                                        fullText += data.content;
+                                        bubble.innerHTML = marked.parse(fullText);
+                                        scrollToBottom();
+                                    }
+                                    if (data.done) {
+                                        currentConversationId = data.conversation_id;
+                                        loadConversations();
+                                        if (window.Prism) Prism.highlightAllUnder(assistantMsgDiv);
+                                    }
+                                } catch (e) { }
+                            }
+                        }
+                    }
+                }
+
+                assistantMsgDiv.innerHTML += `
+                    <div class="message-actions">
+                        <i class="far fa-copy"></i>
+                        <i class="far fa-thumbs-up"></i>
+                        <i class="far fa-thumbs-down"></i>
+                        <i class="fas fa-rotate-right"></i>
+                    </div>
+                `;
+            } catch (e) {
+                if (typeof wrapper !== 'undefined') wrapper.remove();
+                appendMessage('system', 'Unable to connect to MindMate. Please check your internet connection and try again.');
+            }
+        }
+
+        function scrollToBottom() {
+            const container = getEl('messagesContainer');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Gesture Engine Logic
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let lastTapTime = 0;
+        let longPressTimer = null;
+        let initialPinchDist = null;
+        let currentScale = 1;
+
+        function initMessageGestures(wrapper) {
+            const msg = wrapper.querySelector('.message');
+            const bubble = wrapper.querySelector('.message-bubble');
+            const indicators = wrapper.querySelectorAll('.swipe-indicator');
+
+            msg.addEventListener('touchstart', e => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                
+                // Long Press Detection
+                longPressTimer = setTimeout(() => {
+                    handleLongPress(wrapper);
+                }, 600);
+
+                // Double Tap Detection
+                const now = Date.now();
+                if (now - lastTapTime < 300) {
+                    toggleHeart(bubble);
+                }
+                lastTapTime = now;
+            });
+
+            msg.addEventListener('touchmove', e => {
+                const diffX = e.touches[0].clientX - touchStartX;
+                const diffY = e.touches[0].clientY - touchStartY;
+                
+                // If moving horizontally, cancel long press
+                if (Math.abs(diffX) > 10) clearTimeout(longPressTimer);
+
+                // Swipe logic
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    msg.style.transform = `translateX(${diffX}px)`;
+                    indicators.forEach(ind => {
+                        if (diffX > 50 && ind.classList.contains('right')) ind.style.opacity = '1';
+                        else if (diffX < -50 && ind.classList.contains('left')) ind.style.opacity = '1';
+                        else ind.style.opacity = '0';
+                    });
+                }
+
+                // Pinch to Zoom
+                if (e.touches.length === 2 && msg.classList.contains('assistant')) {
+                    const dist = Math.hypot(e.touches[0].pageX - e.touches[1].pageX, e.touches[0].pageY - e.touches[1].pageY);
+                    if (initialPinchDist == null) initialPinchDist = dist;
+                    else {
+                        const zoom = (dist / initialPinchDist);
+                        currentScale = Math.min(Math.max(1, currentScale * zoom), 2.5);
+                        bubble.style.transform = `scale(${currentScale})`;
+                        bubble.classList.add('zoomed-text');
+                    }
+                }
+            });
+
+            msg.addEventListener('touchend', e => {
+                clearTimeout(longPressTimer);
+                const diffX = e.changedTouches[0].clientX - touchStartX;
+                
+                if (diffX > 150) handleReply(wrapper);
+                else if (diffX < -150) handleDelete(wrapper);
+
+                msg.style.transform = '';
+                indicators.forEach(ind => ind.style.opacity = '0');
+                initialPinchDist = null;
+            });
+        }
+
+        // Action Handlers
+        function handleReply(wrapper) {
+            const text = wrapper.querySelector('.message-bubble').innerText;
+            getEl('messageInput').value = `> ${text}\n\n`;
+            getEl('messageInput').focus();
+            navigator.vibrate?.(40);
+        }
+
+        function handleDelete(wrapper) {
+            if(confirm('Delete this message?')) {
+                wrapper.style.opacity = '0';
+                setTimeout(() => wrapper.remove(), 300);
+                navigator.vibrate?.([50, 30, 50]);
+            }
+        }
+
+        function handleLongPress(wrapper) {
+            navigator.vibrate?.(100);
+            const text = wrapper.querySelector('.message-bubble').innerText;
+            if(confirm(`Actions for message:\n\n1. Copy Text\n2. Share\n3. Pin\n\nClick OK to Copy.`)) {
+                navigator.clipboard.writeText(text);
+            }
+        }
+
+        function toggleHeart(bubble) {
+            let heart = bubble.querySelector('.heart-icon');
+            if (!heart) {
+                heart = document.createElement('i');
+                heart.className = 'fas fa-heart heart-icon';
+                heart.style.cssText = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#ef4444; font-size:3rem; opacity:0; pointer-events:none; transition:all 0.4s cubic-bezier(0.17, 0.67, 0.83, 0.67);';
+                bubble.style.position = 'relative';
+                bubble.appendChild(heart);
+            }
+            heart.style.opacity = '1';
+            heart.style.transform = 'translate(-50%,-50%) scale(1.5)';
+            setTimeout(() => {
+                heart.style.opacity = '0';
+                heart.style.transform = 'translate(-50%,-50%) scale(0)';
+            }, 800);
+            navigator.vibrate?.([40, 40]);
+        }
+
+        // Pull to Refresh
+        const container = getEl('messagesContainer');
+        let ptrStart = 0;
+        container.addEventListener('touchstart', e => {
+            if (container.scrollTop === 0) ptrStart = e.touches[0].clientY;
+        });
+        container.addEventListener('touchmove', e => {
+            const diff = e.touches[0].clientY - ptrStart;
+            if (container.scrollTop === 0 && diff > 0) {
+                const indicator = getEl('ptrIndicator');
+                indicator.style.height = Math.min(diff, 60) + 'px';
+                if (diff > 100) indicator.innerHTML = '<i class="fas fa-arrow-down"></i> Release to refresh';
+            }
+        });
+        container.addEventListener('touchend', e => {
+            const diff = e.changedTouches[0].clientY - ptrStart;
+            if (container.scrollTop === 0 && diff > 100) {
+                startNewChat();
+                navigator.vibrate?.(100);
+            }
+            getEl('ptrIndicator').style.height = '0';
+        });
+
+        // Shake to Clear
+        let lastShake = 0;
+        window.addEventListener('devicemotion', e => {
+            const acc = e.accelerationIncludingGravity;
+            if (!acc) return;
+            const total = Math.abs(acc.x) + Math.abs(acc.y) + Math.abs(acc.z);
+            if (total > 35) {
+                const now = Date.now();
+                if (now - lastShake > 2000) {
+                    if (confirm('Shake detected! Clear current chat?')) startNewChat();
+                    lastShake = now;
+                }
+            }
+        });
+
+        // Swipe Up from bottom for Quick Switcher
+        document.addEventListener('touchstart', e => {
+            if (window.innerHeight - e.touches[0].clientY < 50) {
+                touchStartY = e.touches[0].clientY;
+            }
+        });
+        document.addEventListener('touchend', e => {
+            if (touchStartY > window.innerHeight - 50 && touchStartY - e.changedTouches[0].clientY > 100) {
+                toggleQuickSwitcher(true);
+            }
+        });
+
+        function toggleQuickSwitcher(open) {
+            const qs = getEl('quickSwitcher');
+            if (open) {
+                const list = getEl('quickPersonaList');
+                list.innerHTML = '';
+                personas.forEach(p => {
+                    const avatarUrl = p.avatar_url || `https://api.dicebear.com/9.x/bottts-neutral/svg?seed=${encodeURIComponent(p.name)}&backgroundColor=e2e8f0`;
+                    list.innerHTML += `
+                        <div class="persona-dropdown-item" onclick="selectPersona(${JSON.stringify(p).replace(/"/g, '&quot;')}); toggleQuickSwitcher(false);" style="flex-direction:column; text-align:center; padding:15px;">
+                            <img src="${avatarUrl}" style="width:40px; height:40px; border-radius:50%; margin-bottom:8px;" />
+                            <span style="font-size:0.8rem;">${p.name}</span>
+                        </div>
+                    `;
+                });
+                qs.classList.add('open');
+                navigator.vibrate?.(60);
+            } else {
+                qs.classList.remove('open');
+            }
+        }
+
+        window.onload = async () => {
+            await loadPersonas();
+            await loadConversations();
+        };
+    </script>
+</body>
+
+</html>

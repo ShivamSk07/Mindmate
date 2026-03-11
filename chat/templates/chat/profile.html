@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindMate - Profile Settings</title>
+    <link rel="icon" type="image/jpeg" href="/static/img/favicon.jpeg">
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-main: #09090b;
+            --bg-panel: #09090b;
+            --bg-hover: #27272a;
+            --border-color: #27272a;
+            --text-primary: #fafafa;
+            --text-secondary: #a1a1aa;
+            --focus-ring: #52525b;
+            --accent: #fafafa;
+            --accent-bg: #27272a;
+        }
+
+        [data-theme="light"] {
+            --bg-main: #ffffff;
+            --bg-panel: #ffffff;
+            --bg-hover: #f4f4f5;
+            --border-color: #e4e4e7;
+            --text-primary: #09090b;
+            --text-secondary: #71717a;
+            --focus-ring: #a1a1aa;
+            --accent: #09090b;
+            --accent-bg: #f4f4f5;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: var(--bg-main);
+            color: var(--text-primary);
+            height: 100vh;
+            display: flex;
+            font-size: 15px;
+            -webkit-font-smoothing: antialiased;
+        }
+
+
+
+        .mobile-back { display: none; }
+
+        /* Sidebar minimalist */
+        .sidebar {
+            width: 260px;
+            height: 100%;
+            border-right: 1px solid var(--border-color);
+            background: var(--bg-main);
+            display: flex;
+            flex-direction: column;
+            padding: 24px 0;
+        }
+
+        .logo {
+            font-size: 1.1rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            padding: 0 24px 32px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            color: var(--text-primary);
+        }
+
+        .nav-link {
+            padding: 12px 24px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .nav-link.active {
+            color: var(--text-primary);
+            border-left: 2px solid var(--text-primary);
+            background: var(--bg-hover);
+        }
+
+        .nav-signout {
+            margin-top: auto;
+            padding: 16px 24px 8px;
+        }
+
+        .btn-signout {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background 0.2s, color 0.2s, border-color 0.2s;
+            letter-spacing: -0.01em;
+        }
+
+        .btn-signout:hover {
+            background: rgba(239, 68, 68, 0.08);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .btn-signout i {
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 50px;
+            overflow-y: auto;
+        }
+
+        .header-section {
+            margin-bottom: 40px;
+            max-width: 600px;
+        }
+
+        .header-section h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header-section p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+
+        .settings-card {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 600px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-group .help-text {
+            display: block;
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--focus-ring);
+        }
+
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+            padding-right: 40px;
+        }
+
+        /* Avatar preview */
+        .avatar-preview {
+            width: 64px;
+            height: 64px;
+            background: var(--accent-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-save {
+            background: var(--text-primary);
+            color: var(--bg-main);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-save:hover {
+            opacity: 0.9;
+        }
+
+        .btn-save-main-action {
+            width: auto;
+            min-width: 160px;
+            padding: 14px 32px;
+            margin-bottom: 32px;
+            display: inline-block;
+        }
+
+        .badge-pro {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            vertical-align: middle;
+            margin-left: 8px;
+            color: var(--text-secondary);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            body { flex-direction: column; overflow: auto; height: auto; }
+            .sidebar { 
+                width: 100%; 
+                height: 60px; 
+                border-right: none; 
+                border-bottom: 1px solid var(--border-color); 
+                padding: 0 20px; 
+                flex-direction: row; 
+                align-items: center; 
+                justify-content: space-between; 
+                position: sticky; 
+                top: 0; 
+                z-index: 100;
+                background: var(--bg-main);
+            }
+            .logo { padding: 0; margin: 0; font-size: 1rem; }
+            .nav-link { display: none; }
+            .nav-link.active { display: none; }
+            .mobile-back { 
+                display: flex !important; 
+                align-items: center; 
+                justify-content: center; 
+                width: 36px; 
+                height: 36px; 
+                border-radius: 8px; 
+                background: var(--bg-hover); 
+                color: var(--text-primary); 
+                text-decoration: none; 
+            }
+            .main-content { padding: 20px; }
+            .header-section { margin-bottom: 24px; }
+            .settings-card { padding: 16px; margin-bottom: 16px; border-radius: 12px; }
+            .form-control { padding: 12px; font-size: 0.95rem; }
+            .nav-signout { display: none; }
+            .btn-save-main-action { width: 100%; margin-bottom: 24px; }
+        }
+
+    </style>
+</head>
+<body data-theme="{{ profile.theme_preference }}">
+
+    <aside class="sidebar">
+        <a href="{% url 'index' %}" class="mobile-back">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+        <a href="{% url 'index' %}" class="logo">
+            <img src="/static/img/logo.jpeg" alt="Logo" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">
+            MindMate
+        </a>
+        
+        <a href="{% url 'index' %}" class="nav-link">
+            <i class="fas fa-arrow-left"></i> Back to Chat
+        </a>
+        <a href="#" class="nav-link active">
+            <i class="fas fa-user-circle"></i> Profile & Settings
+        </a>
+        <a href="#" class="nav-link">
+            <i class="fas fa-gem"></i> Subscription <span class="badge-pro">Free</span>
+        </a>
+        
+        <div class="nav-signout">
+            <a href="{% url 'logout' %}" class="btn-signout">
+                <i class="fas fa-arrow-right-from-bracket"></i>
+                Sign out
+            </a>
+        </div>
+    </aside>
+
+    <main class="main-content">
+        <div class="header-section">
+            <h1>Settings</h1>
+            <p>Manage your account preferences, theme, and personalization.</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="settings-card">
+                <div class="avatar-preview">
+                    {{ user.username|make_list|first|upper }}
+                </div>
+                
+                <div class="form-group">
+                    <label>Username</label>
+                    <span class="help-text">Your display name inside the chat interface.</span>
+                    <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
+                </div>
+                <div class="form-group">
+                    <label>Language</label>
+                    <span class="help-text">Your preferred language for interface and AI default behavior.</span>
+                    <select name="language" class="form-control">
+                        <option value="English" {% if profile.language == 'English' %}selected{% endif %}>English (US)</option>
+                        <option value="Spanish" {% if profile.language == 'Spanish' %}selected{% endif %}>Spanish</option>
+                        <option value="French" {% if profile.language == 'French' %}selected{% endif %}>French</option>
+                        <option value="German" {% if profile.language == 'German' %}selected{% endif %}>German</option>
+                        <option value="Hindi" {% if profile.language == 'Hindi' %}selected{% endif %}>Hindi</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-card">
+                <h3 style="margin-bottom: 20px; font-weight: 500; font-size: 1.1rem;">Appearance</h3>
+                
+                <div class="form-group">
+                    <label>App Theme</label>
+                    <span class="help-text">Select your color schema overlay.</span>
+                    <select name="theme_preference" class="form-control" id="themeSelect">
+                        <option value="dark" {% if profile.theme_preference == 'dark' %}selected{% endif %}>Dark (Default)</option>
+                        <option value="light" {% if profile.theme_preference == 'light' %}selected{% endif %}>Light</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Chat Bubble Style</label>
+                    <span class="help-text">How the messages are displayed.</span>
+                    <select name="bubble_style" class="form-control">
+                        <option value="modern" {% if profile.bubble_style == 'modern' %}selected{% endif %}>Modern UI (Rounded)</option>
+                        <option value="minimal" {% if profile.bubble_style == 'minimal' %}selected{% endif %}>Minimal (Outline border)</option>
+                        <option value="classic" {% if profile.bubble_style == 'classic' %}selected{% endif %}>Classic (No border)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>Font Size</label>
+                    <span class="help-text">Adjust the typography size across the app for readability.</span>
+                    <div style="padding: 10px 0;">
+                        <input type="range" name="font_size" min="13" max="22" class="form-control" value="{{ profile.font_size|default:'15' }}" style="padding: 0; cursor: pointer; border: none; height: 6px; background: var(--bg-hover);">
+                        <div style="display:flex; justify-content:space-between; margin-top: 8px; font-size: 0.75rem; color: var(--text-secondary);">
+                            <span>13px</span>
+                            <span>{{ profile.font_size|default:'15' }}px</span>
+                            <span>22px</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-save btn-save-main-action">Save Preferences</button>
+        </form>
+
+        <div class="settings-card">
+            <h3 style="margin-bottom: 20px; font-weight: 500; font-size: 1.1rem;">Memory Vault</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 12px;">MindMate automatically remembers important details across your sessions. Review or wipe them here.</p>
+            <div class="form-group">
+                <textarea id="memoryBox" class="form-control" style="height: 120px; resize: vertical;" placeholder="No memories stored yet...">{% if profile.memory_vault and profile.memory_vault != '[]' %}{{ profile.memory_vault }}{% endif %}</textarea>
+            </div>
+            <div style="display: flex; gap: 12px; margin-top: 12px;">
+                <button type="button" class="btn-save" style="flex:1;" onclick="saveMemory()">Update Memory</button>
+                <button type="button" class="btn-save nav-link-danger" style="flex:1; border: 1px solid rgba(239, 68, 68, 0.2);" onclick="wipeMemory()">Wipe Memory</button>
+            </div>
+        </div>
+
+        <div class="settings-card" style="border-color: rgba(239, 68, 68, 0.2);">
+            <h3 style="margin-bottom: 20px; font-weight: 500; font-size: 1.1rem; color: #ef4444;">Data & Privacy</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">Export your data or completely delete your chat history.</p>
+            
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button type="button" class="btn-save" style="background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border-color);" onclick="window.location.href='/api/export/all/'"><i class="fas fa-file-export" style="margin-right:8px;"></i> Export All Chats</button>
+                <button type="button" class="btn-save nav-link-danger" onclick="clearHistory()"><i class="fas fa-trash-can" style="margin-right:8px;"></i> Clear All Chat History</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Memory Vault API Logic
+        async function saveMemory() { 
+            const memoryText = document.getElementById('memoryBox').value;
+            const btn = event.target;
+            const originalText = btn.innerText;
+            btn.innerText = 'Saving...';
+            try {
+                await fetch('/api/memory/update/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ memory_vault: memoryText })
+                });
+                btn.innerText = 'Updated!';
+                setTimeout(() => btn.innerText = originalText, 2000);
+            } catch(e) {
+                btn.innerText = 'Error';
+                setTimeout(() => btn.innerText = originalText, 2000);
+            }
+        }
+        
+        async function wipeMemory() {
+            if(confirm('Wipe all memory context?')) {
+                document.getElementById('memoryBox').value = '';
+                await saveMemory();
+            }
+        }
+
+        // Clear History Logic
+        async function clearHistory() {
+            if(confirm('Are you sure you want to delete all chat history? This cannot be undone.')) {
+                try {
+                    const res = await fetch('/api/conversations/clear/', { method: 'POST' });
+                    if(res.ok) {
+                        alert('All chat history has been cleared successfully.');
+                    }
+                } catch (e) {
+                    alert('An error occurred while clearing history.');
+                }
+            }
+        }
+        // Provide live preview of theme changing but actual save happens on form submit
+        document.getElementById('themeSelect').addEventListener('change', function(e) {
+            if(e.target.value === 'light'){
+                document.body.setAttribute('data-theme', 'light');
+            } else {
+                document.body.setAttribute('data-theme', 'dark');
+            }
+        });
+    </script>
+</body>
+</html>

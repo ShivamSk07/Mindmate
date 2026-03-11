@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MindMate - Sign Up</title>
+    <link rel="icon" type="image/jpeg" href="/static/img/favicon.jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+
+        :root {
+            --bg: #09090b;
+            --surface: #141415;
+            --border: #27272a;
+            --text: #fafafa;
+            --muted: #71717a;
+            --accent-dim: #3f3f46;
+            --danger: #ef4444;
+        }
+
+        html, body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 380px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px 32px;
+            box-shadow: 0 20px 48px rgba(0,0,0,0.5);
+            animation: fadeUp 0.4s ease;
+        }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .logo-text {
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            color: var(--text);
+            margin-bottom: 4px;
+        }
+
+        .heading {
+            font-size: 1.45rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 4px;
+        }
+
+        .sub {
+            font-size: 0.875rem;
+            color: var(--muted);
+            margin-bottom: 24px;
+        }
+
+        .error-msg {
+            background: rgba(239,68,68,0.08);
+            border: 1px solid rgba(239,68,68,0.2);
+            color: var(--danger);
+            padding: 10px 13px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 14px;
+        }
+
+        .field { margin-bottom: 12px; }
+
+        .field label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+
+        .field-wrap { position: relative; }
+
+        .field-wrap i.fi {
+            position: absolute;
+            left: 11px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--muted);
+            font-size: 0.78rem;
+            pointer-events: none;
+        }
+
+        .field-wrap input {
+            width: 100%;
+            padding: 10px 10px 10px 34px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text);
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        .field-wrap input:focus {
+            border-color: var(--accent-dim);
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.04);
+        }
+
+        .eye-btn {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--muted);
+            cursor: pointer;
+            padding: 3px 5px;
+            font-size: 0.78rem;
+            transition: color 0.2s;
+        }
+        .eye-btn:hover { color: var(--text); }
+
+        /* Password strength */
+        .strength-bar {
+            height: 2px;
+            background: var(--border);
+            border-radius: 4px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .strength-fill {
+            height: 100%;
+            width: 0%;
+            border-radius: 4px;
+            transition: width 0.3s, background 0.3s;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--text);
+            color: var(--bg);
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-top: 10px;
+        }
+        .btn:hover { opacity: 0.87; }
+        .btn:active { transform: scale(0.98); }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 18px 0 14px;
+        }
+        .divider span { flex: 1; height: 1px; background: var(--border); }
+        .divider p { font-size: 0.78rem; color: var(--muted); }
+
+        .footer-link {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--muted);
+        }
+        .footer-link a {
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        /* ===== MOBILE ===== */
+        .mobile-hero {
+            display: none;
+        }
+
+        @media (max-width: 850px) {
+            body {
+                padding: 0;
+                background: var(--bg);
+                flex-direction: column;
+                justify-content: flex-end;
+                align-items: center;
+                overflow-x: hidden;
+                min-height: 100dvh;
+            }
+            .mobile-hero {
+                display: flex;
+                flex: 1;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                min-height: 250px;
+            }
+            .mobile-hero img {
+                width: 88vw;
+                height: 88vw;
+                max-width: 480px;
+                max-height: 480px;
+                object-fit: contain;
+                animation: energyGlow 10s linear infinite;
+                filter: drop-shadow(0 0 15px rgba(255,255,255,0.05));
+            }
+            @keyframes energyGlow {
+                0%   { filter: drop-shadow(0 0 10px rgba(255,255,255,0.02)) hue-rotate(0deg); transform: scale(1); }
+                33%  { filter: drop-shadow(0 0 25px rgba(255,255,255,0.08)) hue-rotate(15deg); transform: scale(1.02); }
+                66%  { filter: drop-shadow(0 0 15px rgba(255,255,255,0.04)) hue-rotate(-15deg); transform: scale(0.98); }
+                100% { filter: drop-shadow(0 0 10px rgba(255,255,255,0.02)) hue-rotate(0deg); transform: scale(1); }
+            }
+            .card {
+                max-width: 100%;
+                border-radius: 24px 24px 0 0;
+                border-bottom: none;
+                padding: 32px 24px 48px;
+                box-shadow: 0 -8px 40px rgba(0,0,0,0.6);
+                animation: mobileUp 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+                overflow: hidden;
+            }
+            @keyframes mobileUp {
+                from { transform: translateY(100%); }
+                to   { transform: translateY(0); }
+            }
+            .logo-text { font-size: 1rem; }
+            .heading { font-size: 1.25rem; }
+            .sub { margin-bottom: 18px; font-size: 0.82rem; }
+            .field { margin-bottom: 10px; }
+            .field label { margin-bottom: 4px; font-size: 0.75rem; }
+            .field-wrap input { padding: 11px 10px 11px 34px; font-size: 0.9rem; }
+            .btn { padding: 13px; margin-top: 8px; }
+            .divider { margin: 14px 0 12px; }
+            .strength-bar { margin-top: 4px; }
+        }
+
+        @media (min-width: 501px) {
+            body { align-items: center; }
+        }
+    </style>
+</head>
+<body>
+    <div class="mobile-hero">
+        <img src="/static/img/logo.jpeg" alt="MindMate">
+    </div>
+
+    <div class="card">
+        <p class="logo-text" style="display: flex; align-items: center; gap: 8px;">
+            <img src="/static/img/logo.jpeg" alt="Logo" style="width: 20px; height: 20px; border-radius: 4px; object-fit: cover;">
+            MindMate
+        </p>
+        <h1 class="heading">Create account</h1>
+        <p class="sub">Your personal AI companion awaits</p>
+
+        {% if error %}
+        <div class="error-msg">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" autocomplete="on">
+            {% csrf_token %}
+
+            <div class="field">
+                <label>Username</label>
+                <div class="field-wrap">
+                    <i class="fas fa-user fi"></i>
+                    <input type="text" name="username" placeholder="Choose a username" required autocomplete="username">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Email</label>
+                <div class="field-wrap">
+                    <i class="fas fa-envelope fi"></i>
+                    <input type="email" name="email" placeholder="your@email.com" required autocomplete="email">
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Password</label>
+                <div class="field-wrap">
+                    <i class="fas fa-lock fi"></i>
+                    <input type="password" name="password" id="pwd" placeholder="Min 8 characters" required autocomplete="new-password" oninput="checkStrength(this.value)">
+                    <button type="button" class="eye-btn" onclick="togglePass()" aria-label="Toggle password">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+                <div class="strength-bar"><div class="strength-fill" id="sf"></div></div>
+            </div>
+
+            <button type="submit" class="btn">Create Account</button>
+        </form>
+
+        <div class="divider"><span></span><p>or</p><span></span></div>
+
+        <div class="footer-link">
+            Have an account? <a href="{% url 'login' %}">Log in</a>
+        </div>
+    </div>
+
+    <script>
+        function togglePass() {
+            const p = document.getElementById('pwd');
+            const i = document.querySelector('.eye-btn i');
+            if (p.type === 'password') { p.type = 'text'; i.className = 'fas fa-eye-slash'; }
+            else { p.type = 'password'; i.className = 'fas fa-eye'; }
+        }
+
+        function checkStrength(v) {
+            let s = 0;
+            if (v.length >= 8) s++;
+            if (/[A-Z]/.test(v)) s++;
+            if (/[0-9]/.test(v)) s++;
+            if (/[^A-Za-z0-9]/.test(v)) s++;
+            const colors = ['transparent','#ef4444','#f97316','#eab308','#22c55e'];
+            const widths  = ['0%','25%','50%','75%','100%'];
+            const el = document.getElementById('sf');
+            el.style.width = v.length ? widths[s] || widths[1] : '0%';
+            el.style.background = v.length ? colors[s] || colors[1] : 'transparent';
+        }
+    </script>
+</body>
+</html>
