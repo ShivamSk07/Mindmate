@@ -6,7 +6,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindMate</title>
-    <link rel="icon" type="image/jpeg" href="{% static 'img/favicon.jpeg' %}">
+    <link rel="icon" type="image/jpeg" href="/static/img/favicon.jpeg">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#09090b">
     <!-- Fonts -->
@@ -1501,7 +1501,6 @@
         </header>
 
         <div class="messages-container" id="messagesContainer">
-            <div id="ptrIndicator" class="ptr-indicator"><i class="fas fa-rotate-right fa-spin"></i> &nbsp; Pull to start new chat</div>
             <!-- Messages are loaded here dynamically by startNewChat() -->
         </div>
 
@@ -1733,9 +1732,9 @@
             if (!recognition) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 recognition = new SpeechRecognition();
-                recognition.continuous = true;
+                recognition.continuous = false; 
                 recognition.interimResults = true;
-                recognition.lang = 'en-IN'; // Better Hinglish/Indian accent support
+                recognition.lang = 'hi-IN';
 
                 recognition.onstart = function () {
                     isRecording = true;
@@ -1744,18 +1743,18 @@
                 };
 
                 recognition.onresult = function (event) {
-                    let interim_transcript = '';
+                    let interim = '';
+                    let recent_final = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         const transcript = event.results[i][0].transcript;
                         if (event.results[i].isFinal) {
-                            final_transcript += transcript + ' ';
+                            recent_final += transcript + ' ';
                         } else {
-                            interim_transcript += transcript;
+                            interim += transcript;
                         }
                     }
-                    // Prevent common mobile duplication bug by checking for suffix
-                    const currentVal = (final_transcript + interim_transcript).trim();
-                    input.value = currentVal;
+                    if (recent_final) final_transcript += recent_final;
+                    input.value = (final_transcript + interim).trim();
                     input.style.height = '';
                     input.style.height = input.scrollHeight + 'px';
                 };
@@ -1766,11 +1765,16 @@
                 };
 
                 recognition.onend = function () {
-                    stopVoice();
+                    if (isRecording) {
+                        try { recognition.start(); } catch(e) { stopVoice(); }
+                    } else {
+                        stopVoice();
+                    }
                 };
             }
 
             if (isRecording) {
+                isRecording = false;
                 recognition.stop();
             } else {
                 input.value = '';
@@ -2334,28 +2338,6 @@
             navigator.vibrate?.([40, 40]);
         }
 
-        // Pull to Refresh
-        const container = getEl('messagesContainer');
-        let ptrStart = 0;
-        container.addEventListener('touchstart', e => {
-            if (container.scrollTop === 0) ptrStart = e.touches[0].clientY;
-        });
-        container.addEventListener('touchmove', e => {
-            const diff = e.touches[0].clientY - ptrStart;
-            if (container.scrollTop === 0 && diff > 0) {
-                const indicator = getEl('ptrIndicator');
-                indicator.style.height = Math.min(diff, 60) + 'px';
-                if (diff > 100) indicator.innerHTML = '<i class="fas fa-arrow-down"></i> Release to refresh';
-            }
-        });
-        container.addEventListener('touchend', e => {
-            const diff = e.changedTouches[0].clientY - ptrStart;
-            if (container.scrollTop === 0 && diff > 100) {
-                startNewChat();
-                navigator.vibrate?.(100);
-            }
-            getEl('ptrIndicator').style.height = '0';
-        });
 
         // Shake to Switch Persona
         let lastShake = 0;
@@ -2380,24 +2362,26 @@
         function playShakeSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (ctx.state === 'suspended') ctx.resume();
                 const now = ctx.currentTime;
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
                 
-                // Modern Instant "Pop"
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(600, now);
-                osc.frequency.exponentialRampToValueAtTime(1200, now + 0.04);
-                osc.frequency.exponentialRampToValueAtTime(400, now + 0.1);
-                
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.15, now + 0.01);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
-                
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start(now);
-                osc.stop(now + 0.15);
+                // Louder, Punchier Modern Pop (Triangle wave cuts better on phone speakers)
+                const playKick = (f, d) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle'; 
+                    osc.frequency.setValueAtTime(f, now);
+                    osc.frequency.exponentialRampToValueAtTime(f/2, now + d);
+                    gain.gain.setValueAtTime(0.5, now); // 50% Louder
+                    gain.gain.exponentialRampToValueAtTime(0.01, now + d);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(now + d);
+                };
+
+                playKick(600, 0.15); 
+                playKick(900, 0.1);
             } catch (e) {
                 console.warn("Audio feedback failed:", e);
             }
