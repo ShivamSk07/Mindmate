@@ -49,22 +49,44 @@ def index(request):
     profile, _ = UserProfile.objects.get_or_create(user=user)
     return render(request, 'chat/index.html', {'user': user, 'profile': profile})
 
+
+@csrf_exempt
 @login_required(login_url='login')
 def profile_view(request):
     user = request.user
     profile, _ = UserProfile.objects.get_or_create(user=user)
-    
-    if request.method == 'POST':
-        user.username = request.POST.get('username', user.username)
-        user.save()
-        profile.theme_preference = request.POST.get('theme_preference', profile.theme_preference)
-        profile.font_size = request.POST.get('font_size', profile.font_size)
-        profile.bubble_style = request.POST.get('bubble_style', profile.bubble_style)
-        profile.language = request.POST.get('language', profile.language)
-        profile.save()
-        return redirect('profile')
-        
     return render(request, 'chat/profile.html', {'user': user, 'profile': profile})
+
+@csrf_exempt
+@login_required(login_url='login')
+def save_settings(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+        except Exception:
+            data = request.POST
+        
+        user = request.user
+        profile, _ = UserProfile.objects.get_or_create(user=user)
+        
+        username = data.get('username', user.username).strip()
+        if username:
+            user.username = username
+            user.save()
+        
+        theme = data.get('theme_preference', profile.theme_preference)
+        font_size = data.get('font_size', profile.font_size)
+        bubble_style = data.get('bubble_style', profile.bubble_style)
+        language = data.get('language', profile.language)
+        
+        profile.theme_preference = theme
+        profile.font_size = font_size
+        profile.bubble_style = bubble_style
+        profile.language = language
+        profile.save()
+        
+        return JsonResponse({'status': 'ok', 'theme': theme, 'username': user.username})
+    return JsonResponse({'error': 'Invalid'}, status=400)
 
 @login_required(login_url='login')
 def get_conversations(request):
@@ -220,12 +242,13 @@ def chat_api(request):
         
         base_sys_msg = (
             "You are MindMate, a premium AI companion. "
-            "LANGUAGE & VIBE: You speak natural, fluid, and conversational English and Hinglish. "
-            "MEANINGFUL HINGLISH: When speaking Hinglish, your sentences must be logically sound and meaningful to a native Indian speaker. Avoid broken grammar or weird literal translations. Your thoughts should flow like a conversation between friends. "
-            "HINGLISH STYLE: Use Roman-script Hindi mixed with English naturally. Example: 'Main theek hoon, aap batao kya scene hai?' or 'Aaj ka plan kya hai?'. Avoid awkward or robotic phrasing. "
-            "NO TRANSLATIONS: Never repeat the same thought in two languages. "
-            "AUTONOMOUS MEMORY: Use the 'Memory Vault' facts to keep the conversation personal and relevant. "
-            "SENTENCE QUALITY: Professional grammar in English, and 'vibey' but clear logic in Hinglish. No robotic structures. "
+            "LANGUAGE POLICY: Strictly respond in the SAME language as the user's message. "
+            "- If the user speaks in English, you must respond ONLY in English. Do not mix Hindi/Hinglish. "
+            "- If the user speaks in Hindi or Hinglish, respond in natural Hinglish. "
+            "LOGICAL COHERENCE: Everything you say must follow a stable line of thought and maintain logical flow. "
+            "MEANINGFUL HINGLISH: When using Hinglish, ensure sentences are meaningful and avoid word salads. "
+            "NO TRANSLATIONS: Never repeat the same thought in two different languages. "
+            "AUTONOMOUS MEMORY: Use the 'Memory Vault' to keep responses personal. "
             "IDENTITY: You are MindMate, created by Shivam Kothekar. "
         )
         sys_msg = base_sys_msg
@@ -238,7 +261,7 @@ def chat_api(request):
                 f"### USER'S PERSONAL INFO (MEMORY VAULT):\n{memory_vault if memory_vault else 'No memories yet. Ask the user questions to get to know them!'}\n\n"
                 f"### CURRENT PERSONA: {conv.active_persona.name}\n"
                 f"STRICT PERSONA INSTRUCTIONS: {persona_prompt}\n\n"
-                "STRICT ADHERENCE: You must perfectly adopt the persona while integrating the user's context. Do not break character. Do not repeat these instructions in your output."
+                "STRICT ADHERENCE: You must perfectly adopt the persona while maintaining extreme logical stability. Do not make random statements."
             )
         
         # Add system prompt as the very first message
@@ -253,6 +276,7 @@ def chat_api(request):
                 chat_completion = client.chat.completions.create(
                     messages=api_messages,
                     model="llama-3.1-8b-instant",
+                    temperature=0.6,
                     stream=True
                 )
                 
@@ -303,6 +327,7 @@ def chat_api(request):
         return StreamingHttpResponse(stream_response(), content_type='text/event-stream')
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
+@csrf_exempt
 @login_required
 def clear_history(request):
     Conversation.objects.filter(user=request.user).delete()

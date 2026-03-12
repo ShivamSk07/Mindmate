@@ -1,11 +1,20 @@
 <!DOCTYPE html>
 {% load static %}
-<html lang="en">
+<html lang="en" id="htmlRoot">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindMate</title>
+    <!-- Apply theme instantly from localStorage to prevent dark flash -->
+    <script>
+        (function() {
+            var stored = localStorage.getItem('mindmate_theme');
+            var serverTheme = '{{ profile.theme_preference|default:"dark" }}';
+            var theme = stored || serverTheme || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
     <link rel="icon" type="image/jpeg" href="/static/img/favicon.jpeg">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#09090b">
@@ -19,10 +28,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <style>
-        :root {
+        :root,
+        html[data-theme="dark"] {
             --bg-main: #09090b;
             --bg-panel: #09090b;
-            /* True black/dark for minimal style */
             --bg-hover: #27272a;
             --border-color: #27272a;
             --text-primary: #fafafa;
@@ -30,13 +39,16 @@
             --focus-ring: #52525b;
             --user-bubble: #27272a;
             --ai-bubble: transparent;
+            --overlay-bg: rgba(0,0,0,0.4);
+            --transparent-item: rgba(255,255,255,0.05);
+            --modal-bg: rgba(9,9,11,0.95);
             --font-size-base: 15px;
             --radius-sm: 6px;
             --radius-md: 10px;
             --radius-lg: 16px;
         }
 
-        [data-theme="light"] {
+        html[data-theme="light"] {
             --bg-main: #ffffff;
             --bg-panel: #ffffff;
             --bg-hover: #f4f4f5;
@@ -44,8 +56,13 @@
             --text-primary: #09090b;
             --text-secondary: #71717a;
             --focus-ring: #a1a1aa;
-            --user-bubble: #f4f4f5;
+            --user-bubble: #f0f0f0;
             --ai-bubble: transparent;
+            --overlay-bg: rgba(0,0,0,0.08);
+            --transparent-item: rgba(0,0,0,0.05);
+            --modal-bg: rgba(255,255,255,0.97);
+            background: #ffffff;
+            color: #09090b;
         }
 
         * {
@@ -74,7 +91,7 @@
         }
 
         body {
-            background: #000000;
+            background: var(--bg-main);
             color: var(--text-primary);
             height: 100vh;
             display: flex;
@@ -86,9 +103,6 @@
             gap: 12px;
         }
 
-        body[data-theme="light"] {
-            background: #f4f4f5;
-        }
 
         /* Sidebar */
         .sidebar {
@@ -115,7 +129,7 @@
             font-size: 1.1rem;
             font-weight: 600;
             letter-spacing: -0.02em;
-            color: #ffffff;
+            color: var(--text-primary);
             display: flex;
             align-items: center;
             gap: 8px;
@@ -342,7 +356,7 @@
             padding: 8px 18px;
             border-radius: 40px;
             border: 1px solid var(--border-color);
-            background: rgba(255, 255, 255, 0.03);
+            background: var(--transparent-item);
             backdrop-filter: blur(10px);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             font-size: 0.9rem;
@@ -353,7 +367,7 @@
 
         .persona-selector:hover {
             border-color: var(--text-secondary);
-            background: rgba(255, 255, 255, 0.06);
+            background: var(--transparent-item);
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.2);
         }
@@ -369,7 +383,7 @@
             font-weight: 700;
             font-size: 1.2rem;
             letter-spacing: -0.02em;
-            color: #ffffff;
+            color: var(--text-primary);
         }
 
         .tools {
@@ -707,10 +721,10 @@
             top: 120%;
             left: 50%;
             transform: translateX(-50%) translateY(-10px);
-            background: rgba(18, 18, 18, 0.8);
+            background: var(--modal-bg);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
             border-radius: var(--radius-lg);
             width: 300px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
@@ -1050,7 +1064,7 @@
                 box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
                 border-radius: 24px;
                 border: 1px solid rgba(255, 255, 255, 0.1);
-                background: rgba(9, 9, 11, 0.85);
+                background: var(--modal-bg);
                 backdrop-filter: blur(24px);
                 -webkit-backdrop-filter: blur(24px);
                 transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
@@ -1394,9 +1408,9 @@
     </style>
 </head>
 
-<body data-bubble-style="{{ profile.bubble_style|default:'modern' }}"
-    style="--font-size-base: {{ profile.font_size|default:'15' }}px;"
-    data-theme="{{ profile.theme_preference|default:'dark' }}">
+<body id="themeBody"
+    data-bubble-style="{{ profile.bubble_style|default:'modern' }}"
+    style="--font-size-base: {{ profile.font_size|default:'15' }}px;">
 
     <div class="mobile-backdrop" id="mobileBackdrop" onclick="toggleSidebar()"></div>
 
@@ -1478,8 +1492,10 @@
                         <span id="currentPersonaName">Select Persona</span>
                         <i class="fas fa-chevron-down" style="font-size: 0.75rem; color: var(--text-secondary)"></i>
                         <div id="activeFolderBadge"
-                            style="margin-left:8px; font-size:0.7rem; color:var(--text-secondary); display:none; align-items:center; gap:4px; padding:2px 6px; border:1px solid var(--border-color); border-radius:4px;">
+                            style="margin-left:8px; font-size:0.7rem; color:var(--text-secondary); display:none; align-items:center; gap:4px; padding:2px 6px; border:1px solid var(--border-color); border-radius:4px;"
+                            onclick="event.stopPropagation(); filterByFolder(null)" title="Exit folder">
                             <i class="fas fa-folder"></i> <span id="activeFolderName"></span>
+                            <i class="fas fa-times" style="font-size: 0.6rem; opacity: 0.6; margin-left: 2px;"></i>
                         </div>
                     </div>
                     <div class="persona-dropdown" id="personaDropdown">
@@ -1601,7 +1617,59 @@
         </div>
     </div>
 
+    <!-- Create Folder Modal -->
+    <div id="folderModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Create New Folder</h2>
+                <i class="fas fa-times" onclick="closeModal('folderModal')" style="cursor: pointer;"></i>
+            </div>
+            <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+                <p style="color: var(--text-secondary); font-size: 0.85rem;">Organize your chats into a new category.</p>
+                <div>
+                    <label style="display:block; margin-bottom:8px; font-size:0.85rem; color:var(--text-secondary);">Folder Name</label>
+                    <input type="text" id="newFolderName" placeholder="e.g. Work, Research, Ideas"
+                        style="width:100%; background:var(--bg-hover); border:1px solid var(--border-color); color:var(--text-primary); padding:10px; border-radius:6px; outline:none;"
+                        onkeypress="if(event.key==='Enter') submitFolder()">
+                </div>
+                <button onclick="submitFolder()"
+                    style="background:var(--text-primary); color:var(--bg-main); border:none; padding:12px; border-radius:6px; font-weight:600; cursor:pointer; margin-top:8px;">Create Folder</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal Removed (Moved to Profile Page) -->
+
+    <!-- Custom Confirmation Modal -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="confirmTitle">Confirm Action</h2>
+                <i class="fas fa-times" onclick="closeModal('confirmModal')" style="cursor: pointer;"></i>
+            </div>
+            <div class="modal-body">
+                <p id="confirmMessage" style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.5;"></p>
+                <div style="display: flex; gap: 12px;">
+                    <button id="confirmBtn" class="btn-primary" style="flex:1; margin:0;">Confirm</button>
+                    <button class="btn-outline" style="flex:1; margin:0;" onclick="closeModal('confirmModal')">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Alert Modal -->
+    <div id="alertModalUI" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2 id="alertTitleUI">Notice</h2>
+                <i class="fas fa-times" onclick="closeModal('alertModalUI')" style="cursor: pointer;"></i>
+            </div>
+            <div class="modal-body">
+                <p id="alertMessageUI" style="color: var(--text-secondary); font-size: 0.95rem; margin-bottom: 24px; line-height: 1.5;"></p>
+                <button class="btn-primary" style="width:100%; margin:0;" onclick="closeModal('alertModalUI')">Understood</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Service Worker Registration -->
     <script>
@@ -1671,8 +1739,41 @@
         }
 
         function openMemoryModal() { getEl('memoryModal').style.display = 'flex'; }
+        // Apply theme immediately from localStorage
+        (function() {
+            var stored = localStorage.getItem('mindmate_theme');
+            var serverTheme = '{{ profile.theme_preference|default:"dark" }}';
+            var theme = stored || serverTheme || 'dark';
+            document.body.setAttribute('data-theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+
+        // Fix for browser back button (bfcache): re-apply theme when page is restored
+        window.addEventListener('pageshow', function() {
+            var theme = localStorage.getItem('mindmate_theme') || '{{ profile.theme_preference|default:"dark" }}' || 'dark';
+            document.body.setAttribute('data-theme', theme);
+            document.documentElement.setAttribute('data-theme', theme);
+        });
+
         function openModal(id) { getEl(id).style.display = 'flex'; }
         function closeModal(id) { getEl(id).style.display = 'none'; }
+
+        // Custom Modal Logic
+        function customConfirm(title, message, onConfirm) {
+            getEl('confirmTitle').innerText = title;
+            getEl('confirmMessage').innerText = message;
+            getEl('confirmBtn').onclick = () => {
+                onConfirm();
+                closeModal('confirmModal');
+            };
+            openModal('confirmModal');
+        }
+
+        function customAlert(title, message) {
+            getEl('alertTitleUI').innerText = title;
+            getEl('alertMessageUI').innerText = message;
+            openModal('alertModalUI');
+        }
 
         window.onclick = function (event) {
             if (event.target.classList.contains('modal')) event.target.style.display = "none";
@@ -1725,7 +1826,7 @@
             const input = getEl('messageInput');
 
             if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert("Voice input is not supported in this browser.");
+                customAlert("Unsupported", "Voice input is not supported in this browser.");
                 return;
             }
 
@@ -1796,10 +1897,15 @@
         }
 
         async function clearHistory() {
-            if (confirm('Are you sure you want to clear your entire chat history?')) {
-                const res = await fetch('/api/conversations/clear/', { method: 'POST' });
+            customConfirm('Clear History', 'Are you sure you want to clear your entire chat history? This cannot be undone.', async () => {
+                const res = await fetch('/api/conversations/clear/', { 
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
                 if (res.ok) loadConversations();
-            }
+            });
         }
 
         async function messageFeedback(msgId, type, el) {
@@ -1822,10 +1928,19 @@
         }
 
         function createFolder() {
-            const name = prompt('Enter folder name:');
+            getEl('newFolderName').value = '';
+            openModal('folderModal');
+            setTimeout(() => getEl('newFolderName').focus(), 100);
+        }
+
+        function submitFolder() {
+            const name = getEl('newFolderName').value.trim();
             if (name && !folders.includes(name)) {
                 folders.push(name);
                 loadConversations();
+                closeModal('folderModal');
+            } else if (folders.includes(name)) {
+                customAlert('Oops', 'Folder already exists.');
             }
         }
 
@@ -1844,17 +1959,20 @@
             try {
                 await fetch('/api/memory/update/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
                     body: JSON.stringify({ memory_vault: memoryText })
                 });
                 closeModal('memoryModal');
             } catch (e) { }
         }
         async function forgetMe() {
-            if (confirm('Wipe all memory context?')) {
+            customConfirm('Wipe Memory', 'Wipe all memory context? This will reset your personalization.', async () => {
                 getEl('memoryBox').value = '';
                 await saveMemory();
-            }
+            });
         }
 
         function openCreatePersonaModal() {
@@ -1880,8 +1998,13 @@
         }
 
         async function deletePersona(id) {
-            if (confirm('Are you sure you want to delete this custom persona?')) {
-                const res = await fetch(`/api/persona/delete/${id}/`, { method: 'POST' });
+            customConfirm('Delete Persona', 'Are you sure you want to delete this custom persona?', async () => {
+                const res = await fetch(`/api/persona/delete/${id}/`, { 
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    }
+                });
                 if (res.ok) {
                     if (currentPersonaId === id) {
                         currentPersonaId = null;
@@ -1889,7 +2012,7 @@
                     }
                     loadPersonas();
                 }
-            }
+            });
         }
 
         async function savePersona() {
@@ -1897,13 +2020,16 @@
             const name = getEl('customPersonaName').value.trim();
             const tone = getEl('customPersonaTone').value.trim();
             const promptStr = getEl('customPersonaPrompt').value.trim();
-            if (!name || !promptStr) return alert('Name and System Prompt are required.');
+            if (!name || !promptStr) return customAlert('Missing Info', 'Name and System Prompt are required.');
 
             const url = id ? `/api/persona/edit/${id}/` : '/api/persona/create/';
 
             const res = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
                 body: JSON.stringify({ name, tone, system_prompt: promptStr })
             });
             if (res.ok) {
@@ -1981,7 +2107,10 @@
                 try {
                     await fetch('/api/persona/switch/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': '{{ csrf_token }}'
+                        },
                         body: JSON.stringify({ conversation_id: currentConversationId, persona_id: p.id })
                     });
                 } catch (e) { }
@@ -2011,6 +2140,20 @@
                         uncategorized.push(c);
                     }
                 });
+
+                // Render "Independent" / All Chats option
+                const allChatsGroup = document.createElement('div');
+                allChatsGroup.className = 'folder-group';
+                const isAllActive = !activeFolder ? 'background:var(--bg-hover);' : '';
+                allChatsGroup.innerHTML = `
+                    <div class="folder-header" onclick="filterByFolder(null)" style="${isAllActive}">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <i class="fas fa-border-all" style="color:var(--text-secondary); font-size: 0.8rem;"></i>
+                            <span>All Chats (Independent)</span>
+                        </div>
+                    </div>
+                `;
+                folderList.appendChild(allChatsGroup);
 
                 // Render Folder Groups
                 folders.forEach(f => {
@@ -2188,7 +2331,10 @@
             try {
                 const response = await fetch('/api/chat/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
                     body: JSON.stringify({
                         message: text,
                         conversation_id: currentConversationId,
@@ -2305,19 +2451,20 @@
         }
 
         function handleDelete(wrapper) {
-            if(confirm('Delete this message?')) {
+            customConfirm('Delete Message', 'Delete this message?', () => {
                 wrapper.style.opacity = '0';
                 setTimeout(() => wrapper.remove(), 300);
                 navigator.vibrate?.([50, 30, 50]);
-            }
+            });
         }
 
         function handleLongPress(wrapper) {
             navigator.vibrate?.(100);
             const text = wrapper.querySelector('.message-bubble').innerText;
-            if(confirm(`Actions for message:\n\n1. Copy Text\n2. Share\n3. Pin\n\nClick OK to Copy.`)) {
+            customConfirm('Message Options', `Would you like to copy this message text?`, () => {
                 navigator.clipboard.writeText(text);
-            }
+                customAlert('Copied', 'Text copied to clipboard!');
+            });
         }
 
         function toggleHeart(bubble) {

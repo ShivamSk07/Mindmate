@@ -16,7 +16,7 @@ class Persona(models.Model):
 class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     memory_vault = models.TextField(default="[]")
-    theme_preference = models.CharField(max_length=20, default="Glassmorphism")
+    theme_preference = models.CharField(max_length=20, default="dark")
     font_size = models.CharField(max_length=10, default="medium")
     language = models.CharField(max_length=20, default="English")
     bubble_style = models.CharField(max_length=20, default="modern")
