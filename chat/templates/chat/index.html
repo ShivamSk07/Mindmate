@@ -1646,16 +1646,15 @@
         }
 
         if (!sessionStorage.getItem('welcomed')) {
-            window.addEventListener('click', () => {
+            const playAndMark = () => {
                 if (!sessionStorage.getItem('welcomed')) {
                     playWelcomeSound();
                     sessionStorage.setItem('welcomed', 'true');
                 }
-            }, { once: true });
-            
-            window.addEventListener('load', () => {
-                setTimeout(playWelcomeSound, 500);
-            });
+            };
+            window.addEventListener('click', playAndMark, { once: true });
+            window.addEventListener('touchstart', playAndMark, { once: true });
+            window.addEventListener('load', () => setTimeout(playWelcomeSound, 800));
         }
         // Data State
         let currentConversationId = null;
@@ -1721,36 +1720,6 @@
         let recognition = null;
         let final_transcript = '';
 
-        function playVoiceSound(type) {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                
-                if (type === 'start') {
-                    // Modern upward pulse
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(440, ctx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
-                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
-                } else {
-                    // Soft downward closure
-                    osc.type = 'sine';
-                    osc.frequency.setValueAtTime(880, ctx.currentTime);
-                    osc.frequency.exponentialRampToValueAtTime(330, ctx.currentTime + 0.15);
-                    gain.gain.setValueAtTime(0.08, ctx.currentTime);
-                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
-                }
-                
-                osc.connect(gain);
-                gain.connect(ctx.destination);
-                osc.start();
-                osc.stop(ctx.currentTime + (type === 'start' ? 0.1 : 0.15));
-            } catch (e) {
-                console.warn("Audio feedback failed:", e);
-            }
-        }
 
         function toggleVoice() {
             const btn = document.querySelector('.fa-microphone');
@@ -1775,11 +1744,18 @@
                 };
 
                 recognition.onresult = function (event) {
-                    let full_transcript = '';
-                    for (let i = 0; i < event.results.length; ++i) {
-                        full_transcript += event.results[i][0].transcript;
+                    let interim_transcript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        const transcript = event.results[i][0].transcript;
+                        if (event.results[i].isFinal) {
+                            final_transcript += transcript + ' ';
+                        } else {
+                            interim_transcript += transcript;
+                        }
                     }
-                    input.value = full_transcript.trim();
+                    // Prevent common mobile duplication bug by checking for suffix
+                    const currentVal = (final_transcript + interim_transcript).trim();
+                    input.value = currentVal;
                     input.style.height = '';
                     input.style.height = input.scrollHeight + 'px';
                 };
