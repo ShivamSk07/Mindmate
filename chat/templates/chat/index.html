@@ -7,6 +7,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindMate</title>
     <link rel="icon" type="image/jpeg" href="{% static 'img/favicon.jpeg' %}">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#09090b">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
@@ -1126,6 +1128,10 @@
                 overflow: hidden;
             }
 
+            .prompt-toolbar {
+                display: none !important;
+            }
+
             .mobile-nav {
                 display: none;
             }
@@ -1598,6 +1604,19 @@
 
     <!-- Settings Modal Removed (Moved to Profile Page) -->
 
+    <!-- Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').then(reg => {
+                    console.log('SW registered');
+                }).catch(err => {
+                    console.log('SW reg failed', err);
+                });
+            });
+        }
+    </script>
+
     <script>
         // Data State
         let currentConversationId = null;
@@ -1661,6 +1680,38 @@
 
         let isRecording = false;
         let recognition = null;
+        let final_transcript = '';
+
+        function playVoiceSound(type) {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                
+                if (type === 'start') {
+                    // Modern upward pulse
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(440, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+                    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+                } else {
+                    // Soft downward closure
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(880, ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(330, ctx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+                }
+                
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + (type === 'start' ? 0.1 : 0.15));
+            } catch (e) {
+                console.warn("Audio feedback failed:", e);
+            }
+        }
 
         function toggleVoice() {
             const btn = document.querySelector('.fa-microphone');
@@ -1676,31 +1727,25 @@
                 recognition = new SpeechRecognition();
                 recognition.continuous = true;
                 recognition.interimResults = true;
+                recognition.lang = 'en-IN'; // Better Hinglish/Indian accent support
 
                 recognition.onstart = function () {
                     isRecording = true;
                     btn.style.color = '#ef4444';
                     btn.classList.add('fa-beat-fade');
+                    playVoiceSound('start');
                 };
 
                 recognition.onresult = function (event) {
-                    let final_transcript = '';
                     let interim_transcript = '';
                     for (let i = event.resultIndex; i < event.results.length; ++i) {
                         if (event.results[i].isFinal) {
-                            final_transcript += event.results[i][0].transcript;
+                            final_transcript += event.results[i][0].transcript + ' ';
                         } else {
                             interim_transcript += event.results[i][0].transcript;
                         }
                     }
-                    if (final_transcript || interim_transcript) {
-                        // Reconstruct total to avoid duplicates from buffer
-                        let total = '';
-                        for (let i = 0; i < event.results.length; ++i) {
-                            total += event.results[i][0].transcript;
-                        }
-                        input.value = total;
-                    }
+                    input.value = (final_transcript + interim_transcript).trim();
                     input.style.height = '';
                     input.style.height = input.scrollHeight + 'px';
                 };
@@ -1719,11 +1764,13 @@
                 recognition.stop();
             } else {
                 input.value = '';
+                final_transcript = '';
                 recognition.start();
             }
         }
 
         function stopVoice() {
+            if (isRecording) playVoiceSound('end');
             isRecording = false;
             const btn = document.querySelector('.fa-microphone');
             btn.style.color = '';

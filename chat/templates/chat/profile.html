@@ -6,6 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindMate - Profile Settings</title>
     <link rel="icon" type="image/jpeg" href="{% static 'img/favicon.jpeg' %}">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#09090b">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <!-- Icons -->
@@ -419,6 +421,14 @@
             </div>
         </div>
 
+        <div class="settings-card" id="installCard" style="display: none; border-color: var(--focus-ring);">
+            <h3 style="margin-bottom: 20px; font-weight: 500; font-size: 1.1rem;">Install MindMate</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">Add MindMate to your home screen for a faster, native-like experience.</p>
+            <button type="button" class="btn-save" style="width: 100%; background: #ffffff; color: #000000;" onclick="installApp()">
+                <i class="fas fa-download" style="margin-right:8px;"></i> Install as App
+            </button>
+        </div>
+
         <div class="settings-card" style="border-color: rgba(239, 68, 68, 0.2);">
             <h3 style="margin-bottom: 20px; font-weight: 500; font-size: 1.1rem; color: #ef4444;">Data & Privacy</h3>
             <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 16px;">Export your data or completely delete your chat history.</p>
@@ -471,6 +481,31 @@
                 }
             }
         }
+        // PWA Install Logic
+        let deferredPrompt;
+        const installCard = document.getElementById('installCard');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installCard.style.display = 'block';
+        });
+
+        async function installApp() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                installCard.style.display = 'none';
+            }
+            deferredPrompt = null;
+        }
+
+        // Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js');
+        }
+
         // Provide live preview of theme changing but actual save happens on form submit
         document.getElementById('themeSelect').addEventListener('change', function(e) {
             if(e.target.value === 'light'){

@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from django.views.generic import TemplateView
 
 urlpatterns = [
     path('', views.index, name='index'),
@@ -19,4 +20,6 @@ urlpatterns = [
     path('api/export/<int:conv_id>/', views.export_chat, name='export_chat'),
     path('api/export/all/', views.export_all_chats, name='export_all_chats'),
     path('api/memory/update/', views.update_memory, name='update_memory'),
+    path('manifest.json', TemplateView.as_view(template_name='manifest.json', content_type='application/json')),
+    path('sw.js', TemplateView.as_view(template_name='sw.js', content_type='application/javascript')),
 ]
