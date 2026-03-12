@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindMate - Profile Settings</title>
-    <link rel="icon" type="image/jpeg" href="/static/img/favicon.jpeg">
+    <link rel="icon" type="image/jpeg" href="{% static 'img/favicon.jpeg' %}">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <!-- Icons -->
@@ -313,7 +314,7 @@
             <i class="fas fa-arrow-left"></i>
         </a>
         <a href="{% url 'index' %}" class="logo">
-            <img src="/static/img/logo.jpeg" alt="Logo" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">
+            <img src="{% static 'img/logo.jpeg' %}" alt="Logo" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">
             MindMate
         </a>
         

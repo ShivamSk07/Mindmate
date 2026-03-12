@@ -1,11 +1,12 @@
 <!DOCTYPE html>
+{% load static %}
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindMate</title>
-    <link rel="icon" type="image/jpeg" href="/static/img/favicon.jpeg">
+    <link rel="icon" type="image/jpeg" href="{% static 'img/favicon.jpeg' %}">
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
@@ -1034,10 +1035,10 @@
                 left: 0;
                 width: 85%;
                 max-width: 320px;
-                height: 100vh;
+                height: 100dvh;
                 transform: translateX(-100%);
                 z-index: 1010;
-                box-shadow: 20px 0 60px rgba(0, 0, 0, 0.8);
+                box-shadow: none;
                 border-radius: 0;
                 border: none;
                 border-right: 1px solid var(--border-color);
@@ -1106,7 +1107,11 @@
             .main-chat {
                 border-radius: 0;
                 border: none;
-                height: 100vh;
+                height: 100dvh;
+                box-shadow: none;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
             }
 
             .mobile-nav {
@@ -1125,7 +1130,11 @@
             }
 
             .messages-container {
-                padding: 16px 14px 100px;
+                padding: 16px 14px 140px; /* Increased padding to stay above input */
+                flex: 1;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+                overscroll-behavior-y: contain;
             }
 
             .message-bubble {
@@ -1154,7 +1163,6 @@
                 -webkit-overflow-scrolling: touch;
                 display: flex;
                 align-items: center;
-                mask-image: linear-gradient(to right, transparent, black 5%, black 95%, transparent);
             }
 
             .prompt-toolbar::-webkit-scrollbar {
@@ -1288,20 +1296,33 @@
         }
 
         @keyframes pulse {
-            0% {
-                transform: translateY(0);
-                opacity: 0.4;
-            }
+            0% { transform: translateY(0); opacity: 0.4; }
+            50% { transform: translateY(-3px); opacity: 1; }
+            100% { transform: translateY(0); opacity: 0.4; }
+        }
 
-            50% {
-                transform: translateY(-3px);
-                opacity: 1;
-            }
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            height: 24px;
+        }
 
-            100% {
-                transform: translateY(0);
-                opacity: 0.4;
-            }
+        .typing-dots span {
+            width: 6px;
+            height: 6px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            display: inline-block;
+            animation: dot-blink 1.4s infinite ease-in-out both;
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes dot-blink {
+            0%, 80%, 100% { transform: scale(0.7); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
         }
 
         @keyframes slideUp {
@@ -1328,7 +1349,7 @@
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <div class="logo">
-                <img src="/static/img/logo.jpeg" alt="MindMate Logo" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">
+                <img src="{% static 'img/logo.jpeg' %}" alt="MindMate Logo" style="width: 24px; height: 24px; border-radius: 4px; object-fit: cover;">
                 MindMate
             </div>
             <i class="fas fa-times mobile-nav" onclick="toggleSidebar()"></i>
@@ -1389,7 +1410,7 @@
                 <div style="display: flex; align-items: center;">
                     <i class="fas fa-bars mobile-nav" onclick="toggleSidebar()"></i>
                     <div class="mobile-logo-header" style="display: flex; align-items: center; gap: 8px;">
-                        <img src="/static/img/logo.jpeg" alt="Logo" style="width: 20px; height: 20px; border-radius: 3px; object-fit: cover;">
+                        <img src="{% static 'img/logo.jpeg' %}" alt="Logo" style="width: 20px; height: 20px; border-radius: 3px; object-fit: cover;">
                         MindMate
                     </div>
                 </div>
@@ -1557,6 +1578,14 @@
             getEl('sidebar').classList.toggle('open');
             const backdrop = getEl('mobileBackdrop');
             if (backdrop) backdrop.classList.toggle('show');
+        }
+
+        function closeSidebar() {
+            if (window.innerWidth <= 768) {
+                getEl('sidebar').classList.remove('open');
+                const backdrop = getEl('mobileBackdrop');
+                if (backdrop) backdrop.classList.remove('show');
+            }
         }
 
         // Deprecated UI config handlers moved to profile page and loaded correctly natively.
@@ -1908,6 +1937,7 @@
         }
 
         function startNewChat() {
+            closeSidebar();
             currentConversationId = null;
             const aiName = getEl('currentPersonaName').innerText || 'Select Persona';
             const pObj = personas.find(x => x.name === aiName);
@@ -1927,6 +1957,7 @@
         }
 
         async function loadMessages(id) {
+            closeSidebar();
             currentConversationId = id;
             try {
                 const res = await fetch(`/api/conversations/${id}/`);
@@ -2018,7 +2049,11 @@
                 <div class="message-header" style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 4px;">
                     <img src="${aiAvatarUrl}" style="width:14px; height:14px; border-radius:3px;" /> <span style="font-weight: 500; letter-spacing: 0.02em; text-transform: uppercase; font-size: 0.7rem;">${aiName}</span>
                 </div>
-                <div class="message-bubble" style="background: transparent; border: none; padding: 0;"><div class="typing" style="display: inline-flex; align-items: center; justify-content: center;"><img src="/static/img/loader.webp" style="width: 24px; height: 24px; animation: pulse 1s infinite alternate; object-fit: contain; filter: drop-shadow(0 0 8px rgba(255,255,255,0.2));" /></div></div>
+                <div class="message-bubble" style="background: transparent; border: none; padding: 0;">
+                    <div class="typing-dots">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
             </div>`;
             container.appendChild(wrapper);
             scrollToBottom();

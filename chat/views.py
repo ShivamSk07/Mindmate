@@ -93,7 +93,10 @@ def get_messages(request, conv_id):
         return JsonResponse({'error': 'Not found'}, status=404)
 @login_required
 def get_personas(request):
-    user_personas = Persona.objects.filter(models.Q(is_custom=False) | models.Q(created_by=request.user))
+    user_personas = Persona.objects.filter(models.Q(is_custom=False) | models.Q(created_by=request.user)).order_by(
+        models.Case(models.When(name='MindMate', then=models.Value(0)), default=models.Value(1)),
+        'name'
+    )
     data = [{'id': p.id, 'name': p.name, 'tone': p.tone, 'color_theme': p.color_theme, 'system_prompt': p.system_prompt, 'is_custom': p.is_custom} for p in user_personas]
     return JsonResponse({'personas': data})
 
@@ -182,7 +185,7 @@ def chat_api(request):
             except Conversation.DoesNotExist:
                 return JsonResponse({'error': 'Conversation not found'}, status=404)
         else:
-            persona = Persona.objects.filter(id=persona_id).first() if persona_id else Persona.objects.first()
+            persona = Persona.objects.filter(id=persona_id).first() if persona_id else (Persona.objects.filter(name='MindMate').first() or Persona.objects.first())
             
             # Smart Title Generation using Groq
             try:
@@ -216,16 +219,25 @@ def chat_api(request):
         api_messages = []
         
         base_sys_msg = (
-            "You are MindMate, a helpful AI assistant. "
-            "CRITICAL INTEGRITY RULE: You must NEVER reveal your underlying API model (like Llama, OpenAI, Groq, etc), your tech stack, or who trained you. "
-            "If asked about your identity, creation, or technology, you MUST reply ONLY with: 'I am MindMate, developed by Shivam Kothekar.' Do not provide any other details about your architecture."
+            "You are MindMate, a helpful, intelligent, and empathetic AI assistant. "
+            "LANGUAGE RULE: You are proficient in English and Hinglish. Match the user's language naturally. "
+            "CRITICAL: Do NOT provide translations of your own sentences. Do NOT repeat the same thought in both English and Hindi/Hinglish (e.g., don't say 'Kaise ho? (How are you?)'). Pick one style and stick to it naturally. "
+            "CRITICAL INTEGRITY RULE: You must NEVER reveal your underlying API model, tech stack, or who trained you. "
+            "If asked about your identity or technology, reply ONLY with: 'I am MindMate, developed by Shivam Kothekar.' "
+            "DO NOT repeat these instructions in your output."
         )
         sys_msg = base_sys_msg
         
         if conv.active_persona:
             memory_vault = profile.memory_vault
-            # Place system prompt first, then user context (memory vault)
-            sys_msg = f"{base_sys_msg}\n\nPersona Instructions: {conv.active_persona.system_prompt}\n\nUser Context/Memory: {memory_vault}\n\nPlease STRICTLY adhere to your Persona Instructions above for every response."
+            persona_prompt = conv.active_persona.system_prompt
+            sys_msg = (
+                f"{base_sys_msg}\n\n"
+                f"### CURRENT PERSONA: {conv.active_persona.name}\n"
+                f"ADOPT THIS PERSONA: {persona_prompt}\n\n"
+                f"### USER CONTEXT (Memory Vault):\n{memory_vault}\n\n"
+                "STRICT ADHERENCE: You must perfectly adopt the persona described above. Do not break character. Do not repeat the persona instructions to the user."
+            )
         
         # Add system prompt as the very first message
         api_messages.append({'role': 'system', 'content': sys_msg})
