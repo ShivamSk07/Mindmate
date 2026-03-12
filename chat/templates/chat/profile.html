@@ -5,15 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindMate - Profile Settings</title>
-    <!-- Apply theme immediately from localStorage to prevent flash -->
-    <script>
-        (function() {
-            var stored = localStorage.getItem('mindmate_theme');
-            var serverTheme = '{{ profile.theme_preference }}';
-            var theme = stored || serverTheme || 'dark';
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
     <link rel="icon" type="image/jpeg" href="{% static 'img/favicon.jpeg' %}">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#09090b">
@@ -22,8 +13,7 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root,
-        html[data-theme="dark"] {
+        :root {
             --bg-main: #09090b;
             --bg-panel: #09090b;
             --bg-hover: #27272a;
@@ -33,10 +23,9 @@
             --focus-ring: #52525b;
             --accent: #fafafa;
             --accent-bg: #27272a;
-            --input-bg: #18181b;
         }
 
-        html[data-theme="light"] {
+        [data-theme="light"] {
             --bg-main: #ffffff;
             --bg-panel: #ffffff;
             --bg-hover: #f4f4f5;
@@ -46,9 +35,6 @@
             --focus-ring: #a1a1aa;
             --accent: #09090b;
             --accent-bg: #f4f4f5;
-            --input-bg: #f4f4f5;
-            background: #ffffff;
-            color: #09090b;
         }
 
         * {
@@ -209,7 +195,7 @@
         .form-control {
             width: 100%;
             padding: 14px 16px;
-            background: var(--input-bg);
+            background: var(--bg-main);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             color: var(--text-primary);
@@ -323,7 +309,7 @@
 
     </style>
 </head>
-<body id="themeBody">
+<body data-theme="{{ profile.theme_preference }}">
 
     <aside class="sidebar">
         <a href="{% url 'index' %}" class="mobile-back">
@@ -358,20 +344,23 @@
             <p>Manage your account preferences, theme, and personalization.</p>
         </div>
 
-        <div id="settingsCard1" class="settings-card">
-                <div class="avatar-preview" id="avatarPreview">
+        <form method="POST">
+            {% csrf_token %}
+            
+            <div class="settings-card">
+                <div class="avatar-preview">
                     {{ user.username|make_list|first|upper }}
                 </div>
                 
                 <div class="form-group">
                     <label>Username</label>
                     <span class="help-text">Your display name inside the chat interface.</span>
-                    <input type="text" id="usernameInput" class="form-control" value="{{ user.username }}" required>
+                    <input type="text" name="username" class="form-control" value="{{ user.username }}" required>
                 </div>
                 <div class="form-group">
                     <label>Language</label>
                     <span class="help-text">Your preferred language for interface and AI default behavior.</span>
-                    <select id="languageSelect" class="form-control">
+                    <select name="language" class="form-control">
                         <option value="English" {% if profile.language == 'English' %}selected{% endif %}>English (US)</option>
                         <option value="Spanish" {% if profile.language == 'Spanish' %}selected{% endif %}>Spanish</option>
                         <option value="French" {% if profile.language == 'French' %}selected{% endif %}>French</option>
@@ -387,7 +376,7 @@
                 <div class="form-group">
                     <label>App Theme</label>
                     <span class="help-text">Select your color schema overlay.</span>
-                    <select id="themeSelect" class="form-control">
+                    <select name="theme_preference" class="form-control" id="themeSelect">
                         <option value="dark" {% if profile.theme_preference == 'dark' %}selected{% endif %}>Dark (Default)</option>
                         <option value="light" {% if profile.theme_preference == 'light' %}selected{% endif %}>Light</option>
                     </select>
@@ -396,7 +385,7 @@
                 <div class="form-group">
                     <label>Chat Bubble Style</label>
                     <span class="help-text">How the messages are displayed.</span>
-                    <select id="bubbleSelect" class="form-control">
+                    <select name="bubble_style" class="form-control">
                         <option value="modern" {% if profile.bubble_style == 'modern' %}selected{% endif %}>Modern UI (Rounded)</option>
                         <option value="minimal" {% if profile.bubble_style == 'minimal' %}selected{% endif %}>Minimal (Outline border)</option>
                         <option value="classic" {% if profile.bubble_style == 'classic' %}selected{% endif %}>Classic (No border)</option>
@@ -407,17 +396,18 @@
                     <label>Font Size</label>
                     <span class="help-text">Adjust the typography size across the app for readability.</span>
                     <div style="padding: 10px 0;">
-                        <input type="range" id="fontSizeRange" min="13" max="22" class="form-control" value="{{ profile.font_size|default:'15' }}" style="padding: 0; cursor: pointer; border: none; height: 6px; background: var(--bg-hover);">
+                        <input type="range" name="font_size" min="13" max="22" class="form-control" value="{{ profile.font_size|default:'15' }}" style="padding: 0; cursor: pointer; border: none; height: 6px; background: var(--bg-hover);">
                         <div style="display:flex; justify-content:space-between; margin-top: 8px; font-size: 0.75rem; color: var(--text-secondary);">
                             <span>13px</span>
-                            <span id="fontSizeLabel">{{ profile.font_size|default:'15' }}px</span>
+                            <span>{{ profile.font_size|default:'15' }}px</span>
                             <span>22px</span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <button type="button" id="saveBtn" class="btn-save btn-save-main-action" onclick="savePreferences()">Save Preferences</button>
+            <button type="submit" class="btn-save btn-save-main-action">Save Preferences</button>
+        </form>
 
         <div class="settings-card">
             <h3 style="margin-bottom: 20px; font-weight: 500; font-size: 1.1rem;">Memory Vault</h3>
@@ -445,9 +435,9 @@
             
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <button type="button" class="btn-save" style="background: var(--bg-hover); color: var(--text-primary); border: 1px solid var(--border-color);" onclick="window.location.href='/api/export/all/'"><i class="fas fa-file-export" style="margin-right:8px;"></i> Export All Chats</button>
-                <button type="button" class="btn-save" style="background: transparent; border: 1px solid var(--border-color); color: var(--text-secondary); font-size: 0.8rem;" onclick="forceFixSecurity()"> <i class="fas fa-shield-halved" style="margin-right:8px;"></i> Fix Security Connection (Refresh Cache)</button>
                 <button type="button" class="btn-save nav-link-danger" onclick="clearHistory()"><i class="fas fa-trash-can" style="margin-right:8px;"></i> Clear All Chat History</button>
             </div>
+        </div>
         </div>
 
         <div id="confirmModal" class="modal">
@@ -508,7 +498,8 @@
                 await fetch('/api/memory/update/', {
                     method: 'POST',
                     headers: { 
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
                     },
                     body: JSON.stringify({ memory_vault: memoryText })
                 });
@@ -532,7 +523,10 @@
             customConfirm('Clear History', 'Are you sure you want to delete all chat history? This cannot be undone.', async () => {
                 try {
                     const res = await fetch('/api/conversations/clear/', { 
-                        method: 'POST'
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        }
                     });
                     if(res.ok) {
                         customAlert('Success', 'All chat history has been cleared successfully.');
@@ -564,109 +558,17 @@
 
         // Service Worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js').then(reg => {
-                // If there's an updated worker waiting, force it to activate
-                if (reg.waiting) {
-                    reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-                    window.location.reload();
-                }
-            });
+            navigator.serviceWorker.register('/sw.js');
         }
 
-        // Force unregister old buggy workers if the user is stuck
-        async function forceFixSecurity() {
-            if ('serviceWorker' in navigator) {
-                const registrations = await navigator.serviceWorker.getRegistrations();
-                for (let registration of registrations) {
-                    await registration.unregister();
-                }
-                window.location.reload();
-            }
-        }
-
-        // Apply theme from localStorage on load
-        (function() {
-            var stored = localStorage.getItem('mindmate_theme');
-            var serverTheme = '{{ profile.theme_preference }}';
-            var theme = stored || serverTheme || 'dark';
-            document.body.setAttribute('data-theme', theme);
-            document.getElementById('themeSelect').value = theme;
-        })();
-
-        // Fix for browser back button (bfcache): re-apply theme when page is restored
-        window.addEventListener('pageshow', function(e) {
-            var theme = localStorage.getItem('mindmate_theme') || '{{ profile.theme_preference }}' || 'dark';
-            document.body.setAttribute('data-theme', theme);
-            document.documentElement.setAttribute('data-theme', theme);
-            var sel = document.getElementById('themeSelect');
-            if (sel) sel.value = theme;
-        });
-
-        // Font size live preview
-        document.getElementById('fontSizeRange').addEventListener('input', function(e) {
-            document.getElementById('fontSizeLabel').innerText = e.target.value + 'px';
-        });
-
-        // Theme live preview
+        // Provide live preview of theme changing but actual save happens on form submit
         document.getElementById('themeSelect').addEventListener('change', function(e) {
-            document.body.setAttribute('data-theme', e.target.value);
-        });
-
-        // Save preferences via fetch (no CSRF issues)
-        async function savePreferences() {
-            const btn = document.getElementById('saveBtn');
-            const theme = document.getElementById('themeSelect').value;
-            const username = document.getElementById('usernameInput').value.trim();
-            const language = document.getElementById('languageSelect').value;
-            const bubbleStyle = document.getElementById('bubbleSelect').value;
-            const fontSize = document.getElementById('fontSizeRange').value;
-
-            btn.innerText = 'Saving...';
-            btn.disabled = true;
-
-            // Save to localStorage FIRST so reload always gets correct theme
-            localStorage.setItem('mindmate_theme', theme);
-
-            try {
-                const res = await fetch('/api/settings/save/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        theme_preference: theme,
-                        username: username,
-                        language: language,
-                        bubble_style: bubbleStyle,
-                        font_size: fontSize
-                    })
-                });
-                if (!res.ok) throw new Error('Network error');
-                const data = await res.json();
-                if (data.status === 'ok') {
-                    document.body.setAttribute('data-theme', theme);
-                    btn.innerText = '✓ Saved!';
-                    btn.style.background = '#22c55e';
-                    btn.style.color = '#fff';
-                    setTimeout(() => {
-                        btn.innerText = 'Save Preferences';
-                        btn.style.background = '';
-                        btn.style.color = '';
-                        btn.disabled = false;
-                    }, 1500);
-                } else {
-                    throw new Error('Save failed');
-                }
-            } catch(e) {
-                btn.innerText = 'Error – Try Again';
-                btn.style.background = '#ef4444';
-                btn.style.color = '#fff';
-                btn.disabled = false;
-                setTimeout(() => {
-                    btn.innerText = 'Save Preferences';
-                    btn.style.background = '';
-                    btn.style.color = '';
-                }, 2000);
+            if(e.target.value === 'light'){
+                document.body.setAttribute('data-theme', 'light');
+            } else {
+                document.body.setAttribute('data-theme', 'dark');
             }
-        }
+        });
     </script>
 </body>
 </html>

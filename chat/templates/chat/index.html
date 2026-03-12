@@ -1,20 +1,11 @@
 <!DOCTYPE html>
 {% load static %}
-<html lang="en" id="htmlRoot">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MindMate</title>
-    <!-- Apply theme instantly from localStorage to prevent dark flash -->
-    <script>
-        (function() {
-            var stored = localStorage.getItem('mindmate_theme');
-            var serverTheme = '{{ profile.theme_preference|default:"dark" }}';
-            var theme = stored || serverTheme || 'dark';
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-    </script>
     <link rel="icon" type="image/jpeg" href="/static/img/favicon.jpeg">
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#09090b">
@@ -28,10 +19,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
     <style>
-        :root,
-        html[data-theme="dark"] {
+        :root {
             --bg-main: #09090b;
             --bg-panel: #09090b;
+            /* True black/dark for minimal style */
             --bg-hover: #27272a;
             --border-color: #27272a;
             --text-primary: #fafafa;
@@ -39,16 +30,13 @@
             --focus-ring: #52525b;
             --user-bubble: #27272a;
             --ai-bubble: transparent;
-            --overlay-bg: rgba(0,0,0,0.4);
-            --transparent-item: rgba(255,255,255,0.05);
-            --modal-bg: rgba(9,9,11,0.95);
             --font-size-base: 15px;
             --radius-sm: 6px;
             --radius-md: 10px;
             --radius-lg: 16px;
         }
 
-        html[data-theme="light"] {
+        [data-theme="light"] {
             --bg-main: #ffffff;
             --bg-panel: #ffffff;
             --bg-hover: #f4f4f5;
@@ -56,13 +44,8 @@
             --text-primary: #09090b;
             --text-secondary: #71717a;
             --focus-ring: #a1a1aa;
-            --user-bubble: #f0f0f0;
+            --user-bubble: #f4f4f5;
             --ai-bubble: transparent;
-            --overlay-bg: rgba(0,0,0,0.08);
-            --transparent-item: rgba(0,0,0,0.05);
-            --modal-bg: rgba(255,255,255,0.97);
-            background: #ffffff;
-            color: #09090b;
         }
 
         * {
@@ -91,7 +74,7 @@
         }
 
         body {
-            background: var(--bg-main);
+            background: #000000;
             color: var(--text-primary);
             height: 100vh;
             display: flex;
@@ -103,6 +86,9 @@
             gap: 12px;
         }
 
+        body[data-theme="light"] {
+            background: #f4f4f5;
+        }
 
         /* Sidebar */
         .sidebar {
@@ -129,7 +115,7 @@
             font-size: 1.1rem;
             font-weight: 600;
             letter-spacing: -0.02em;
-            color: var(--text-primary);
+            color: #ffffff;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -356,7 +342,7 @@
             padding: 8px 18px;
             border-radius: 40px;
             border: 1px solid var(--border-color);
-            background: var(--transparent-item);
+            background: rgba(255, 255, 255, 0.03);
             backdrop-filter: blur(10px);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             font-size: 0.9rem;
@@ -367,7 +353,7 @@
 
         .persona-selector:hover {
             border-color: var(--text-secondary);
-            background: var(--transparent-item);
+            background: rgba(255, 255, 255, 0.06);
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(0,0,0,0.2);
         }
@@ -383,7 +369,7 @@
             font-weight: 700;
             font-size: 1.2rem;
             letter-spacing: -0.02em;
-            color: var(--text-primary);
+            color: #ffffff;
         }
 
         .tools {
@@ -721,10 +707,10 @@
             top: 120%;
             left: 50%;
             transform: translateX(-50%) translateY(-10px);
-            background: var(--modal-bg);
+            background: rgba(18, 18, 18, 0.8);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: var(--radius-lg);
             width: 300px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
@@ -1064,7 +1050,7 @@
                 box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
                 border-radius: 24px;
                 border: 1px solid rgba(255, 255, 255, 0.1);
-                background: var(--modal-bg);
+                background: rgba(9, 9, 11, 0.85);
                 backdrop-filter: blur(24px);
                 -webkit-backdrop-filter: blur(24px);
                 transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
@@ -1408,9 +1394,9 @@
     </style>
 </head>
 
-<body id="themeBody"
-    data-bubble-style="{{ profile.bubble_style|default:'modern' }}"
-    style="--font-size-base: {{ profile.font_size|default:'15' }}px;">
+<body data-bubble-style="{{ profile.bubble_style|default:'modern' }}"
+    style="--font-size-base: {{ profile.font_size|default:'15' }}px;"
+    data-theme="{{ profile.theme_preference|default:'dark' }}">
 
     <div class="mobile-backdrop" id="mobileBackdrop" onclick="toggleSidebar()"></div>
 
@@ -1739,22 +1725,6 @@
         }
 
         function openMemoryModal() { getEl('memoryModal').style.display = 'flex'; }
-        // Apply theme immediately from localStorage
-        (function() {
-            var stored = localStorage.getItem('mindmate_theme');
-            var serverTheme = '{{ profile.theme_preference|default:"dark" }}';
-            var theme = stored || serverTheme || 'dark';
-            document.body.setAttribute('data-theme', theme);
-            document.documentElement.setAttribute('data-theme', theme);
-        })();
-
-        // Fix for browser back button (bfcache): re-apply theme when page is restored
-        window.addEventListener('pageshow', function() {
-            var theme = localStorage.getItem('mindmate_theme') || '{{ profile.theme_preference|default:"dark" }}' || 'dark';
-            document.body.setAttribute('data-theme', theme);
-            document.documentElement.setAttribute('data-theme', theme);
-        });
-
         function openModal(id) { getEl(id).style.display = 'flex'; }
         function closeModal(id) { getEl(id).style.display = 'none'; }
 

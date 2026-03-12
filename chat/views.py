@@ -49,44 +49,22 @@ def index(request):
     profile, _ = UserProfile.objects.get_or_create(user=user)
     return render(request, 'chat/index.html', {'user': user, 'profile': profile})
 
-
-@csrf_exempt
 @login_required(login_url='login')
 def profile_view(request):
     user = request.user
     profile, _ = UserProfile.objects.get_or_create(user=user)
-    return render(request, 'chat/profile.html', {'user': user, 'profile': profile})
-
-@csrf_exempt
-@login_required(login_url='login')
-def save_settings(request):
+    
     if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-        except Exception:
-            data = request.POST
-        
-        user = request.user
-        profile, _ = UserProfile.objects.get_or_create(user=user)
-        
-        username = data.get('username', user.username).strip()
-        if username:
-            user.username = username
-            user.save()
-        
-        theme = data.get('theme_preference', profile.theme_preference)
-        font_size = data.get('font_size', profile.font_size)
-        bubble_style = data.get('bubble_style', profile.bubble_style)
-        language = data.get('language', profile.language)
-        
-        profile.theme_preference = theme
-        profile.font_size = font_size
-        profile.bubble_style = bubble_style
-        profile.language = language
+        user.username = request.POST.get('username', user.username)
+        user.save()
+        profile.theme_preference = request.POST.get('theme_preference', profile.theme_preference)
+        profile.font_size = request.POST.get('font_size', profile.font_size)
+        profile.bubble_style = request.POST.get('bubble_style', profile.bubble_style)
+        profile.language = request.POST.get('language', profile.language)
         profile.save()
+        return redirect('profile')
         
-        return JsonResponse({'status': 'ok', 'theme': theme, 'username': user.username})
-    return JsonResponse({'error': 'Invalid'}, status=400)
+    return render(request, 'chat/profile.html', {'user': user, 'profile': profile})
 
 @login_required(login_url='login')
 def get_conversations(request):
