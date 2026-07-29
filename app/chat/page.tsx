@@ -470,6 +470,7 @@ export default function ChatPage() {
             activePersonaAvatar={botAvatar}
             activeFolder={activeFolder}
             sessionId={sessionId}
+            onOpenLiveVoice={() => setShowLiveVoice(true)}
           />
         </div>
       </main>
@@ -572,17 +573,6 @@ export default function ChatPage() {
           ]);
         }}
       />
-
-      {/* Mobile Floating Live Voice Button */}
-      {!showLiveVoice && (
-        <button
-          onClick={() => setShowLiveVoice(true)}
-          className="fixed bottom-24 right-5 z-40 md:hidden w-12 h-12 rounded-full bg-indigo-600/90 hover:bg-indigo-500 text-white flex items-center justify-center shadow-[0_8px_24px_rgba(99,102,241,0.5)] border border-indigo-400/40 active:scale-90 transition-all"
-          title="Start Live Voice"
-        >
-          <Mic size={20} className="text-white" />
-        </button>
-      )}
     </div>
   );
 }

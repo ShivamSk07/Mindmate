@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
-import { Send, Square, Mic, MicOff, Globe, Wand2, Paperclip } from "lucide-react";
+import { Send, Square, Mic, MicOff, Globe, Wand2, Paperclip, Radio } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (message: string, forceSearch?: boolean, mode?: string, tone?: string, length?: string) => void;
@@ -9,9 +9,10 @@ interface ChatInputProps {
   isLoading: boolean;
   disabled?: boolean;
   sessionId?: string;
+  onOpenLiveVoice?: () => void;
 }
 
-export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOpenLiveVoice }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [isRecording, setIsRecording] = useState(false);
 
@@ -208,8 +209,21 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId }: Ch
           </div>
         )}
 
-        {/* Top Options Bar (Quick Chips) */}
-        <div className="flex items-center justify-end gap-3 flex-wrap">
+        {/* Top Options Bar (Quick Chips & Live Voice trigger) */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            {onOpenLiveVoice && (
+              <button
+                type="button"
+                onClick={onOpenLiveVoice}
+                className="text-[10px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-indigo-300 hover:text-white rounded-full px-3 py-1 transition-all flex items-center gap-1.5 flex-shrink-0 font-semibold active:scale-95 shadow-sm"
+              >
+                <Radio size={10} className="text-red-400" />
+                Live Voice
+              </button>
+            )}
+          </div>
+
           {/* Quick Chips */}
           <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none items-center">
             <button
