@@ -1,0 +1,118 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String?  @unique
+  username  String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  profile   UserProfile?
+  sessions  Session[]
+  personas  Persona[]
+  tasks     Task[]
+}
+
+model UserProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  memoryVault     String   @default("[]")
+  themePreference String   @default("dark")
+  fontSize        String   @default("15")
+  language        String   @default("English")
+  bubbleStyle     String   @default("modern")
+}
+
+model Persona {
+  id           String    @id @default(cuid())
+  name         String
+  systemPrompt String    @db.Text
+  avatarUrl    String?
+  colorTheme   String    @default("#FFFFFF")
+  tone         String    @default("Friendly")
+  isCustom     Boolean   @default(false)
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions     Session[]
+}
+
+model Session {
+  id              String    @id @default(cuid())
+  title           String    @default("New Chat")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activePersonaId String?
+  activePersona   Persona?  @relation(fields: [activePersonaId], references: [id], onDelete: SetNull)
+  isPinned        Boolean   @default(false)
+  folder          String    @default("")
+  isPublic        Boolean   @default(false)
+  messages        Message[]
+  documents       Document[]
+  scheduledTasks  ScheduledTask[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  role      String   // "user", "assistant", or "system"
+  content   String   @db.Text
+  searched  Boolean  @default(false)
+  sources   Json?    // stores source links array [{title: string, url: string}]
+  createdAt DateTime @default(now())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  reaction  String?
+  feedback  Int      @default(0) // 1 for thumbs up, -1 for thumbs down
+  isFlagged Boolean  @default(false)
+  confidence String   @default("High")
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  filename  String
+  fileType  String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  sessionId String
+  session   Session  @relation(fields:  [sessionId], references: [id], onDelete: Cascade)
+  chunks    DocumentChunk[]
+}
+
+model DocumentChunk {
+  id         String   @id @default(cuid())
+  content    String   @db.Text
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
+
+model ScheduledTask {
+  id        String   @id @default(cuid())
+  taskType  String   // "reminder", "cron", etc.
+  details   String   @db.Text
+  runAt     DateTime
+  isRun     Boolean  @default(false)
+  createdAt DateTime @default(now())
+  sessionId String
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  title     String
+  status    String   @default("todo") // "todo", "in_progress", "done"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

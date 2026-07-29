@@ -1,0 +1,403 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Plus, Trash2, MessageSquare, Menu, Folder, LogOut, ChevronRight, ChevronDown, Search, FolderPlus, Grid } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+interface SidebarSession {
+  id: string;
+  title: string;
+  is_pinned: boolean;
+  folder: string;
+  active_persona_id: string | null;
+  _count: { messages: number };
+}
+
+interface SidebarProps {
+  currentSessionId?: string;
+  onSelectSession: (sessionId: string) => void;
+  onNewChat: () => void;
+  username: string;
+  activeFolder: string | null;
+  setActiveFolder: (folder: string | null) => void;
+  folders: string[];
+  setFolders: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+export function Sidebar({
+  currentSessionId,
+  onSelectSession,
+  onNewChat,
+  username,
+  activeFolder,
+  setActiveFolder,
+  folders,
+  setFolders,
+}: SidebarProps) {
+  const [sessions, setSessions] = useState<SidebarSession[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({ Work: true, Personal: true });
+  const [isOpen, setIsOpen] = useState(true);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const router = useRouter();
+
+  useEffect(() => {
+    fetchSessions();
+  }, [currentSessionId]);
+
+  useEffect(() => {
+    let startX = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      startX = e.touches[0].clientX;
+    };
+    const handleTouchEnd = (e: TouchEvent) => {
+      const diffX = startX - e.changedTouches[0].clientX;
+      if (diffX > 70 && isOpen && window.innerWidth <= 1024) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("touchstart", handleTouchStart);
+    document.addEventListener("touchend", handleTouchEnd);
+    return () => {
+      document.removeEventListener("touchstart", handleTouchStart);
+      document.removeEventListener("touchend", handleTouchEnd);
+    };
+  }, [isOpen]);
+
+  async function fetchSessions() {
+    try {
+      const res = await fetch("/api/history");
+      const data = await res.json();
+      setSessions(data.sessions || []);
+    } catch (e) {
+      console.error("Failed to fetch sessions", e);
+    }
+  }
+
+  const handleDragStart = (e: React.DragEvent, sessionId: string) => {
+    e.dataTransfer.setData("text/plain", sessionId);
+  };
+
+  const handleDropOnFolder = async (e: React.DragEvent, folderName: string) => {
+    e.preventDefault();
+    const sessionId = e.dataTransfer.getData("text/plain");
+    if (!sessionId) return;
+
+    try {
+      const res = await fetch("/api/history/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, folder: folderName }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchSessions();
+      }
+    } catch (err) {
+      console.error("Failed to update session folder:", err);
+    }
+  };
+
+  async function deleteSession(sessionId: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to delete this conversation?")) return;
+
+    try {
+      await fetch(`/api/history?sessionId=${sessionId}`, { method: "DELETE" });
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      if (sessionId === currentSessionId) onNewChat();
+    } catch (e) {
+      console.error("Failed to delete session", e);
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {}
+    window.location.href = "/login";
+  };
+
+  const createFolder = () => {
+    const trimmed = newFolderName.trim();
+    if (trimmed && !folders.includes(trimmed)) {
+      setFolders((prev) => [...prev, trimmed]);
+      setOpenFolders((prev) => ({ ...prev, [trimmed]: true }));
+      setNewFolderName("");
+      setShowFolderModal(false);
+    } else if (folders.includes(trimmed)) {
+      alert("Folder already exists.");
+    }
+  };
+
+  const toggleFolderCollapse = (folder: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenFolders((prev) => ({ ...prev, [folder]: !prev[folder] }));
+  };
+
+  // Filter sessions by query
+  const filteredSessions = sessions.filter((s) =>
+    s.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Grouped sessions by folder
+  const folderMap = folders.reduce((acc, f) => {
+    acc[f] = filteredSessions.filter((s) => s.folder === f);
+    return acc;
+  }, {} as Record<string, SidebarSession[]>);
+
+  // Uncategorized sessions
+  const uncategorizedSessions = filteredSessions.filter(
+    (s) => !s.folder || !folders.includes(s.folder)
+  );
+
+  return (
+    <>
+      {/* Sidebar toggle for mobile */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed top-4 left-4 z-50 lg:hidden bg-[var(--bg-hover)] border border-[var(--border-color)] p-2 rounded-xl shadow-md text-[var(--text-primary)]"
+      >
+        <Menu size={18} />
+      </button>
+
+      {/* Backdrop for mobile */}
+      {isOpen && (
+        <div
+          onClick={() => setIsOpen(false)}
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+        />
+      )}
+
+      {/* Sidebar Panel */}
+      <aside
+        className={`fixed lg:relative inset-y-0 left-0 z-40 w-64 glass-sidebar rounded-[24px] border border-[rgba(255,255,255,0.08)] flex flex-col transition-all duration-300 lg:h-full ${
+          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
+      >
+        {/* Header Logo */}
+        <div className="px-5 py-4 flex items-center justify-between border-b border-[rgba(255,255,255,0.04)]">
+          <div className="flex items-center gap-2.5 tracking-tight text-white">
+            <img src="/img/branding.png" alt="Clarity" className="h-6 object-contain" />
+          </div>
+        </div>
+
+        {/* Action: New Chat */}
+        <div className="p-4">
+          <button
+            onClick={() => {
+              onNewChat();
+              if (window.innerWidth <= 768) setIsOpen(false);
+            }}
+            className="w-full flex items-center justify-between bg-transparent hover:bg-[#18181b] border border-[#27272a] hover:border-neutral-400 text-neutral-200 hover:text-white rounded-xl px-4 py-2.5 text-xs font-semibold shadow-sm transition-all active:scale-98"
+          >
+            <span>New chat</span>
+            <Plus size={14} />
+          </button>
+        </div>
+
+        {/* Folders List label & actions */}
+        <div className="px-5 py-2 flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#64748b]">
+          <span>Folders</span>
+          <button
+            onClick={() => setShowFolderModal(true)}
+            className="hover:text-[var(--text-primary)] transition-colors"
+            title="Create Folder"
+          >
+            <FolderPlus size={13} />
+          </button>
+        </div>
+
+        {/* Folders & Categorized chats */}
+        <div className="overflow-y-auto px-3 flex-1 space-y-1.5 scrollbar-thin">
+          {/* All Chats Option */}
+          <div
+            onClick={() => setActiveFolder(null)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => handleDropOnFolder(e, "")}
+            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer text-xs font-medium transition-all ${
+              activeFolder === null
+                ? "bg-[rgba(255,255,255,0.05)] text-white shadow-sm border border-[rgba(255,255,255,0.03)]"
+                : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white"
+            }`}
+          >
+            <Grid size={13} className="opacity-80" />
+            <span>All Chats</span>
+          </div>
+
+          {/* Folder groups */}
+          {folders.map((f) => {
+            const isActive = activeFolder === f;
+            const folderChats = folderMap[f] || [];
+            const isExpanded = openFolders[f];
+
+            return (
+              <div key={f} className="space-y-1">
+                <div
+                  onClick={() => setActiveFolder(f)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => handleDropOnFolder(e, f)}
+                  className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs font-medium transition-all border ${
+                    isActive
+                      ? "bg-[#18181b] text-white border-[#27272a] shadow-sm"
+                      : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Folder size={13} className={isActive ? "text-white" : "text-[#64748b]"} />
+                    <span className="truncate max-w-[110px]">{f}</span>
+                  </div>
+                  <button
+                    onClick={(e) => toggleFolderCollapse(f, e)}
+                    className="p-0.5 hover:text-white opacity-60 hover:opacity-100 transition-all"
+                  >
+                    {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  </button>
+                </div>
+
+                {isExpanded && (
+                  <div className="pl-3 border-l border-[rgba(255,255,255,0.05)] ml-4.5 space-y-1">
+                    {folderChats.length === 0 ? (
+                      <p className="text-[10px] text-[#64748b] py-1 pl-2.5 opacity-55">Empty folder</p>
+                    ) : (
+                      folderChats.map((session) => (
+                          <div
+                            key={session.id}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, session.id)}
+                            onClick={() => {
+                              onSelectSession(session.id);
+                              if (window.innerWidth <= 768) setIsOpen(false);
+                            }}
+                            className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs transition-all ${
+                              session.id === currentSessionId
+                                ? "bg-[rgba(255,255,255,0.06)] text-white"
+                                : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.03)] hover:text-white"
+                            }`}
+                          >
+                            <span className="truncate flex-1 pr-1">{session.title}</span>
+                            <button
+                              onClick={(e) => deleteSession(session.id, e)}
+                              className="opacity-0 group-hover:opacity-100 text-[#64748b] hover:text-red-400 transition-all"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        ))
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div className="px-3 py-1 text-[10px] uppercase font-bold tracking-widest text-[#64748b] pt-4">
+            Recent Chats
+          </div>
+
+          {/* Search box */}
+          <div className="px-1 pb-1">
+            <div className="flex items-center gap-2 input-premium rounded-xl px-3 py-2 text-xs">
+              <Search size={12} className="text-[#64748b] flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Search chats..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="bg-transparent border-none outline-none text-[#f8fafc] w-full placeholder-[#475569]"
+              />
+            </div>
+          </div>
+
+          {/* Uncategorized list */}
+          {uncategorizedSessions.length === 0 ? (
+            <p className="text-center text-[10px] text-[#64748b] py-6 opacity-50">No conversations</p>
+          ) : (
+            uncategorizedSessions.map((session) => (
+              <div
+                key={session.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, session.id)}
+                onClick={() => {
+                  onSelectSession(session.id);
+                  if (window.innerWidth <= 768) setIsOpen(false);
+                }}
+                className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-all border ${
+                  session.id === currentSessionId
+                    ? "bg-[rgba(255,255,255,0.06)] text-white border-[rgba(255,255,255,0.04)] shadow-sm"
+                    : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white border-transparent"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <MessageSquare size={13} className="text-[#64748b] flex-shrink-0" />
+                  <span className="truncate pr-1">{session.title}</span>
+                </div>
+                <button
+                  onClick={(e) => deleteSession(session.id, e)}
+                  className="opacity-0 group-hover:opacity-100 text-[#64748b] hover:text-red-400 transition-all"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer Profile & Signout */}
+        <div className="p-4 border-t border-[rgba(255,255,255,0.04)] bg-transparent">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-semibold text-white truncate max-w-[110px]">{username}</span>
+              <span className="text-[10px] text-[#475569] font-medium tracking-wide uppercase">Clarity Plus</span>
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="flex items-center gap-1.5 text-[10px] text-[#94a3b8] hover:text-red-400 border border-[rgba(255,255,255,0.05)] hover:border-red-500/20 rounded-xl px-3 py-2 bg-transparent hover:bg-red-500/5 transition-all"
+              title="Sign out"
+            >
+              <LogOut size={12} className="flex-shrink-0" />
+              <span className="font-medium">Log out</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Create Folder Modal */}
+      {showFolderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+          <div className="bg-[#121214] border border-[#27272a] rounded-xl p-6 max-w-[340px] w-full mx-4 shadow-xl animate-fade-in flex flex-col gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-white mb-1 uppercase tracking-wider">Create Folder</h3>
+              <p className="text-xs text-neutral-400">Organize your sessions into a new folder category.</p>
+            </div>
+            <input
+              type="text"
+              placeholder="Folder name"
+              value={newFolderName}
+              onChange={(e) => setNewFolderName(e.target.value)}
+              className="w-full bg-[#0c0c0e] border border-[#27272a] text-white rounded-lg p-2.5 text-xs outline-none focus:border-neutral-500 transition-colors"
+              onKeyDown={(e) => e.key === "Enter" && createFolder()}
+              autoFocus
+            />
+            <div className="flex gap-2.5">
+              <button
+                onClick={createFolder}
+                className="flex-1 bg-white hover:bg-neutral-200 text-black text-xs font-semibold py-2.5 rounded-lg transition-colors"
+              >
+                Create
+              </button>
+              <button
+                onClick={() => setShowFolderModal(false)}
+                className="flex-1 bg-transparent hover:bg-neutral-900 border border-[#27272a] text-neutral-400 text-xs font-semibold py-2.5 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
