@@ -59,12 +59,8 @@ export function useChat(initialSessionId?: string) {
       }
 
       if (!response.ok) {
-        const err = await response.json();
-        const msg = (err.error || "").toLowerCase();
-        if (msg.includes("rate") || msg.includes("limit") || msg.includes("quota") || msg.includes("429") || msg.includes("maintenance")) {
-          throw new Error("Server is under maintenance. Please try again in a few minutes.");
-        }
-        throw new Error(err.error || "Server is under maintenance. Please try again in a few minutes.");
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `Server returned error (${response.status})`);
       }
 
       if (!response.body) {

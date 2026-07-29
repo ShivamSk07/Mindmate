@@ -182,8 +182,8 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
   };
 
   return (
-    <div className="bg-transparent px-4 pb-6 pt-2 relative z-10">
-      <div className="max-w-3xl mx-auto flex flex-col gap-3 relative">
+    <div className="bg-transparent px-2.5 sm:px-4 pb-3 sm:pb-5 pt-1.5 relative z-10">
+      <div className="max-w-3xl mx-auto flex flex-col gap-2 relative">
 
         {/* Floating Slash Commands Suggestion Menu */}
         {showSlashMenu && filteredCommands.length > 0 && (
@@ -210,13 +210,13 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
         )}
 
         {/* Top Options Bar (Quick Chips & Live Voice trigger) */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2">
             {onOpenLiveVoice && (
               <button
                 type="button"
                 onClick={onOpenLiveVoice}
-                className="text-[10px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-indigo-300 hover:text-white rounded-full px-3 py-1 transition-all flex items-center gap-1.5 flex-shrink-0 font-semibold active:scale-95 shadow-sm"
+                className="text-[10px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-indigo-300 hover:text-white rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 transition-all flex items-center gap-1.5 flex-shrink-0 font-semibold active:scale-95 shadow-sm"
               >
                 <Radio size={10} className="text-red-400" />
                 Live Voice
@@ -229,7 +229,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
             <button
               onClick={handleImprove}
               disabled={!input.trim()}
-              className="text-[10px] border border-dashed border-[rgba(255,255,255,0.08)] hover:border-indigo-400 text-[#94a3b8] hover:text-white rounded-full px-3 py-1 transition-all flex items-center gap-1 flex-shrink-0 disabled:opacity-30 tracking-wide"
+              className="text-[10px] border border-dashed border-[rgba(255,255,255,0.08)] hover:border-indigo-400 text-[#94a3b8] hover:text-white rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 transition-all flex items-center gap-1 flex-shrink-0 disabled:opacity-30 tracking-wide"
             >
               <Wand2 size={10} />
               Improve
@@ -265,13 +265,13 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
         )}
 
         {/* Input Box */}
-        <div className="flex items-end gap-2 rounded-[22px] px-3.5 py-3 input-floating-pill">
+        <div className="flex items-end gap-1.5 sm:gap-2 rounded-[20px] sm:rounded-[22px] px-2.5 sm:px-3.5 py-2 sm:py-3 input-floating-pill">
           {/* File Attachment */}
           <button
             type="button"
             onClick={triggerFileInput}
             disabled={isUploading || !sessionId}
-            className="p-2 rounded-xl text-[#94a3b8] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-1.5 sm:p-2 rounded-xl text-[#94a3b8] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
             title="Attach Document (PDF, DOCX, CSV, Image)"
           >
             <Paperclip size={15} />
@@ -288,7 +288,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
           <button
             type="button"
             onClick={toggleVoiceInput}
-            className={`p-2 rounded-xl text-[#94a3b8] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-all flex-shrink-0 ${
+            className={`p-1.5 sm:p-2 rounded-xl text-[#94a3b8] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-all flex-shrink-0 ${
               isRecording ? "text-red-400 bg-red-500/5 animate-pulse" : ""
             }`}
             title="Voice Input"
@@ -303,21 +303,21 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onInput={handleInput}
-            placeholder="Message Clarity... (Type / for commands)"
+            placeholder="Message Clarity..."
             disabled={disabled}
             rows={1}
-            className="flex-1 bg-transparent resize-none outline-none text-sm text-[#f8fafc] placeholder-[#475569] max-h-[180px] min-h-[24px] py-1 leading-relaxed scrollbar-none"
+            className="flex-1 bg-transparent resize-none outline-none text-sm sm:text-sm text-[#f8fafc] placeholder-[#475569] max-h-[180px] min-h-[24px] py-1 leading-relaxed scrollbar-none"
           />
 
           {/* Actions */}
-          <div className="flex items-center gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {/* Search on Web button */}
             {!isLoading && (
               <button
                 onClick={() => handleSend(true)}
                 disabled={!input.trim() || disabled}
                 title="Search on Web"
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-[11px] font-medium text-white border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] font-medium text-white border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
                 <Globe size={13} className="text-white" />
                 <span className="hidden sm:inline">Search Web</span>
@@ -327,7 +327,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
             {isLoading ? (
               <button
                 onClick={onStop}
-                className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+                className="p-1.5 sm:p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors"
                 title="Stop generation"
               >
                 <Square size={13} className="text-red-400" />
@@ -336,7 +336,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
               <button
                 onClick={() => handleSend(false)}
                 disabled={!input.trim() || disabled}
-                className="p-2 rounded-xl bg-white hover:bg-[#e4e4e7] text-black shadow-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                className="p-1.5 sm:p-2 rounded-xl bg-white hover:bg-[#e4e4e7] text-black shadow-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
                 title="Send message"
               >
                 <Send size={13} className="text-black" />
@@ -346,7 +346,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
         </div>
 
         {/* Footer */}
-        <div className="text-center text-[10px] text-[#475569] tracking-wider font-semibold uppercase">
+        <div className="hidden sm:block text-center text-[10px] text-[#475569] tracking-wider font-semibold uppercase">
           Clarity by{" "}
           <a
             href="https://www.linkedin.com/in/shivam-kothekar-10296b260/"

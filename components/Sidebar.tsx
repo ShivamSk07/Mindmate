@@ -23,6 +23,8 @@ interface SidebarProps {
   setActiveFolder: (folder: string | null) => void;
   folders: string[];
   setFolders: React.Dispatch<React.SetStateAction<string[]>>;
+  isOpen?: boolean;
+  setIsOpen?: (open: boolean) => void;
 }
 
 export function Sidebar({
@@ -34,11 +36,16 @@ export function Sidebar({
   setActiveFolder,
   folders,
   setFolders,
+  isOpen: propsIsOpen,
+  setIsOpen: propsSetIsOpen,
 }: SidebarProps) {
   const [sessions, setSessions] = useState<SidebarSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({ Work: true, Personal: true });
-  const [isOpen, setIsOpen] = useState(true);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = propsIsOpen !== undefined ? propsIsOpen : internalIsOpen;
+  const setIsOpen = propsSetIsOpen || setInternalIsOpen;
+
   const [showFolderModal, setShowFolderModal] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const router = useRouter();
@@ -155,14 +162,6 @@ export function Sidebar({
 
   return (
     <>
-      {/* Sidebar toggle for mobile */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed top-4 left-4 z-50 lg:hidden bg-[var(--bg-hover)] border border-[var(--border-color)] p-2 rounded-xl shadow-md text-[var(--text-primary)]"
-      >
-        <Menu size={18} />
-      </button>
-
       {/* Backdrop for mobile */}
       {isOpen && (
         <div

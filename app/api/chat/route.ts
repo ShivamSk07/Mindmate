@@ -1,15 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { generateResponse, generateStreamResponse, MODEL } from "@/lib/cerebras";
+import { generateResponse, generateStreamResponse, getCerebrasClient, MODEL } from "@/lib/cerebras";
 import { searchWeb } from "@/lib/search";
 import { needsWebSearch, extractSearchQuery } from "@/lib/intent";
 import { buildNormalPrompt, buildSearchAugmentedPrompt } from "@/lib/prompts";
-import Cerebras from "@cerebras/cerebras_cloud_sdk";
-
-const cerebras = new Cerebras({
-  apiKey: process.env.CEREBRAS_API_KEY,
-});
 
 // Helper function to extract and update memory in the background
 async function extractAndUpdateMemory(userId: string, userMessage: string, assistantReply: string) {
@@ -29,7 +24,8 @@ async function extractAndUpdateMemory(userId: string, userMessage: string, assis
       `### ASSISTANT REPLY: ${assistantReply}\n\n` +
       "CRITICAL: Output ONLY the updated list of facts as concise bullet points. No conversational text. If no new info, repeat current memory.";
 
-    const completion = await cerebras.chat.completions.create({
+    const client = getCerebrasClient();
+    const completion = await client.chat.completions.create({
       model: MODEL,
       messages: [{ role: "system", content: extractPrompt }],
       temperature: 0.1,
@@ -73,9 +69,10 @@ export async function POST(request: NextRequest) {
       }
     } else {
       // Smart Title Generation
-      let smartTitle = "New Conversation";
+      let smartTitle = message.trim().slice(0, 24) || "New Conversation";
       try {
-        const titleRes = await cerebras.chat.completions.create({
+        const client = getCerebrasClient();
+        const titleRes = await client.chat.completions.create({
           messages: [
             {
               role: "user",
@@ -85,11 +82,12 @@ export async function POST(request: NextRequest) {
           model: MODEL,
           temperature: 0.3,
         }) as any;
-        smartTitle = titleRes.choices[0]?.message?.content?.trim().replace(/"/g, "") || "New Conversation";
-      } catch (err: any) {
-        if (err?.message?.toLowerCase().includes("quota") || err?.message?.toLowerCase().includes("rate")) {
-          smartTitle = "Under Maintenance";
+        const generated = titleRes.choices[0]?.message?.content?.trim().replace(/"/g, "");
+        if (generated && generated.length > 2) {
+          smartTitle = generated;
         }
+      } catch (err: any) {
+        console.warn("[Smart Title Generation Error]", err?.message || err);
       }
 
 const DEFAULT_PERSONAS = [
@@ -235,7 +233,8 @@ async function seedDefaultPersonas() {
         console.log(`[Search] Bypassed LLM query optimizer for simple query: "${searchQuery}"`);
       } else {
         try {
-          const queryRes = await cerebras.chat.completions.create({
+          const client = getCerebrasClient();
+          const queryRes = await client.chat.completions.create({
             model: MODEL,
             messages: [
               {
@@ -455,8 +454,8 @@ async function seedDefaultPersonas() {
 
         } catch (err: any) {
           console.error("SSE stream error", err);
-          const maintMsg = "Server is under maintenance. Please try again in a few minutes.";
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: maintMsg })}\n\n`));
+          const errorMsg = err?.message || "Error generating AI response.";
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: errorMsg })}\n\n`));
           controller.close();
         }
       }
@@ -473,7 +472,7 @@ async function seedDefaultPersonas() {
   } catch (error: any) {
     console.error("[Chat API Error]", error);
     return NextResponse.json(
-      { error: "Server is under maintenance. Please try again in a few minutes." },
+      { error: error?.message || "Failed to process chat request." },
       { status: 500 }
     );
   }

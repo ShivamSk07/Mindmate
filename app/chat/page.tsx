@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useChat } from "@/hooks/useChat";
-import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Mic } from "lucide-react";
+import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Mic, Menu, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Message } from "@/types";
@@ -51,6 +51,8 @@ export default function ChatPage() {
   const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
   const [showLiveVoice, setShowLiveVoice] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showToolsDropdown, setShowToolsDropdown] = useState(false);
   const router = useRouter();
 
   // 1. Initial Data Fetching
@@ -289,31 +291,47 @@ export default function ChatPage() {
   const botAvatar = activePersona?.avatarUrl || "/img/logo.png";
 
   return (
-    <div className="flex h-screen w-screen bg-[var(--bg-main)] text-[var(--text-primary)] overflow-hidden relative p-3 md:p-4 gap-3 md:gap-4">
+    <div className="flex h-[100dvh] w-full bg-[var(--bg-main)] text-[var(--text-primary)] overflow-hidden relative p-0 md:p-3 gap-0 md:gap-3">
       
       {/* Sidebar navigation */}
       <Sidebar
         currentSessionId={sessionId}
-        onSelectSession={handleSelectSession}
-        onNewChat={clearChat}
+        onSelectSession={(id) => {
+          handleSelectSession(id);
+          setIsSidebarOpen(false);
+        }}
+        onNewChat={() => {
+          clearChat();
+          setIsSidebarOpen(false);
+        }}
         username={username}
         activeFolder={activeFolder}
         setActiveFolder={setActiveFolder}
         folders={folders}
         setFolders={setFolders}
+        isOpen={isSidebarOpen}
+        setIsOpen={setIsSidebarOpen}
       />
 
       {/* Main chat area */}
-      <main className="flex-grow flex flex-col min-w-0 h-full relative glass-floating-panel rounded-[24px] overflow-hidden">
+      <main className="flex-grow flex flex-col min-w-0 h-full relative glass-floating-panel rounded-none md:rounded-[24px] overflow-hidden border-0 md:border border-[rgba(255,255,255,0.08)]">
         
         {/* Chat Toolbar Header */}
-        <header className="px-4 py-3.5 border-b border-[rgba(255,255,255,0.04)] bg-[rgba(10,10,15,0.45)] backdrop-blur-md flex items-center justify-between z-20 relative">
+        <header className="px-3 md:px-5 py-3 border-b border-[rgba(255,255,255,0.04)] bg-[rgba(10,10,15,0.65)] backdrop-blur-md flex items-center justify-between z-20 relative flex-shrink-0">
           
-          {/* Left: Persona Selector */}
-          <div className="relative">
+          {/* Left: Mobile Toggle & Persona Selector */}
+          <div className="flex items-center gap-2 relative min-w-0">
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="lg:hidden p-2 rounded-xl bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.06)] text-white transition-all active:scale-95 flex-shrink-0"
+              title="Toggle Menu"
+            >
+              <Menu size={17} />
+            </button>
+
             <button
               onClick={() => setShowPersonaDropdown(!showPersonaDropdown)}
-              className="flex items-center gap-2 px-3 py-1.5 border border-[rgba(255,255,255,0.05)] rounded-xl text-xs font-semibold bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.05)] active:scale-95 transition-all shadow-sm"
+              className="flex items-center gap-2 px-2.5 py-1.5 border border-[rgba(255,255,255,0.05)] rounded-xl text-xs font-semibold bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.05)] active:scale-95 transition-all shadow-sm max-w-[200px] sm:max-w-none truncate"
             >
               <div className="w-4 h-4 rounded-md overflow-hidden flex items-center justify-center bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.05)]">
                 <img src={botAvatar} alt="bot" className="w-full h-full object-cover" />
@@ -402,8 +420,8 @@ export default function ChatPage() {
             )}
           </div>
 
-          {/* Right: Tools */}
-          <div className="flex items-center gap-2.5 text-[#94a3b8]">
+          {/* Right: Tools (Desktop) */}
+          <div className="hidden sm:flex items-center gap-2.5 text-[#94a3b8]">
             {/* Live Voice Mode Button */}
             <button
               onClick={() => setShowLiveVoice(true)}
@@ -454,6 +472,80 @@ export default function ChatPage() {
             >
               <Trash2 size={14} />
             </button>
+          </div>
+
+          {/* Right: Tools (Mobile Overflow Menu) */}
+          <div className="flex sm:hidden items-center gap-1.5 text-[#94a3b8] relative">
+            <button
+              onClick={() => setShowLiveVoice(true)}
+              className="p-2 rounded-xl border border-[rgba(255,255,255,0.05)] text-indigo-400 bg-[rgba(255,255,255,0.02)] active:scale-95"
+              title="Live Voice Mode"
+            >
+              <Mic size={15} />
+            </button>
+            <button
+              onClick={() => setShowToolsDropdown(!showToolsDropdown)}
+              className="p-2 rounded-xl border border-[rgba(255,255,255,0.05)] text-white bg-[rgba(255,255,255,0.02)] active:scale-95"
+              title="More Actions"
+            >
+              <MoreVertical size={16} />
+            </button>
+
+            {showToolsDropdown && (
+              <div className="absolute right-0 top-11 w-48 bg-[rgba(10,10,15,0.95)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl z-50 p-1.5 animate-fade-in flex flex-col gap-1">
+                {sessionId && (
+                  <a
+                    href={`/api/export/${sessionId}`}
+                    download
+                    onClick={() => setShowToolsDropdown(false)}
+                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors"
+                  >
+                    <FileSpreadsheet size={14} className="text-indigo-400" />
+                    <span>Export Chat</span>
+                  </a>
+                )}
+                <button
+                  onClick={() => {
+                    setShowToolsDropdown(false);
+                    router.push("/profile");
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left"
+                >
+                  <Sliders size={14} className="text-purple-400" />
+                  <span>Settings</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowToolsDropdown(false);
+                    setShowKanban(true);
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left"
+                >
+                  <CheckSquare size={14} className="text-emerald-400" />
+                  <span>Task Board</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowToolsDropdown(false);
+                    setShowMemoryModal(true);
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left"
+                >
+                  <Archive size={14} className="text-amber-400" />
+                  <span>Memory Vault</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowToolsDropdown(false);
+                    handleClearHistory();
+                  }}
+                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-left border-t border-[rgba(255,255,255,0.04)] mt-0.5"
+                >
+                  <Trash2 size={14} />
+                  <span>Clear History</span>
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
