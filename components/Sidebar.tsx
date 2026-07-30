@@ -166,21 +166,30 @@ export function Sidebar({
       {isOpen && (
         <div
           onClick={() => setIsOpen(false)}
-          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-black/70 backdrop-blur-[2px] lg:hidden animate-fade-in"
         />
       )}
 
       {/* Sidebar Panel */}
       <aside
-        className={`fixed lg:relative inset-y-0 left-0 z-40 w-64 glass-sidebar rounded-[24px] border border-[rgba(255,255,255,0.08)] flex flex-col transition-all duration-300 lg:h-full ${
-          isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[280px] glass-sidebar rounded-none lg:rounded-[24px] border-r lg:border border-[rgba(255,255,255,0.06)] flex flex-col transition-transform duration-300 ease-out lg:h-full ${
+          isOpen ? "translate-x-0 shadow-[4px_0_40px_rgba(0,0,0,0.6)]" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Header Logo */}
+        {/* Header Logo + Close */}
         <div className="px-5 py-4 flex items-center justify-between border-b border-[rgba(255,255,255,0.04)]">
           <div className="flex items-center gap-2.5 tracking-tight text-white">
             <img src="/img/branding.png" alt="Clarity" className="h-6 object-contain" />
           </div>
+          {/* Mobile close button */}
+          <button
+            onClick={() => setIsOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-[#64748b] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-all"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
         </div>
 
         {/* Action: New Chat */}

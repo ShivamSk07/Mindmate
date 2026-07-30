@@ -29,6 +29,7 @@ async function extractAndUpdateMemory(userId: string, userMessage: string, assis
       model: MODEL,
       messages: [{ role: "system", content: extractPrompt }],
       temperature: 0.1,
+      max_tokens: 150,
     }) as any;
 
     const newMemory = completion.choices[0]?.message?.content?.trim() || "";
@@ -81,6 +82,7 @@ export async function POST(request: NextRequest) {
           ],
           model: MODEL,
           temperature: 0.3,
+          max_tokens: 8,
         }) as any;
         const generated = titleRes.choices[0]?.message?.content?.trim().replace(/"/g, "");
         if (generated && generated.length > 2) {
@@ -178,11 +180,11 @@ async function seedDefaultPersonas() {
     });
     const memoryVault = profile?.memoryVault || "";
 
-    // 4. Fetch Message History (last 10 messages)
+    // 4. Fetch Message History (last 6 messages - to optimize token budget)
     const historyMessages = await prisma.message.findMany({
       where: { sessionId: conv.id },
       orderBy: { createdAt: "asc" },
-      take: 10
+      take: 6
     });
 
     const chatHistory = historyMessages.map(m => ({
@@ -297,8 +299,12 @@ async function seedDefaultPersonas() {
     let maxTokens = 1024;
 
     if (mode === "fast") {
-      targetModel = "gemma-4-31b";
-      maxTokens = 512;
+      targetModel = MODEL;
+      maxTokens = 350;
+      queryMessages.push({
+        role: "system",
+        content: "STRICT RULE: Be extremely brief, direct, and answer in 1-2 sentences maximum to save token budget."
+      });
     } else if (mode === "deep") {
       targetModel = MODEL;
       maxTokens = 4096;

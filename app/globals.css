@@ -59,10 +59,20 @@ body {
   background: radial-gradient(circle at 50% 50%, #0c0d12 0%, #030303 100%);
   color: var(--text-primary);
   font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
-  height: 100vh;
+  height: 100dvh;
   overflow: hidden;
   font-size: var(--font-size-base);
   letter-spacing: -0.01em;
+  /* iOS safe area support */
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Use dynamic viewport height for mobile */
+html {
+  height: 100%;
 }
 
 /* Custom range inputs */

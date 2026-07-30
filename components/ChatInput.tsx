@@ -182,7 +182,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
   };
 
   return (
-    <div className="bg-transparent px-2.5 sm:px-4 pb-3 sm:pb-5 pt-1.5 relative z-10">
+    <div className="bg-transparent px-3 sm:px-4 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-5 pt-1.5 relative z-10">
       <div className="max-w-3xl mx-auto flex flex-col gap-2 relative">
 
         {/* Floating Slash Commands Suggestion Menu */}
@@ -209,33 +209,18 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
           </div>
         )}
 
-        {/* Top Options Bar (Quick Chips & Live Voice trigger) */}
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            {onOpenLiveVoice && (
-              <button
-                type="button"
-                onClick={onOpenLiveVoice}
-                className="text-[10px] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-indigo-300 hover:text-white rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 transition-all flex items-center gap-1.5 flex-shrink-0 font-semibold active:scale-95 shadow-sm"
-              >
-                <Radio size={10} className="text-red-400" />
-                Live Voice
-              </button>
-            )}
-          </div>
-
-          {/* Quick Chips */}
-          <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none items-center">
+        {/* Top Options Bar */}
+        {input.trim() && (
+          <div className="hidden sm:flex justify-end gap-2">
             <button
               onClick={handleImprove}
-              disabled={!input.trim()}
-              className="text-[10px] border border-dashed border-[rgba(255,255,255,0.08)] hover:border-indigo-400 text-[#94a3b8] hover:text-white rounded-full px-2.5 py-0.5 sm:px-3 sm:py-1 transition-all flex items-center gap-1 flex-shrink-0 disabled:opacity-30 tracking-wide"
+              className="text-[10px] border border-dashed border-[rgba(255,255,255,0.08)] hover:border-indigo-400 text-[#94a3b8] hover:text-white rounded-full px-3 py-1 transition-all flex items-center gap-1 flex-shrink-0 tracking-wide"
             >
               <Wand2 size={10} />
               Improve
             </button>
           </div>
-        </div>
+        )}
 
         {/* Attachment & Upload Indicator */}
         {(isUploading || attachedFile) && (
@@ -265,7 +250,16 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
         )}
 
         {/* Input Box */}
-        <div className="flex items-end gap-1.5 sm:gap-2 rounded-[20px] sm:rounded-[22px] px-2.5 sm:px-3.5 py-2 sm:py-3 input-floating-pill">
+        <div
+          className="flex items-end gap-1.5 sm:gap-2 rounded-[22px] sm:rounded-[24px] px-3 sm:px-4 py-2.5 sm:py-3"
+          style={{
+            background: "rgba(255,255,255,0.05)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.09)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.2)",
+          }}
+        >
           {/* File Attachment */}
           <button
             type="button"
@@ -317,9 +311,9 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
                 onClick={() => handleSend(true)}
                 disabled={!input.trim() || disabled}
                 title="Search on Web"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] font-medium text-white border border-[rgba(255,255,255,0.08)] hover:border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.08)] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] font-medium text-zinc-400 border border-white/[0.08] bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
-                <Globe size={13} className="text-white" />
+                <Globe size={13} className="text-zinc-400" />
                 <span className="hidden sm:inline">Search Web</span>
               </button>
             )}
@@ -327,35 +321,27 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
             {isLoading ? (
               <button
                 onClick={onStop}
-                className="p-1.5 sm:p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-colors"
+                className="p-2 rounded-xl bg-white/[0.08] border border-white/[0.1] text-zinc-300"
                 title="Stop generation"
               >
-                <Square size={13} className="text-red-400" />
+                <Square size={13} />
               </button>
             ) : (
               <button
                 onClick={() => handleSend(false)}
                 disabled={!input.trim() || disabled}
-                className="p-1.5 sm:p-2 rounded-xl bg-white hover:bg-[#e4e4e7] text-black shadow-md disabled:opacity-30 disabled:cursor-not-allowed active:scale-95 transition-all"
+                className="p-2 rounded-xl bg-white text-black disabled:bg-white/10 disabled:text-zinc-600 disabled:cursor-not-allowed active:scale-95 transition-all"
                 title="Send message"
               >
-                <Send size={13} className="text-black" />
+                <Send size={13} />
               </button>
             )}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="hidden sm:block text-center text-[10px] text-[#475569] tracking-wider font-semibold uppercase">
-          Clarity by{" "}
-          <a
-            href="https://www.linkedin.com/in/shivam-kothekar-10296b260/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[#94a3b8] hover:text-white transition-colors"
-          >
-            Shivam Kothekar
-          </a>
+        {/* Footer — desktop only */}
+        <div className="hidden md:block text-center text-[10px] text-[#3f3f46] tracking-wider font-medium">
+          Clarity may make mistakes. Verify important information.
         </div>
       </div>
     </div>

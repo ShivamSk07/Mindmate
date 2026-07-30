@@ -513,119 +513,113 @@ export function LiveVoiceModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#07080c]/80 backdrop-blur-3xl p-4 md:p-6 text-white select-none transition-all duration-300">
+    <div className="fixed inset-0 z-50 flex flex-col justify-between bg-[#090a0f] p-6 text-white select-none transition-all duration-300">
       
-      {/* Floating Glassmorphism Gemini Live Card */}
-      <div className="relative w-full max-w-xl bg-[rgba(18,19,26,0.65)] backdrop-blur-2xl border border-[rgba(255,255,255,0.08)] rounded-3xl p-6 md:p-8 flex flex-col justify-between items-center shadow-[0_32px_96px_rgba(0,0,0,0.85)] min-h-[520px] overflow-hidden">
-        
-        {/* Subtle Ambient Background Light */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-500/10 rounded-full blur-[90px] pointer-events-none" />
+      {/* Top Header */}
+      <div className="w-full flex items-center justify-between z-10 pt-2">
+        <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-sm font-semibold tracking-wide text-zinc-300">
+            {activePersona?.name || "Clarity"} Live
+          </span>
+        </div>
 
-        {/* Top Header */}
-        <div className="w-full flex items-center justify-between z-10">
-          <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] shadow-inner">
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#94a3b8]">
-              {activePersona?.name || "Clarity"} Live
+        <button
+          onClick={() => {
+            stopAllVoice();
+            stopAudioAnalyzer();
+            onClose();
+          }}
+          className="p-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white transition-all active:scale-95"
+          title="Close"
+        >
+          <X size={20} />
+        </button>
+      </div>
+
+      {/* Main Full-Screen Fluid Visualizer */}
+      <div className="relative flex flex-col items-center justify-center flex-1 z-10 w-full">
+        <div
+          onClick={handleOrbClick}
+          className="relative w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center cursor-pointer group"
+        >
+          <canvas ref={canvasRef} className="w-full h-full object-contain" />
+          
+          {/* Center Minimal Avatar Indicator */}
+          <div className="absolute inset-0 m-auto w-28 h-28 rounded-full bg-black/60 border border-white/10 flex flex-col items-center justify-center shadow-2xl transition-transform duration-200 group-hover:scale-105 backdrop-blur-md">
+            {activePersona?.avatarUrl ? (
+              <img
+                src={activePersona.avatarUrl}
+                alt={activePersona.name}
+                className="w-14 h-14 rounded-full object-cover border border-white/20"
+              />
+            ) : (
+              <Sparkles size={28} className="text-indigo-400" />
+            )}
+            <span className="text-[10px] font-medium tracking-wider text-zinc-400 capitalize mt-1.5">
+              {state}
             </span>
           </div>
+        </div>
 
-          <button
-            onClick={() => {
+        {/* Live Subtitle / Transcript */}
+        <div className="mt-8 w-full max-w-lg text-center min-h-[60px] flex flex-col items-center justify-center px-4">
+          {transcript && (
+            <p className="text-sm font-medium text-indigo-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 text-center backdrop-blur-md animate-fade-in max-w-full">
+              “{transcript}”
+            </p>
+          )}
+
+          {aiResponse && (
+            <p className="text-sm font-medium text-zinc-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 text-center backdrop-blur-md max-h-24 overflow-y-auto scrollbar-thin animate-fade-in mt-1.5">
+              {aiResponse}
+            </p>
+          )}
+
+          {!transcript && !aiResponse && (
+            <p className="text-xs font-medium tracking-widest uppercase text-zinc-500">
+              {statusText}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Controls */}
+      <div className="w-full flex items-center justify-center gap-6 z-10 pb-6">
+        <button
+          onClick={() => {
+            if (isMuted) {
+              setIsMuted(false);
+              startListening();
+            } else {
+              setIsMuted(true);
               stopAllVoice();
               stopAudioAnalyzer();
-              onClose();
-            }}
-            className="p-2 rounded-full bg-white/[0.04] hover:bg-white/[0.1] border border-white/[0.08] text-[#94a3b8] hover:text-white transition-all active:scale-95"
-            title="End Live Session"
-          >
-            <X size={16} />
-          </button>
-        </div>
+              setState("idle");
+              setStatusText("Muted");
+            }
+          }}
+          className={`p-4 rounded-full transition-all active:scale-95 ${
+            isMuted
+              ? "bg-red-500/20 border border-red-500/30 text-red-400"
+              : "bg-white/[0.08] border border-white/[0.1] text-zinc-300 hover:text-white"
+          }`}
+          title={isMuted ? "Unmute" : "Mute"}
+        >
+          {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
+        </button>
 
-        {/* Interactive Fluid Canvas Waveform */}
-        <div className="relative flex flex-col items-center justify-center my-auto z-10 w-full">
-          <div
-            onClick={handleOrbClick}
-            className="relative w-64 h-64 flex items-center justify-center cursor-pointer group"
-          >
-            <canvas ref={canvasRef} className="w-full h-full object-contain" />
-            
-            {/* Center Glass Pill Avatar */}
-            <div className="absolute inset-0 m-auto w-24 h-24 rounded-full bg-black/40 backdrop-blur-xl border border-white/15 flex flex-col items-center justify-center shadow-2xl transition-transform duration-200 group-hover:scale-105">
-              {activePersona?.avatarUrl ? (
-                <img
-                  src={activePersona.avatarUrl}
-                  alt={activePersona.name}
-                  className="w-12 h-12 rounded-full object-cover border border-white/20"
-                />
-              ) : (
-                <Sparkles size={24} className="text-indigo-300" />
-              )}
-              <span className="text-[9px] font-bold uppercase tracking-wider text-[#cbd5e1] mt-1">
-                {state}
-              </span>
-            </div>
-          </div>
-
-          {/* Subtitle / Transcript Pill */}
-          <div className="mt-6 w-full max-w-md text-center min-h-[54px] flex flex-col items-center justify-center">
-            {transcript && (
-              <p className="text-xs font-medium text-indigo-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-2 text-center backdrop-blur-md animate-fade-in max-w-full truncate">
-                “{transcript}”
-              </p>
-            )}
-
-            {aiResponse && (
-              <p className="text-xs font-medium text-slate-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-2 text-center backdrop-blur-md max-h-20 overflow-y-auto scrollbar-thin animate-fade-in mt-1">
-                {aiResponse}
-              </p>
-            )}
-
-            {!transcript && !aiResponse && (
-              <p className="text-xs font-semibold uppercase tracking-widest text-[#64748b]">
-                {statusText}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Glass Controls Bar */}
-        <div className="w-full flex items-center justify-center gap-4 z-10 pt-4 border-t border-white/[0.06]">
-          <button
-            onClick={() => {
-              if (isMuted) {
-                setIsMuted(false);
-                startListening();
-              } else {
-                setIsMuted(true);
-                stopAllVoice();
-                stopAudioAnalyzer();
-                setState("idle");
-                setStatusText("Muted");
-              }
-            }}
-            className={`p-3.5 rounded-2xl border transition-all active:scale-95 ${
-              isMuted
-                ? "bg-red-500/20 border-red-500/30 text-red-400"
-                : "bg-white/[0.04] border-white/[0.08] text-[#cbd5e1] hover:bg-white/[0.08] hover:text-white"
-            }`}
-            title={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? <MicOff size={18} /> : <Mic size={18} />}
-          </button>
-
-          <button
-            onClick={() => {
-              stopAllVoice();
-              stopAudioAnalyzer();
-              onClose();
-            }}
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white text-black font-extrabold text-xs uppercase tracking-wider hover:bg-neutral-200 transition-all active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)]"
-          >
-            <PhoneOff size={14} />
-            <span>End Session</span>
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            stopAllVoice();
+            stopAudioAnalyzer();
+            onClose();
+          }}
+          className="flex items-center gap-2 px-8 py-4 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold text-sm tracking-wide transition-all active:scale-95 shadow-lg shadow-red-600/30"
+        >
+          <PhoneOff size={18} />
+          <span>End Live</span>
+        </button>
       </div>
     </div>
   );

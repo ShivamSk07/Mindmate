@@ -314,44 +314,59 @@ export default function ChatPage() {
       />
 
       {/* Main chat area */}
-      <main className="flex-grow flex flex-col min-w-0 h-full relative glass-floating-panel rounded-none md:rounded-[24px] overflow-hidden border-0 md:border border-[rgba(255,255,255,0.08)]">
+      <main className="flex-grow flex flex-col min-w-0 h-full relative glass-floating-panel rounded-none md:rounded-[24px] overflow-hidden border-0 md:border border-[rgba(255,255,255,0.06)]">
         
-        {/* Chat Toolbar Header */}
-        <header className="px-3 md:px-5 py-3 border-b border-[rgba(255,255,255,0.04)] bg-[rgba(10,10,15,0.65)] backdrop-blur-md flex items-center justify-between z-20 relative flex-shrink-0">
-          
-          {/* Left: Mobile Toggle & Persona Selector */}
-          <div className="flex items-center gap-2 relative min-w-0">
+        {/* Chat Toolbar Header — glassmorphism */}
+        <header
+          className="px-3 md:px-5 py-2.5 md:py-3 flex items-center justify-between z-20 relative flex-shrink-0 gap-2"
+          style={{
+            background: "rgba(8,8,12,0.72)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            borderBottom: "1px solid rgba(255,255,255,0.05)",
+            boxShadow: "0 1px 0 rgba(255,255,255,0.03)",
+          }}
+        >
+
+          {/* Left: Menu + Persona Selector */}
+          <div className="flex items-center gap-2 relative min-w-0 flex-1">
+            {/* Mobile menu toggle */}
             <button
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="lg:hidden p-2 rounded-xl bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.06)] text-white transition-all active:scale-95 flex-shrink-0"
+              className="lg:hidden p-2 rounded-xl text-white transition-all active:scale-95 flex-shrink-0"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
+              }}
               title="Toggle Menu"
             >
               <Menu size={17} />
             </button>
 
+            {/* Persona selector button */}
             <button
               onClick={() => setShowPersonaDropdown(!showPersonaDropdown)}
-              className="flex items-center gap-2 px-2.5 py-1.5 border border-[rgba(255,255,255,0.05)] rounded-xl text-xs font-semibold bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.05)] active:scale-95 transition-all shadow-sm max-w-[200px] sm:max-w-none truncate"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold active:scale-95 transition-all min-w-0 max-w-[200px]"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                boxShadow: "0 2px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)",
+                backdropFilter: "blur(8px)",
+              }}
             >
-              <div className="w-4 h-4 rounded-md overflow-hidden flex items-center justify-center bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.05)]">
+              <div className="w-5 h-5 rounded-md overflow-hidden flex-shrink-0" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
                 <img src={botAvatar} alt="bot" className="w-full h-full object-cover" />
               </div>
-              <span className="text-white tracking-tight font-medium">
-                {activePersona?.name || "Select Persona"}
+              <span className="text-[#e4e4e7] tracking-tight font-medium truncate">
+                {activePersona?.name || "Clarity"}
               </span>
-              <ChevronDown size={11} className="text-[#64748b]" />
-              
-              {activeFolder && (
-                <div className="flex items-center gap-1 ml-1 px-2 py-0.5 border border-neutral-800 rounded-lg bg-neutral-900 text-[9px] text-neutral-300 font-bold uppercase tracking-wider">
-                  <i className="fas fa-folder" />
-                  <span>{activeFolder}</span>
-                </div>
-              )}
+              <ChevronDown size={11} className="text-[#52525b] flex-shrink-0" />
             </button>
 
             {/* Persona Dropdown */}
             {showPersonaDropdown && (
-              <div className="absolute left-0 mt-2.5 w-56 bg-[rgba(10,10,15,0.7)] backdrop-blur-xl border border-[rgba(255,255,255,0.06)] rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.6)] z-50 overflow-hidden animate-fade-in">
+              <div className="absolute left-0 top-[calc(100%+8px)] w-56 bg-[rgba(10,10,15,0.92)] backdrop-blur-xl border border-[rgba(255,255,255,0.06)] rounded-2xl shadow-[0_16px_40px_rgba(0,0,0,0.6)] z-50 overflow-hidden animate-fade-in">
                 <div className="px-4 py-2.5 text-[9px] uppercase font-bold tracking-widest text-[#64748b] border-b border-[rgba(255,255,255,0.04)] bg-[rgba(0,0,0,0.1)]">
                   Select Persona
                 </div>
@@ -421,17 +436,15 @@ export default function ChatPage() {
           </div>
 
           {/* Right: Tools (Desktop) */}
-          <div className="hidden sm:flex items-center gap-2.5 text-[#94a3b8]">
-            {/* Live Voice Mode Button */}
+          <div className="hidden sm:flex items-center gap-2 text-[#94a3b8]">
             <button
               onClick={() => setShowLiveVoice(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-[rgba(255,255,255,0.05)] hover:border-[rgba(255,255,255,0.12)] rounded-xl text-xs font-medium text-[#94a3b8] hover:text-white bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.05)] transition-all cursor-pointer shadow-sm active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 border border-[rgba(255,255,255,0.05)] hover:border-[rgba(255,255,255,0.12)] rounded-xl text-xs font-medium text-[#94a3b8] hover:text-white bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.05)] transition-all active:scale-95"
               title="Live Voice Mode"
             >
               <Mic size={13} className="text-indigo-400 opacity-90" />
               <span>Live Voice</span>
             </button>
-
             {sessionId && (
               <a
                 href={`/api/export/${sessionId}`}
@@ -443,10 +456,8 @@ export default function ChatPage() {
               </a>
             )}
             <button
-              onClick={() => {
-                router.push("/profile");
-              }}
-              className="p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-white border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all flex items-center justify-center cursor-pointer"
+              onClick={() => router.push("/profile")}
+              className="p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-white border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all flex items-center justify-center"
               title="Settings"
             >
               <Sliders size={14} />
@@ -474,72 +485,80 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Right: Tools (Mobile Overflow Menu) */}
-          <div className="flex sm:hidden items-center gap-1.5 text-[#94a3b8] relative">
+          {/* Right: Mobile — Mic + More */}
+          <div className="flex sm:hidden items-center gap-1.5">
             <button
               onClick={() => setShowLiveVoice(true)}
-              className="p-2 rounded-xl border border-[rgba(255,255,255,0.05)] text-indigo-400 bg-[rgba(255,255,255,0.02)] active:scale-95"
+              className="p-2 rounded-xl text-indigo-300 active:scale-95 transition-all"
+              style={{
+                background: "rgba(99,102,241,0.1)",
+                border: "1px solid rgba(99,102,241,0.2)",
+                boxShadow: "0 2px 8px rgba(99,102,241,0.15), inset 0 1px 0 rgba(255,255,255,0.06)",
+              }}
               title="Live Voice Mode"
             >
-              <Mic size={15} />
+              <Mic size={16} />
             </button>
             <button
               onClick={() => setShowToolsDropdown(!showToolsDropdown)}
-              className="p-2 rounded-xl border border-[rgba(255,255,255,0.05)] text-white bg-[rgba(255,255,255,0.02)] active:scale-95"
+              className="p-2 rounded-xl text-[#a1a1aa] active:scale-95 transition-all"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05)",
+              }}
               title="More Actions"
             >
               <MoreVertical size={16} />
             </button>
 
+            {/* Dropdown */}
             {showToolsDropdown && (
-              <div className="absolute right-0 top-11 w-48 bg-[rgba(10,10,15,0.95)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-2xl z-50 p-1.5 animate-fade-in flex flex-col gap-1">
+              <div
+                className="absolute right-3 top-[calc(100%+8px)] w-52 rounded-2xl z-50 p-1.5 animate-fade-in flex flex-col gap-0.5"
+                style={{
+                  background: "rgba(10,10,16,0.92)",
+                  backdropFilter: "blur(24px)",
+                  WebkitBackdropFilter: "blur(24px)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: "0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.06)",
+                }}
+              >
                 {sessionId && (
                   <a
                     href={`/api/export/${sessionId}`}
                     download
                     onClick={() => setShowToolsDropdown(false)}
-                    className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors"
+                    className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors"
                   >
                     <FileSpreadsheet size={14} className="text-indigo-400" />
                     <span>Export Chat</span>
                   </a>
                 )}
                 <button
-                  onClick={() => {
-                    setShowToolsDropdown(false);
-                    router.push("/profile");
-                  }}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left"
+                  onClick={() => { setShowToolsDropdown(false); router.push("/profile"); }}
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left w-full"
                 >
                   <Sliders size={14} className="text-purple-400" />
                   <span>Settings</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setShowToolsDropdown(false);
-                    setShowKanban(true);
-                  }}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left"
+                  onClick={() => { setShowToolsDropdown(false); setShowKanban(true); }}
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left w-full"
                 >
                   <CheckSquare size={14} className="text-emerald-400" />
                   <span>Task Board</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setShowToolsDropdown(false);
-                    setShowMemoryModal(true);
-                  }}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left"
+                  onClick={() => { setShowToolsDropdown(false); setShowMemoryModal(true); }}
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left w-full"
                 >
                   <Archive size={14} className="text-amber-400" />
                   <span>Memory Vault</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setShowToolsDropdown(false);
-                    handleClearHistory();
-                  }}
-                  className="flex items-center gap-2.5 px-3 py-2 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-left border-t border-[rgba(255,255,255,0.04)] mt-0.5"
+                  onClick={() => { setShowToolsDropdown(false); handleClearHistory(); }}
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-red-400 hover:bg-red-500/10 rounded-xl transition-colors text-left w-full border-t border-[rgba(255,255,255,0.04)] mt-0.5"
                 >
                   <Trash2 size={14} />
                   <span>Clear History</span>

@@ -16,7 +16,8 @@ export function buildSystemPrompt(
     `NO REPETITION: Never translate or repeat the same thought in multiple languages within the same response. ` +
     `AUTONOMOUS MEMORY: Use the 'Memory Vault' to keep responses personal. ` +
     `IDENTITY: You are ${personaName}, created by Shivam Kothekar. ` +
-    `PROMPT OPTIMIZATION: If the user's message is brief, vague, or unstructured, you must internally expand and structure it. Act as a prompt optimizer: address the underlying intent with deep, well-structured reasoning, and present a comprehensive answer. Do not output the optimized prompt itself, just deliver the optimized results. ` +
+    `CONCISENESS POLICY (TOKEN OPTIMIZATION): Be direct, clear, and highly concise. Do not use filler words, generic intro/outro statements, or repeat yourself. Save token budget. ` +
+    `PROMPT OPTIMIZATION: If the user's message is brief, vague, or unstructured, address the underlying intent directly and reasonably. Do not output optimized prompt text. ` +
     `WIDGET EMBEDS (CANVAS): When the user asks for stock/crypto charts, map/location details, or a YouTube video, you must include the matching interactive widget code in your response text: ` +
     `- Stock/crypto: [Widget: TradingView Symbol="EXCHANGE:SYMBOL"] (e.g. NASDAQ:AAPL, BINANCE:BTCUSDT, etc.) ` +
     `- Map/location: [Widget: GoogleMaps Query="Address or Location Name"] (e.g. Paris, France) ` +
@@ -51,7 +52,8 @@ export function buildSystemPromptWithSearch(
     `LOGICAL COHERENCE: Maintain a stable, clear, and logical flow of thoughts. ` +
     `NO REPETITION: Never translate or repeat the same thought in multiple languages. ` +
     `IDENTITY: You are ${personaName}, created by Shivam Kothekar. ` +
-    `PROMPT OPTIMIZATION: If the user's message is brief, vague, or unstructured, you must internally expand and structure it. Act as a prompt optimizer: address the underlying intent with deep, well-structured reasoning, and present a comprehensive answer. Do not output the optimized prompt itself, just deliver the optimized results. ` +
+    `CONCISENESS POLICY (TOKEN OPTIMIZATION): Be direct, clear, and highly concise. Do not use filler words, generic intro/outro statements, or repeat yourself. Save token budget. ` +
+    `PROMPT OPTIMIZATION: If the user's message is brief, vague, or unstructured, address the underlying intent directly. Do not output optimized prompt text. ` +
     `WIDGET EMBEDS (CANVAS): When the user asks for stock/crypto charts, map/location details, or a YouTube video, you must include the matching interactive widget code in your response text: ` +
     `- Stock/crypto: [Widget: TradingView Symbol="EXCHANGE:SYMBOL"] (e.g. NASDAQ:AAPL, BINANCE:BTCUSDT, etc.) ` +
     `- Map/location: [Widget: GoogleMaps Query="Address or Location Name"] (e.g. Paris, France) ` +
@@ -87,7 +89,7 @@ export function buildNormalPrompt(
   const systemPrompt = buildSystemPrompt(personaName, personaPrompt, memoryVault);
   return [
     { role: "system", content: systemPrompt },
-    ...chatHistory.slice(-10), // last 10 messages for context
+    ...chatHistory.slice(-5), // last 5 messages for context
     { role: "user", content: userQuery },
   ];
 }
@@ -107,16 +109,16 @@ export function buildSearchAugmentedPrompt(
     .join("\n\n");
 
   const augmentedUserMessage = `User Question: ${userQuery}
-
+ 
 ### Web Search Results:
 ${searchContext}
-
+ 
 In search results ke basis par accurate aur helpful jawab do.
 Agar search results me specific answer na mile, to apni knowledge use karke use answer karo, par facts ko accurately present karna.`;
 
   return [
     { role: "system", content: systemPrompt },
-    ...chatHistory.slice(-10),
+    ...chatHistory.slice(-5),
     { role: "user", content: augmentedUserMessage },
   ];
 }

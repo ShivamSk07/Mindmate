@@ -1,7 +1,7 @@
 import Cerebras from "@cerebras/cerebras_cloud_sdk";
 
-export const MODEL = "llama-3.3-70b";
-export const FALLBACK_MODELS = ["llama-3.3-70b", "llama3.1-8b", "llama3.1-70b"];
+export const MODEL = "gpt-oss-120b";
+export const FALLBACK_MODELS = ["gpt-oss-120b"];
 
 export function getCerebrasClient() {
   const apiKey = process.env.CEREBRAS_API_KEY;
