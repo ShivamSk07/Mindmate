@@ -339,9 +339,17 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
           </div>
         </div>
 
-        {/* Footer — desktop only */}
-        <div className="hidden md:block text-center text-[10px] text-[#3f3f46] tracking-wider font-medium">
-          Clarity may make mistakes. Verify important information.
+        {/* Footer — both mobile and desktop */}
+        <div className="text-center text-[10px] text-zinc-500 tracking-wider font-medium">
+          Created by{" "}
+          <a
+            href="https://www.linkedin.com/in/shivam-kothekar-10296b260/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-zinc-400 hover:text-white transition-colors underline underline-offset-2"
+          >
+            Shivam Kothekar
+          </a>
         </div>
       </div>
     </div>

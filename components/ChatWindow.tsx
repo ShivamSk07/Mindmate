@@ -56,9 +56,7 @@ export function ChatWindow({
 
                 {/* Minimal Logo */}
                 <div className="mb-6">
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden bg-white/[0.04] border border-white/[0.08]">
-                    <img src="/img/logo.png" alt="Clarity" className="w-8 h-8 object-cover opacity-90" />
-                  </div>
+                  <img src="/img/logo.png" alt="Clarity" className="w-12 h-12 object-cover opacity-90" />
                 </div>
 
                 {/* Greeting text */}

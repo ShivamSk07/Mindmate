@@ -518,7 +518,6 @@ export function LiveVoiceModal({
       {/* Top Header */}
       <div className="w-full flex items-center justify-between z-10 pt-2">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-sm font-semibold tracking-wide text-zinc-300">
             {activePersona?.name || "Clarity"} Live
           </span>
