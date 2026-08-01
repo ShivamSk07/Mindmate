@@ -189,7 +189,7 @@ export function LiveVoiceModal({
       synth.speak(utt);
     };
     next();
-  }, [selectedLang]);
+  }, []);
 
   // ─── Send to AI ──────────────────────────────────────────────────────────
   const sendToAI = useCallback(async (text: string) => {
