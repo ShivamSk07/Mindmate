@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, X, Sparkles, PhoneOff, Globe, RefreshCw, Pause, Play, Waves, User } from "lucide-react";
+import { Mic, MicOff, X, Sparkles, PhoneOff, RefreshCw, Pause, Play, Waves, User } from "lucide-react";
 
 interface Persona {
   id: string;
@@ -24,11 +24,7 @@ interface LiveVoiceModalProps {
 
 type AppState = "listening" | "thinking" | "speaking" | "error";
 
-const SUPPORTED_LANGUAGES = [
-  { code: "en-IN", label: "Hinglish / Indian Eng" },
-  { code: "hi-IN", label: "Hindi (हिंदी)" },
-  { code: "en-US", label: "English (US)" },
-];
+const DEFAULT_LANGUAGE = "en-IN"; // English / Hinglish Default
 
 export function LiveVoiceModal({
   isOpen,
@@ -43,7 +39,6 @@ export function LiveVoiceModal({
   const [aiResponse, setAiResponse] = useState("");
   const [isMuted, setIsMuted] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-  const [selectedLang, setSelectedLang] = useState("en-IN");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
 
@@ -183,7 +178,7 @@ export function LiveVoiceModal({
       utt.rate = 1.2;
       utt.pitch = 1.0;
       const voices = synth.getVoices();
-      const lp = selectedLang.split("-")[0];
+      const lp = DEFAULT_LANGUAGE.split("-")[0];
       utt.voice =
         voices.find(v => v.lang.startsWith(lp) && /Natural|Online|Neural|Google/i.test(v.name)) ||
         voices.find(v => v.lang.startsWith(lp)) ||
@@ -291,7 +286,7 @@ export function LiveVoiceModal({
     const rec = new SpeechRecClass();
     rec.continuous = true;     // Persistent continuous mode to eliminate mic drop reconnect loops
     rec.interimResults = true;  // Real-time transcript feedback
-    rec.lang = selectedLang;
+    rec.lang = DEFAULT_LANGUAGE;
     rec.maxAlternatives = 1;
 
     rec.onresult = (event: any) => {
@@ -346,7 +341,7 @@ export function LiveVoiceModal({
     try { rec.start(); } catch (_) {
       recognitionRef.current = null;
     }
-  }, [selectedLang, sendToAI]);
+  }, [sendToAI]);
 
   useEffect(() => { startListeningRef.current = startListening; }, [startListening]);
 
@@ -382,7 +377,7 @@ export function LiveVoiceModal({
       abortControllerRef.current?.abort();
       synthRef.current?.cancel();
     };
-  }, [isOpen, selectedLang, startListening]);
+  }, [isOpen, startListening]);
 
   // ─── Shake Sensor to Exit ────────────────────────────────────────────────
   useEffect(() => {
@@ -445,20 +440,6 @@ export function LiveVoiceModal({
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Language Selector */}
-            <div className="flex items-center gap-1.5 bg-white/[0.06] border border-white/[0.1] rounded-xl px-3 py-1.5 text-xs text-zinc-300">
-              <Globe size={14} className="text-[#00d2ff]" />
-              <select
-                value={selectedLang}
-                onChange={e => setSelectedLang(e.target.value)}
-                className="bg-transparent text-xs text-zinc-200 outline-none cursor-pointer pr-1"
-              >
-                {SUPPORTED_LANGUAGES.map(l => (
-                  <option key={l.code} value={l.code} className="bg-[#121414] text-white">{l.label}</option>
-                ))}
-              </select>
-            </div>
-
             {/* Active Persona / User Avatar Badge */}
             <div className="h-8 w-8 rounded-full overflow-hidden border border-white/20 shadow-md">
               {activePersona?.avatarUrl ? (
