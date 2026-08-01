@@ -48,7 +48,6 @@ export function LiveVoiceModal({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // Single persistent recognition instance — never destroy/recreate unless language changes
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,9 +59,9 @@ export function LiveVoiceModal({
   // All control via refs to avoid stale closures
   const isMutedRef = useRef(false);
   const isLiveActiveRef = useRef(false);
-  const isProcessingRef = useRef(false); // true when AI is thinking or TTS is speaking
+  const isProcessingRef = useRef(false);
 
-  // Web Audio API refs (for canvas visualizer only — NOT for VAD start/stop)
+  // Web Audio API refs
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -141,10 +140,10 @@ export function LiveVoiceModal({
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, [isOpen]);
 
-  // Start mic audio stream for visualizer only (no VAD start/stop)
+  // Start mic audio stream for visualizer
   const startAudioAnalyzer = useCallback(async () => {
     try {
-      if (mediaStreamRef.current) return; // already running
+      if (mediaStreamRef.current) return;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       mediaStreamRef.current = stream;
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -188,7 +187,7 @@ export function LiveVoiceModal({
     audioLevelRef.current = 0;
   }, []);
 
-  // Clean Markdown for TTS
+  // Clean Markdown for Speech
   const cleanMarkdownForSpeech = (rawText: string) =>
     rawText
       .replace(/```[\s\S]*?```/g, "")
@@ -200,7 +199,7 @@ export function LiveVoiceModal({
       .replace(/[-*]\s+/g, "")
       .trim();
 
-  // TTS queue
+  // TTS Queue Processor
   const processSentenceQueue = useCallback(() => {
     if (!synthRef.current || currentSentenceQueueRef.current.length === 0 || isSpeakingRef.current) return;
     const nextRaw = currentSentenceQueueRef.current.shift();
@@ -214,7 +213,7 @@ export function LiveVoiceModal({
     setStatusText("Speaking...");
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.22;
+    utterance.rate = 1.20;
     utterance.pitch = 1.0;
     const voices = synthRef.current.getVoices();
     const langPrefix = selectedLang.split("-")[0];
@@ -230,13 +229,10 @@ export function LiveVoiceModal({
       if (currentSentenceQueueRef.current.length > 0) {
         processSentenceQueue();
       } else {
-        // Done speaking — re-arm recognition WITHOUT restarting it
-        // (it's already running continuously)
         isProcessingRef.current = false;
         setState("listening");
         setStatusText("Listening...");
-        setTranscript("");
-        setAiResponse("");
+        startRecognitionOnce();
       }
     };
     utterance.onerror = () => {
@@ -247,23 +243,37 @@ export function LiveVoiceModal({
         isProcessingRef.current = false;
         setState("listening");
         setStatusText("Listening...");
-        setTranscript("");
-        setAiResponse("");
+        startRecognitionOnce();
       }
     };
     synthRef.current.speak(utterance);
   }, [selectedLang]);
 
-  // Send to AI
+  // Destroy Recognition Instance
+  const destroyRecognition = useCallback(() => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    if (synthRef.current) synthRef.current.cancel();
+    isSpeakingRef.current = false;
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.abort();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+  }, []);
+
+  // Send Spoken Text to AI
   const sendSpokenTextToAI = useCallback(
     async (textToSend: string) => {
       if (!textToSend.trim() || isProcessingRef.current) return;
 
-      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-      if (synthRef.current) synthRef.current.cancel();
-
+      destroyRecognition();
       isProcessingRef.current = true;
       isSpeakingRef.current = false;
+
       setState("thinking");
       setStatusText("Thinking...");
       setAiResponse("");
@@ -298,6 +308,7 @@ export function LiveVoiceModal({
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split("\n\n");
           buffer = lines.pop() || "";
+
           for (const line of lines) {
             if (line.startsWith("data: ")) {
               const dataStr = line.substring(6).trim();
@@ -308,15 +319,18 @@ export function LiveVoiceModal({
                     fullAnswer += data.content;
                     currentChunkRef.current += data.content;
                     setAiResponse(fullAnswer);
-                    const matches = currentChunkRef.current.match(/[^.!?\n,;:]+[.!?\n,;:]+/g);
+
+                    const chunkText = currentChunkRef.current;
+                    const matches = chunkText.match(/[^.!?\n,;:]+[.!?\n,;:]+/g);
+
                     if (matches) {
                       for (const s of matches) {
                         currentSentenceQueueRef.current.push(s);
                         currentChunkRef.current = currentChunkRef.current.slice(s.length);
                       }
                       processSentenceQueue();
-                    } else if (currentChunkRef.current.length > 35) {
-                      currentSentenceQueueRef.current.push(currentChunkRef.current);
+                    } else if (chunkText.length > 35) {
+                      currentSentenceQueueRef.current.push(chunkText);
                       currentChunkRef.current = "";
                       processSentenceQueue();
                     }
@@ -332,23 +346,22 @@ export function LiveVoiceModal({
           currentChunkRef.current = "";
           processSentenceQueue();
         }
+
         if (onNewMessageSent) onNewMessageSent(textToSend, fullAnswer);
       } catch (err: any) {
         if (err.name === "AbortError") return;
         isProcessingRef.current = false;
         setState("listening");
         setStatusText("Listening...");
+        startRecognitionOnce();
       }
     },
-    [activePersona, sessionId, activeFolder, processSentenceQueue, onNewMessageSent]
+    [activePersona, sessionId, activeFolder, processSentenceQueue, onNewMessageSent, destroyRecognition]
   );
 
-  // ─── CORE: Start ONE persistent recognition instance ────────────────────────
-  // On Android, every .start()/.stop() call = beep sound.
-  // Solution: use continuous=true, NEVER stop it while listening.
-  // When AI is thinking/speaking, we ignore incoming results via isProcessingRef.
+  // Start Recognition
   const startRecognitionOnce = useCallback(() => {
-    if (recognitionRef.current) return; // already running
+    if (recognitionRef.current || isProcessingRef.current || !isLiveActiveRef.current || isMutedRef.current) return;
 
     const SpeechRecognitionClass =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -363,10 +376,9 @@ export function LiveVoiceModal({
     setErrorMessage(null);
 
     const rec = new SpeechRecognitionClass();
-    rec.continuous = true;      // Stay open — no start/stop beep loop on Android
+    rec.continuous = true;
     rec.interimResults = true;
     rec.lang = selectedLang;
-    rec.maxAlternatives = 1;
 
     rec.onstart = () => {
       setState("listening");
@@ -374,37 +386,25 @@ export function LiveVoiceModal({
     };
 
     rec.onresult = (event: any) => {
-      // Ignore results while AI is thinking or TTS is speaking
       if (isProcessingRef.current || isMutedRef.current || !isLiveActiveRef.current) return;
 
-      let finalText = "";
-      let interimText = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalText += t + " ";
-        else interimText += t;
+      let fullText = "";
+      for (let i = 0; i < event.results.length; i++) {
+        fullText += event.results[i][0].transcript + " ";
       }
 
-      const currentText = (finalText + interimText).trim();
+      const currentText = fullText.trim();
       if (!currentText) return;
 
       setTranscript(currentText);
 
-      // Reset silence timer on every result
+      // Fast 650ms silence detection -> Triggers AI call reliably!
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-
-      // If we got a final result, send immediately
-      if (finalText.trim().length > 1) {
-        silenceTimerRef.current = setTimeout(() => {
-          if (!isProcessingRef.current) sendSpokenTextToAI(finalText.trim());
-        }, 400);
-      } else if (currentText.length > 3) {
-        // Interim result — send after 1.5s silence
-        silenceTimerRef.current = setTimeout(() => {
-          if (!isProcessingRef.current && currentText.length > 1)
-            sendSpokenTextToAI(currentText);
-        }, 1500);
-      }
+      silenceTimerRef.current = setTimeout(() => {
+        if (!isProcessingRef.current && currentText.length > 1) {
+          sendSpokenTextToAI(currentText);
+        }
+      }, 650);
     };
 
     rec.onerror = (event: any) => {
@@ -413,18 +413,14 @@ export function LiveVoiceModal({
         setErrorMessage("Microphone access denied. Allow mic in browser settings.");
         setState("error");
         recognitionRef.current = null;
-        return;
       }
-      // For "no-speech", "audio-capture", "network" — don't destroy; rec stays running
     };
 
     rec.onend = () => {
-      // Android Chrome fires onend even for continuous mode after ~60s silence.
-      // Restart ONCE silently (no new instance — same ref reused).
       recognitionRef.current = null;
-      if (isLiveActiveRef.current && !isMutedRef.current) {
+      if (isLiveActiveRef.current && !isMutedRef.current && !isProcessingRef.current) {
         setTimeout(() => {
-          if (isLiveActiveRef.current && !isMutedRef.current && !recognitionRef.current) {
+          if (isLiveActiveRef.current && !isMutedRef.current && !isProcessingRef.current && !recognitionRef.current) {
             startRecognitionOnce();
           }
         }, 300);
@@ -439,27 +435,11 @@ export function LiveVoiceModal({
     }
   }, [selectedLang, sendSpokenTextToAI]);
 
-  // Destroy current recognition (on mute/close/language change)
-  const destroyRecognition = useCallback(() => {
-    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    if (synthRef.current) synthRef.current.cancel();
-    isSpeakingRef.current = false;
-    isProcessingRef.current = false;
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.onend = null;
-        recognitionRef.current.onerror = null;
-        recognitionRef.current.abort();
-      } catch (e) {}
-      recognitionRef.current = null;
-    }
-  }, []);
-
-  // Open/close modal
+  // Open/Close Lifecycle
   useEffect(() => {
     if (isOpen) {
       isLiveActiveRef.current = true;
+      isProcessingRef.current = false;
       setTranscript("");
       setAiResponse("");
       setErrorMessage(null);
@@ -510,10 +490,10 @@ export function LiveVoiceModal({
   if (!isOpen) return null;
 
   const handleOrbClick = () => {
-    if (isProcessingRef.current) {
-      // Interrupt AI
+    if (transcript.trim() && !isProcessingRef.current) {
+      sendSpokenTextToAI(transcript.trim());
+    } else if (isProcessingRef.current) {
       destroyRecognition();
-      if (synthRef.current) synthRef.current.cancel();
       isProcessingRef.current = false;
       isSpeakingRef.current = false;
       currentSentenceQueueRef.current = [];
@@ -572,7 +552,7 @@ export function LiveVoiceModal({
         <div
           onClick={handleOrbClick}
           className="relative w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center cursor-pointer group"
-          title="Tap to interrupt"
+          title="Tap orb to send or interrupt"
         >
           <canvas ref={canvasRef} className="w-full h-full object-contain" />
           <div className="absolute inset-0 m-auto w-28 h-28 rounded-full bg-black/60 border border-white/10 flex flex-col items-center justify-center shadow-2xl transition-transform duration-200 group-hover:scale-105 backdrop-blur-md">

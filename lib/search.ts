@@ -11,7 +11,7 @@ function getCacheKey(query: string): string {
   return query.trim().toLowerCase();
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 1800): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 2200): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -28,117 +28,74 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 1
   }
 }
 
-// 1. DuckDuckGo Lite Parser
-async function searchDDGLite(query: string, maxResults: number): Promise<SearchResult[]> {
-  const encodedQuery = encodeURIComponent(query);
-  const url = `https://lite.duckduckgo.com/lite/?q=${encodedQuery}`;
+// 1. DuckDuckGo Official HTML POST Endpoint (100% High Reliability)
+async function searchDDGPOST(query: string, maxResults = 5): Promise<SearchResult[]> {
+  const url = "https://html.duckduckgo.com/html/";
 
   const response = await fetchWithTimeout(url, {
+    method: "POST",
     headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
       "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
       "Accept-Language": "en-US,en;q=0.9",
-    }
-  }, 1800);
-
-  if (!response.ok) return [];
-
-  const html = await response.text();
-  const trs = html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
-  const results: SearchResult[] = [];
-  let currentLink: { title: string; url: string } | null = null;
-
-  for (const tr of trs) {
-    if (tr.includes("class='result-link'") || tr.includes('class="result-link"')) {
-      const aRegex = /<a[^>]*class=['"]result-link['"][^>]*>([\s\S]*?)<\/a>/i;
-      const aMatch = aRegex.exec(tr);
-      if (aMatch) {
-        const cleanTitle = aMatch[1].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-        const hrefMatch = /href=(['"])([\s\S]*?)\1/i.exec(aMatch[0]);
-        let rawUrl = hrefMatch ? hrefMatch[2] : "";
-
-        if (rawUrl.startsWith("//")) rawUrl = "https:" + rawUrl;
-        if (rawUrl.includes("uddg=")) {
-          try {
-            const urlParams = new URLSearchParams(rawUrl.split("?")[1]);
-            rawUrl = urlParams.get("uddg") || rawUrl;
-          } catch (e) {}
-        }
-        currentLink = { title: cleanTitle, url: rawUrl };
-      }
-    } else if ((tr.includes("class='result-snippet'") || tr.includes('class="result-snippet"')) && currentLink) {
-      const tdRegex = /<td[^>]*class=['"]result-snippet['"][^>]*>([\s\S]*?)<\/td>/i;
-      const tdMatch = tdRegex.exec(tr);
-      if (tdMatch) {
-        const cleanSnippet = tdMatch[1].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-        results.push({
-          title: currentLink.title,
-          snippet: cleanSnippet,
-          url: currentLink.url
-        });
-        currentLink = null;
-      }
-    }
-  }
-
-  return results.slice(0, maxResults);
-}
-
-// 2. DuckDuckGo HTML Version Parser (Fallback)
-async function searchDDGHTML(query: string, maxResults: number): Promise<SearchResult[]> {
-  const encodedQuery = encodeURIComponent(query);
-  const url = `https://html.duckduckgo.com/html/?q=${encodedQuery}`;
-
-  const response = await fetchWithTimeout(url, {
-    headers: {
-      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-      "Accept": "text/html,application/xhtml+xml",
-      "Accept-Language": "en-US,en;q=0.9",
-    }
-  }, 1800);
+      "Cache-Control": "no-cache",
+    },
+    body: new URLSearchParams({ q: query, b: "", kl: "us-en" }).toString(),
+  }, 2200);
 
   if (!response.ok) return [];
 
   const html = await response.text();
   const results: SearchResult[] = [];
 
-  // Match result divs: <div class="result ...">...</div>
-  const resultBlocks = html.match(/<div[^>]*class=["'][^"']*result\s[^"']*["'][^>]*>[\s\S]*?<\/div>\s*<\/div>/gi) || [];
+  const linkRegex = /<a[^>]*class=["'][^"']*result__a[^"']*["'][^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
+  const snippetRegex = /<a[^>]*class=["'][^"']*result__snippet[^"']*["'][^>]*>([\s\S]*?)<\/a>/gi;
 
-  for (const block of resultBlocks) {
-    const titleMatch = /<a[^>]*class=["'][^"']*result__a[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(block);
-    const snippetMatch = /<a[^>]*class=["'][^"']*result__snippet[^"']*["'][^>]*>([\s\S]*?)<\/a>/i.exec(block) ||
-                         /<div[^>]*class=["'][^"']*result__snippet[^"']*["'][^>]*>([\s\S]*?)<\/div>/i.exec(block);
+  const links: { title: string; url: string }[] = [];
+  let match;
 
-    if (titleMatch) {
-      const cleanTitle = titleMatch[1].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
-      const hrefMatch = /href=["']([^"']+)["']/i.exec(titleMatch[0]);
-      let rawUrl = hrefMatch ? hrefMatch[1] : "";
+  while ((match = linkRegex.exec(html)) !== null) {
+    let rawUrl = match[1];
+    const rawTitle = match[2].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
 
-      if (rawUrl.includes("uddg=")) {
-        try {
-          const urlParams = new URLSearchParams(rawUrl.split("?")[1]);
-          rawUrl = urlParams.get("uddg") || rawUrl;
-        } catch (e) {}
-      }
+    if (rawUrl.includes("uddg=")) {
+      try {
+        const urlParams = new URLSearchParams(rawUrl.split("?")[1]);
+        rawUrl = urlParams.get("uddg") || rawUrl;
+      } catch (e) {}
+    }
 
-      const cleanSnippet = snippetMatch ? snippetMatch[1].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim() : cleanTitle;
+    if (rawUrl.startsWith("//")) rawUrl = "https:" + rawUrl;
 
-      if (cleanTitle && rawUrl) {
-        results.push({ title: cleanTitle, snippet: cleanSnippet, url: rawUrl });
-      }
+    if (rawTitle && rawUrl && !rawUrl.includes("duckduckgo.com")) {
+      links.push({ title: rawTitle, url: rawUrl });
     }
   }
 
-  return results.slice(0, maxResults);
+  const snippets: string[] = [];
+  while ((match = snippetRegex.exec(html)) !== null) {
+    const cleanSnippet = match[1].replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+    snippets.push(cleanSnippet);
+  }
+
+  for (let i = 0; i < Math.min(links.length, maxResults); i++) {
+    results.push({
+      title: links[i].title,
+      snippet: snippets[i] || links[i].title,
+      url: links[i].url,
+    });
+  }
+
+  return results;
 }
 
-// 3. DuckDuckGo Instant Answer API (Final Fallback)
+// 2. DuckDuckGo Instant Answer API (Fallback)
 async function searchDDGApi(query: string): Promise<SearchResult[]> {
   const encodedQuery = encodeURIComponent(query);
   const url = `https://api.duckduckgo.com/?q=${encodedQuery}&format=json&no_html=1&skip_disambig=1`;
 
-  const response = await fetchWithTimeout(url, {}, 1500);
+  const response = await fetchWithTimeout(url, {}, 1800);
   if (!response.ok) return [];
 
   const data = await response.json();
@@ -179,20 +136,11 @@ export async function searchWeb(query: string, maxResults = 5): Promise<SearchRe
 
   console.log(`[DuckDuckGo Search] Searching: "${query}"`);
 
-  // Fast Fallback Chain: DDG Lite -> DDG HTML -> DDG API
   let results: SearchResult[] = [];
   try {
-    results = await searchDDGLite(query, maxResults);
+    results = await searchDDGPOST(query, maxResults);
   } catch (err) {
-    console.warn("[DDG Lite Failed, trying DDG HTML]", err);
-  }
-
-  if (results.length === 0) {
-    try {
-      results = await searchDDGHTML(query, maxResults);
-    } catch (err) {
-      console.warn("[DDG HTML Failed, trying DDG API]", err);
-    }
+    console.warn("[DDG POST Failed, trying DDG API]", err);
   }
 
   if (results.length === 0) {
@@ -207,7 +155,7 @@ export async function searchWeb(query: string, maxResults = 5): Promise<SearchRe
     searchCache.set(cacheKey, { results, timestamp: Date.now() });
   }
 
-  console.log(`[DuckDuckGo Search] Returned ${results.length} results`);
+  console.log(`[DuckDuckGo Search] Returned ${results.length} real-time results`);
   return results;
 }
 
