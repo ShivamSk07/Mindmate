@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { generateResponse, generateStreamResponse, getCerebrasClient, MODEL } from "@/lib/cerebras";
+import { generateStreamResponse, getCerebrasClient, MODEL } from "@/lib/cerebras";
 import { searchWeb } from "@/lib/search";
 import { needsWebSearch, extractSearchQuery } from "@/lib/intent";
 import { buildNormalPrompt, buildSearchAugmentedPrompt } from "@/lib/prompts";
@@ -44,54 +44,6 @@ async function extractAndUpdateMemory(userId: string, userMessage: string, assis
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { message, conversation_id, persona_id, folder, force_search, mode, tone, length } = body;
-
-    if (!message?.trim()) {
-      return NextResponse.json({ error: "Message cannot be empty" }, { status: 400 });
-    }
-
-    let conv;
-    // 1. Get or Create Session (Conversation)
-    if (conversation_id) {
-      conv = await prisma.session.findFirst({
-        where: { id: conversation_id, userId: user.userId },
-        include: { activePersona: true }
-      });
-      if (!conv) {
-        return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
-      }
-    } else {
-      // Smart Title Generation
-      let smartTitle = message.trim().slice(0, 24) || "New Conversation";
-      try {
-        const client = getCerebrasClient();
-        const titleRes = await client.chat.completions.create({
-          messages: [
-            {
-              role: "user",
-              content: `Generate a very short 2-4 word title for this message. No quotes, no markdown: ${message}`,
-            },
-          ],
-          model: MODEL,
-          temperature: 0.3,
-          max_tokens: 8,
-        }) as any;
-        const generated = titleRes.choices[0]?.message?.content?.trim().replace(/"/g, "");
-        if (generated && generated.length > 2) {
-          smartTitle = generated;
-        }
-      } catch (err: any) {
-        console.warn("[Smart Title Generation Error]", err?.message || err);
-      }
-
 const DEFAULT_PERSONAS = [
   {
     id: "mindmate-default-1",
@@ -119,33 +71,64 @@ const DEFAULT_PERSONAS = [
   }
 ];
 
-async function seedDefaultPersonas() {
-  for (const def of DEFAULT_PERSONAS) {
-    await prisma.persona.upsert({
-      where: { id: def.id },
-      update: {
-        name: def.name,
-        tone: def.tone,
-        colorTheme: def.colorTheme,
-        systemPrompt: def.systemPrompt,
-        isCustom: false,
-      },
-      create: {
-        id: def.id,
-        name: def.name,
-        tone: def.tone,
-        colorTheme: def.colorTheme,
-        systemPrompt: def.systemPrompt,
-        isCustom: false,
-      }
-    });
+let personasSeeded = false;
+async function seedDefaultPersonasIfNeeded() {
+  if (personasSeeded) return;
+  try {
+    for (const def of DEFAULT_PERSONAS) {
+      await prisma.persona.upsert({
+        where: { id: def.id },
+        update: {
+          name: def.name,
+          tone: def.tone,
+          colorTheme: def.colorTheme,
+          systemPrompt: def.systemPrompt,
+          isCustom: false,
+        },
+        create: {
+          id: def.id,
+          name: def.name,
+          tone: def.tone,
+          colorTheme: def.colorTheme,
+          systemPrompt: def.systemPrompt,
+          isCustom: false,
+        }
+      });
+    }
+    personasSeeded = true;
+  } catch (e) {
+    console.warn("Seeding default personas failed", e);
   }
 }
 
-      // Ensure default personas are seeded
-      await seedDefaultPersonas();
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-      // Check if selected persona exists
+    const body = await request.json();
+    const { message, conversation_id, persona_id, folder, force_search, mode, tone, length } = body;
+
+    if (!message?.trim()) {
+      return NextResponse.json({ error: "Message cannot be empty" }, { status: 400 });
+    }
+
+    let conv;
+    // 1. Get or Create Session (Instant without blocking LLM call)
+    if (conversation_id) {
+      conv = await prisma.session.findFirst({
+        where: { id: conversation_id, userId: user.userId },
+        include: { activePersona: true }
+      });
+      if (!conv) {
+        return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
+      }
+    } else {
+      const fallbackTitle = message.trim().slice(0, 24) || "New Conversation";
+      await seedDefaultPersonasIfNeeded();
+
       let activePersonaId = persona_id || null;
       if (!activePersonaId) {
         const defaultPersona = await prisma.persona.findFirst({
@@ -156,7 +139,7 @@ async function seedDefaultPersonas() {
 
       conv = await prisma.session.create({
         data: {
-          title: smartTitle,
+          title: fallbackTitle,
           userId: user.userId,
           activePersonaId: activePersonaId,
           folder: folder || ""
@@ -165,8 +148,8 @@ async function seedDefaultPersonas() {
       });
     }
 
-    // 2. Save User Message
-    await prisma.message.create({
+    // 2. Save User Message asynchronously
+    const saveUserMsgPromise = prisma.message.create({
       data: {
         role: "user",
         content: message,
@@ -174,25 +157,24 @@ async function seedDefaultPersonas() {
       }
     });
 
-    // 3. Fetch User Profile for Memory Vault
-    const profile = await prisma.userProfile.findUnique({
-      where: { userId: user.userId }
-    });
+    // 3. Fetch Profile & Message History in parallel
+    const [profile, historyMessages] = await Promise.all([
+      prisma.userProfile.findUnique({ where: { userId: user.userId } }),
+      prisma.message.findMany({
+        where: { sessionId: conv.id },
+        orderBy: { createdAt: "asc" },
+        take: 6
+      }),
+      saveUserMsgPromise
+    ]);
+
     const memoryVault = profile?.memoryVault || "";
-
-    // 4. Fetch Message History (last 6 messages - to optimize token budget)
-    const historyMessages = await prisma.message.findMany({
-      where: { sessionId: conv.id },
-      orderBy: { createdAt: "asc" },
-      take: 6
-    });
-
     const chatHistory = historyMessages.map(m => ({
       role: m.role as "user" | "assistant" | "system",
       content: m.content
     }));
 
-    // 5. Intercept Slash Commands
+    // 4. Intercept Slash Commands
     let userQuery = message.trim();
     let finalForceSearch = force_search;
 
@@ -205,8 +187,8 @@ async function seedDefaultPersonas() {
       } else {
         userQuery = "Rewrite the last response to make it more refined and polished.";
       }
-    } else if (userQuery.startsWith("/research")) {
-      const researchQuery = userQuery.substring(9).trim();
+    } else if (userQuery.startsWith("/research") || userQuery.startsWith("/search")) {
+      const researchQuery = userQuery.replace(/^\/(research|search)\s*/i, "").trim();
       if (researchQuery) {
         userQuery = researchQuery;
         finalForceSearch = true;
@@ -220,48 +202,12 @@ async function seedDefaultPersonas() {
     const personaName = conv.activePersona?.name || "Clarity";
     const personaPrompt = conv.activePersona?.systemPrompt || "Friendly and supportive assistant.";
 
+    // 5. DuckDuckGo Web Search Trigger
     if (finalForceSearch || needsWebSearch(userQuery)) {
-      let searchQuery = "";
-      
-      const wordCount = userQuery.split(/\s+/).length;
-      const isSimpleQuery = wordCount <= 4 && 
-        !userQuery.toLowerCase().includes("kya") && 
-        !userQuery.toLowerCase().includes("kaun") && 
-        !userQuery.toLowerCase().includes("kab") && 
-        !userQuery.toLowerCase().includes("kahan");
+      const searchQuery = extractSearchQuery(userQuery);
+      console.log(`[Instant Search Query]: "${searchQuery}"`);
 
-      if (isSimpleQuery) {
-        searchQuery = extractSearchQuery(userQuery);
-        console.log(`[Search] Bypassed LLM query optimizer for simple query: "${searchQuery}"`);
-      } else {
-        try {
-          const client = getCerebrasClient();
-          const queryRes = await client.chat.completions.create({
-            model: MODEL,
-            messages: [
-              {
-                role: "system",
-                content: "You are a search query optimizer. Given the user's message, translate it into a short, clean, 2-4 word English search engine query. Return only the query itself with no quotes, punctuation, or filler words.",
-              },
-              {
-                role: "user",
-                content: userQuery,
-              }
-            ],
-            temperature: 0.1,
-            max_tokens: 20,
-          }) as any;
-          searchQuery = queryRes.choices[0]?.message?.content?.trim().replace(/"/g, "") || "";
-        } catch (err) {
-          console.error("LLM search query optimization failed, using fallback:", err);
-        }
-      }
-
-      if (!searchQuery) {
-        searchQuery = extractSearchQuery(userQuery);
-      }
-
-      console.log(`[Search] Optimised query: "${searchQuery}"`);
+      // Execute DuckDuckGo Web Search with 1.8s fast timeout
       const results = await searchWeb(searchQuery, 5);
 
       if (results.length > 0) {
@@ -303,16 +249,14 @@ async function seedDefaultPersonas() {
       maxTokens = 350;
       queryMessages.push({
         role: "system",
-        content: "STRICT RULE: Be extremely brief, direct, and answer in 1-2 sentences maximum to save token budget."
+        content: "STRICT RULE: Be extremely brief, direct, and answer in 1-2 sentences maximum."
       });
     } else if (mode === "deep") {
       targetModel = MODEL;
       maxTokens = 4096;
-
-      // Inject thinking instructions for deep mode
       queryMessages.push({
         role: "system",
-        content: "STRICT RULE: Start your response by detailing your step-by-step thinking process inside <thinking>...</thinking> tags. Once you finish thinking, write your final response after the </thinking> tag. Do not skip the thinking block."
+        content: "STRICT RULE: Start your response by detailing your step-by-step thinking process inside <thinking>...</thinking> tags. Once you finish thinking, write your final response after the </thinking> tag."
       });
     }
 
@@ -323,7 +267,7 @@ async function seedDefaultPersonas() {
     } else if (tone === "professional") {
       toneInstruction = "\nTONE POLICY: Respond in a highly professional, formal, and authoritative manner.";
     } else if (tone === "funny") {
-      toneInstruction = "\nTONE POLICY: Respond in a humorous, lighthearted, and witty manner with a couple of jokes.";
+      toneInstruction = "\nTONE POLICY: Respond in a humorous, lighthearted, and witty manner.";
     } else if (tone === "direct") {
       toneInstruction = "\nTONE POLICY: Respond in a direct, concise, and no-nonsense manner.";
     }
@@ -342,57 +286,13 @@ async function seedDefaultPersonas() {
       });
     }
 
-    // Retrieve Document RAG Context
-    try {
-      const sessionDocs = await prisma.document.findMany({
-        where: { sessionId: conv.id },
-        include: { chunks: true },
-      });
-
-      if (sessionDocs.length > 0) {
-        const stopwords = new Set(["this", "that", "with", "from", "your", "what", "have", "about", "here"]);
-        const keywords = userQuery
-          .toLowerCase()
-          .replace(/[^\w\s]/g, "")
-          .split(/\s+/)
-          .filter((word: string) => word.length > 3 && !stopwords.has(word));
-
-        const scoredChunks = sessionDocs
-          .flatMap(d => d.chunks.map(c => ({ chunk: c, filename: d.filename })))
-          .map((item: any) => {
-            let score = 0;
-            const contentLower = item.chunk.content.toLowerCase();
-            for (const word of keywords) {
-              if (contentLower.includes(word)) score += 1;
-            }
-            return { ...item, score };
-          })
-          .filter((item: any) => item.score > 0 || keywords.length === 0)
-          .sort((a: any, b: any) => b.score - a.score)
-          .slice(0, 5);
-
-        if (scoredChunks.length > 0) {
-          const ragContext = scoredChunks
-            .map(item => `[File: ${item.filename}]\n${item.chunk.content}`)
-            .join("\n\n---\n\n");
-
-          queryMessages.push({
-            role: "system",
-            content: `RELEVANT DOCUMENT CONTEXT FROM UPLOADED FILES:\n${ragContext}\n\nUse the above context to answer the user's questions about their uploaded files. Answer in natural Hindi, Hinglish, or English matching the user's query language. Cite the document filename when referencing facts from it.`
-          });
-        }
-      }
-    } catch (ragErr) {
-      console.error("[RAG Retrieval Failed]", ragErr);
-    }
-
-    // Inject current date-time context for reminder scheduling
+    // Inject current date-time context
     queryMessages.push({
       role: "system",
-      content: `CURRENT DATETIME CONTEXT:\nThe current time is ${new Date().toString()} (UTC ISO: ${new Date().toISOString()}). Use this to calculate absolute datetimes for task scheduling.`
+      content: `CURRENT DATETIME CONTEXT:\nThe current time is ${new Date().toString()} (UTC ISO: ${new Date().toISOString()}). Use this for latest context.`
     });
 
-    // 6. Generate and Stream SSE Response
+    // 6. Generate and Stream SSE Response (Ultra Fast Stream)
     const stream = await generateStreamResponse(queryMessages, targetModel, maxTokens);
     const encoder = new TextEncoder();
     const userId = user.userId;
@@ -409,44 +309,18 @@ async function seedDefaultPersonas() {
             }
           }
 
-          // Parse out task scheduling triggers if present
-          let cleanAssistantResponse = fullResponse;
-          const scheduleRegex = /\[ScheduleTask:\s*Type="([^"]+)"\s+RunAt="([^"]+)"\s+Details="([^"]+)"\]/i;
-          const match = fullResponse.match(scheduleRegex);
-          if (match) {
-            const taskType = match[1];
-            const runAtStr = match[2];
-            const details = match[3];
-            try {
-              const runAt = new Date(runAtStr);
-              await prisma.scheduledTask.create({
-                data: {
-                  taskType,
-                  runAt,
-                  details,
-                  sessionId: conv.id,
-                }
-              });
-              console.log(`[Reminders] Successfully scheduled task: ${details} at ${runAt}`);
-              cleanAssistantResponse = fullResponse.replace(scheduleRegex, "").trim();
-            } catch (err) {
-              console.error("[Reminders] Failed to parse and schedule task:", err);
-            }
-          }
-
           // Save assistant message to database
           await prisma.message.create({
             data: {
               role: "assistant",
-              content: cleanAssistantResponse,
+              content: fullResponse,
               searched,
               sources: sources.length > 0 ? sources : undefined,
               sessionId: conv.id
             }
           });
 
-          // Trigger Memory Vault update in background
-          // Note: We don't block the stream response on memory extraction
+          // Memory extraction in background (non-blocking)
           extractAndUpdateMemory(userId, message, fullResponse);
 
           // Update Session modified timestamp
