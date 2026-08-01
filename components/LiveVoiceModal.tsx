@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, X, Sparkles, PhoneOff, Globe, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
+import { Mic, MicOff, X, Sparkles, PhoneOff, Globe, AlertCircle, RefreshCw } from "lucide-react";
 
 interface Persona {
   id: string;
@@ -22,7 +22,7 @@ interface LiveVoiceModalProps {
   onNewMessageSent?: (userText: string, assistantReply: string) => void;
 }
 
-type AppState = "start" | "listening" | "thinking" | "speaking" | "error";
+type AppState = "listening" | "thinking" | "speaking" | "error";
 
 const SUPPORTED_LANGUAGES = [
   { code: "en-IN", label: "Hinglish / Indian Eng" },
@@ -38,7 +38,7 @@ export function LiveVoiceModal({
   activeFolder,
   onNewMessageSent,
 }: LiveVoiceModalProps) {
-  const [appState, setAppState] = useState<AppState>("start");
+  const [appState, setAppState] = useState<AppState>("listening");
   const [transcript, setTranscript] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [isMuted, setIsMuted] = useState(false);
@@ -53,12 +53,9 @@ export function LiveVoiceModal({
   const animFrameRef = useRef<number | null>(null);
 
   const isLiveRef = useRef(false);
-  const appStateRef = useRef<AppState>("start");
+  const appStateRef = useRef<AppState>("listening");
   const isMutedRef = useRef(false);
   const liveTranscriptRef = useRef("");
-  // Whether the user has performed the first gesture unlock
-  const unlockedRef = useRef(false);
-  // Smooth animation level driven by state
   const animLevelRef = useRef(0);
   const animPhaseRef = useRef(0);
 
@@ -73,7 +70,7 @@ export function LiveVoiceModal({
     }
   }, []);
 
-  // ─── Canvas — Gemini Live style fluid rings, driven by state ────────────
+  // ─── Gemini Live Style Smooth Fluid Wave Canvas ─────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     const canvas = canvasRef.current;
@@ -91,22 +88,22 @@ export function LiveVoiceModal({
 
       const st = appStateRef.current;
       const target =
-        st === "listening" ? 0.28 + Math.sin(Date.now() / 400) * 0.08
-        : st === "speaking" ? 0.45 + Math.sin(Date.now() / 200) * 0.12
-        : st === "thinking" ? 0.12
+        st === "listening" ? 0.32 + Math.sin(Date.now() / 350) * 0.1
+        : st === "speaking" ? 0.52 + Math.sin(Date.now() / 180) * 0.15
+        : st === "thinking" ? 0.14
         : 0.06;
 
-      animLevelRef.current += (target - animLevelRef.current) * 0.06;
-      animPhaseRef.current += st === "speaking" ? 0.06 : st === "listening" ? 0.045 : 0.025;
+      animLevelRef.current += (target - animLevelRef.current) * 0.08;
+      animPhaseRef.current += st === "speaking" ? 0.07 : st === "listening" ? 0.05 : 0.025;
 
       const lvl = animLevelRef.current;
       const phase = animPhaseRef.current;
       const baseR = Math.min(W, H) * 0.26;
 
       const ringColors: [string, string][] = [
-        ["rgba(99,102,241,0.45)", "rgba(168,85,247,0.25)"],
-        ["rgba(56,189,248,0.35)", "rgba(99,102,241,0.15)"],
-        ["rgba(236,72,153,0.25)", "rgba(129,140,248,0.10)"],
+        ["rgba(99,102,241,0.50)", "rgba(168,85,247,0.25)"],
+        ["rgba(56,189,248,0.40)", "rgba(99,102,241,0.18)"],
+        ["rgba(236,72,153,0.30)", "rgba(129,140,248,0.12)"],
       ];
 
       for (let r = 0; r < 3; r++) {
@@ -128,7 +125,7 @@ export function LiveVoiceModal({
         ctx.fillStyle = g;
         ctx.fill();
         ctx.lineWidth = 1.5;
-        ctx.strokeStyle = r === 0 ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)";
+        ctx.strokeStyle = r === 0 ? "rgba(255,255,255,0.4)" : "rgba(255,255,255,0.15)";
         ctx.stroke();
       }
 
@@ -139,14 +136,13 @@ export function LiveVoiceModal({
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, [isOpen]);
 
-  // ─── TTS ────────────────────────────────────────────────────────────────
+  // ─── Clean Markdown for TTS ──────────────────────────────────────────────
   const cleanForSpeech = (t: string) =>
     t.replace(/```[\s\S]*?```/g, "").replace(/`([^`]+)`/g, "$1")
      .replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1")
      .replace(/#+\s+/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
      .replace(/[-*]\s+/g, "").trim();
 
-  // Forward ref so speakText onDone can call startListening
   const startListeningRef = useRef<() => void>(() => {});
 
   const speakText = useCallback((rawText: string) => {
@@ -160,11 +156,10 @@ export function LiveVoiceModal({
     const next = () => {
       if (!isLiveRef.current) return;
       if (idx >= sentences.length) {
-        // Done speaking → auto-resume listening (no gesture needed, already unlocked)
         if (!isMutedRef.current) {
-          setTimeout(() => { startListeningRef.current(); }, 300);
+          setTimeout(() => { startListeningRef.current(); }, 250);
         } else {
-          setAppState("start");
+          setAppState("listening");
         }
         return;
       }
@@ -244,9 +239,7 @@ export function LiveVoiceModal({
     }
   }, [activePersona, sessionId, activeFolder, speakText, onNewMessageSent]);
 
-  // ─── Core Recognition ────────────────────────────────────────────────────
-  // MUST be called from a user-gesture context for first call on Android.
-  // After the first call, subsequent calls (from TTS onend) work automatically.
+  // ─── Speech Recognition Engine ───────────────────────────────────────────
   const startListening = useCallback(() => {
     if (!isLiveRef.current || isMutedRef.current) return;
     if (recognitionRef.current) {
@@ -257,7 +250,7 @@ export function LiveVoiceModal({
     const SpeechRecClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecClass) {
       setIsSupported(false);
-      setErrorMessage("Web Speech API not supported. Use Chrome on Android or Safari on iOS.");
+      setErrorMessage("Web Speech API not supported.");
       setAppState("error");
       return;
     }
@@ -268,8 +261,8 @@ export function LiveVoiceModal({
     setAppState("listening");
 
     const rec = new SpeechRecClass();
-    rec.continuous = false;     // Single utterance — no beep loop on Android
-    rec.interimResults = true;  // Live transcript as user speaks
+    rec.continuous = false;
+    rec.interimResults = true;
     rec.lang = selectedLang;
     rec.maxAlternatives = 1;
 
@@ -299,9 +292,8 @@ export function LiveVoiceModal({
       const captured = liveTranscriptRef.current;
       if (captured && captured.length > 1) {
         sendToAI(captured);
-      } else if (isLiveRef.current && !isMutedRef.current && unlockedRef.current) {
-        // Auto-restart on transient errors (no-speech, network glitch)
-        setTimeout(() => { if (isLiveRef.current && !isMutedRef.current) startListeningRef.current(); }, 400);
+      } else if (isLiveRef.current && !isMutedRef.current) {
+        setTimeout(() => { if (isLiveRef.current && !isMutedRef.current) startListeningRef.current(); }, 350);
       }
     };
 
@@ -311,45 +303,41 @@ export function LiveVoiceModal({
       const captured = liveTranscriptRef.current;
       if (captured && captured.length > 1) {
         sendToAI(captured);
-      } else if (isLiveRef.current && !isMutedRef.current && unlockedRef.current) {
-        // Auto-restart silently — stay in listening mode
+      } else if (isLiveRef.current && !isMutedRef.current) {
         setTimeout(() => {
           if (isLiveRef.current && !isMutedRef.current && appStateRef.current === "listening") {
             startListeningRef.current();
           }
-        }, 300);
+        }, 250);
       }
     };
 
     recognitionRef.current = rec;
     try { rec.start(); } catch (_) {
       recognitionRef.current = null;
-      setAppState("start");
     }
   }, [selectedLang, sendToAI]);
 
-  // Keep ref current
   useEffect(() => { startListeningRef.current = startListening; }, [startListening]);
 
-  // ─── Lifecycle ───────────────────────────────────────────────────────────
+  // ─── Modal Open / Close ──────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
       isLiveRef.current = true;
-      unlockedRef.current = false;
-      setAppState("start");
+      setAppState("listening");
       setTranscript("");
       setAiResponse("");
       setErrorMessage(null);
       setIsMuted(false);
       liveTranscriptRef.current = "";
+      startListening();
     } else {
       isLiveRef.current = false;
-      unlockedRef.current = false;
       try { recognitionRef.current?.abort(); } catch (_) {}
       recognitionRef.current = null;
       abortControllerRef.current?.abort();
       synthRef.current?.cancel();
-      setAppState("start");
+      setAppState("listening");
     }
     return () => {
       isLiveRef.current = false;
@@ -358,9 +346,9 @@ export function LiveVoiceModal({
       abortControllerRef.current?.abort();
       synthRef.current?.cancel();
     };
-  }, [isOpen, selectedLang]);
+  }, [isOpen, selectedLang, startListening]);
 
-  // ─── Shake to Exit ───────────────────────────────────────────────────────
+  // ─── Shake Sensor to Exit ────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     let lastShake = 0;
@@ -382,46 +370,35 @@ export function LiveVoiceModal({
 
   if (!isOpen) return null;
 
-  // ─── Gesture Unlock (called DIRECTLY from tap handler — Android compatible) ──
-  const handleGestureUnlock = () => {
-    if (!isSupported || errorMessage) return;
-    unlockedRef.current = true;
-    startListening(); // This IS a user gesture → works on Android
-  };
-
-  // ─── Orb Tap ─────────────────────────────────────────────────────────────
+  // ─── Orb Tap (for gesture trigger fallback or interrupting AI) ────────────
   const handleOrbTap = () => {
     if (!isSupported || errorMessage) return;
-    if (appState === "start") {
-      handleGestureUnlock();
-      return;
-    }
-    if (appState === "thinking") return; // Let AI think
     if (appState === "speaking") {
-      // Interrupt AI speech → auto resumes listening
       synthRef.current?.cancel();
       setAppState("listening");
       setAiResponse("");
       setTranscript("");
-      setTimeout(() => { startListeningRef.current(); }, 200);
+      setTimeout(() => { startListeningRef.current(); }, 150);
       return;
     }
-    // listening → if has transcript, submit it
-    if (appState === "listening" && liveTranscriptRef.current.length > 1) {
-      try { recognitionRef.current?.stop(); } catch (_) {}
+    if (appState === "listening") {
+      if (liveTranscriptRef.current.length > 1) {
+        try { recognitionRef.current?.stop(); } catch (_) {}
+      } else {
+        startListening();
+      }
     }
   };
 
-  // Orb visual
   const orbBorder =
-    appState === "listening" ? "border-indigo-400/80"
-    : appState === "speaking" ? "border-emerald-400/80"
-    : appState === "thinking" ? "border-yellow-400/50"
+    appState === "listening" ? "border-indigo-400/80 shadow-indigo-500/30"
+    : appState === "speaking" ? "border-emerald-400/80 shadow-emerald-500/30"
+    : appState === "thinking" ? "border-yellow-400/60 shadow-yellow-500/20"
     : "border-white/10";
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-between bg-[#090a0f] p-6 text-white select-none">
-      {/* Header */}
+      {/* Top Header */}
       <div className="w-full flex items-center justify-between z-10 pt-2">
         <div className="flex items-center gap-2">
           <div className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${
@@ -462,74 +439,30 @@ export function LiveVoiceModal({
         </div>
       </div>
 
-      {/* Main Orb Area */}
+      {/* Main Glass Canvas Orb Area */}
       <div className="relative flex flex-col items-center justify-center flex-1 z-10 w-full">
-
-        {/* "Tap to Begin" overlay — shown only before first gesture */}
-        {appState === "start" && (
-          <div
-            onClick={handleGestureUnlock}
-            className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer z-20"
-          >
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-indigo-500/20 border border-indigo-400/40 flex items-center justify-center animate-pulse">
-                  <Mic size={32} className="text-indigo-300" />
-                </div>
-                <div className="absolute inset-0 rounded-full animate-ping bg-indigo-500/15" />
-              </div>
-              <p className="text-base font-semibold text-zinc-200 tracking-wide mt-2">Tap to begin</p>
-              <p className="text-xs text-zinc-500 tracking-wide">After this, it listens automatically</p>
-            </div>
-          </div>
-        )}
-
-        {/* Canvas Orb (always rendered) */}
         <div
           onClick={handleOrbTap}
-          className={`relative w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center cursor-pointer active:scale-95 transition-transform duration-150 ${appState === "start" ? "opacity-30" : "opacity-100"}`}
+          className="relative w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center cursor-pointer active:scale-95 transition-transform duration-150"
         >
           <canvas ref={canvasRef} className="w-full h-full object-contain" />
 
-          {/* Center orb circle */}
-          <div className={`absolute inset-0 m-auto w-28 h-28 rounded-full bg-black/60 border-2 flex flex-col items-center justify-center shadow-2xl backdrop-blur-md transition-all duration-500 ${orbBorder}`}>
-            {appState === "start" && (
-              <Mic size={28} className="text-zinc-600" />
-            )}
-            {appState === "listening" && (
-              <>
-                {activePersona?.avatarUrl
-                  ? <img src={activePersona.avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover border border-white/20" />
-                  : <Mic size={28} className="text-indigo-400 animate-pulse" />
-                }
-              </>
-            )}
-            {appState === "thinking" && (
-              <Loader2 size={28} className="text-yellow-400 animate-spin" />
-            )}
-            {appState === "speaking" && (
-              <>
-                {activePersona?.avatarUrl
-                  ? <img src={activePersona.avatarUrl} alt="" className="w-14 h-14 rounded-full object-cover border border-emerald-400/30 animate-pulse" />
-                  : <Sparkles size={28} className="text-emerald-400 animate-pulse" />
-                }
-              </>
-            )}
-            {appState === "error" && <AlertCircle size={28} className="text-red-400" />}
-
-            {/* State label */}
-            {appState !== "start" && (
-              <span className="text-[9px] font-bold tracking-widest uppercase mt-1.5 text-zinc-500">{appState}</span>
+          {/* Clean Center Circle with Avatar / Sparkles (NO text labels) */}
+          <div className={`absolute inset-0 m-auto w-28 h-28 rounded-full bg-black/60 border-2 flex items-center justify-center shadow-2xl backdrop-blur-md transition-all duration-500 ${orbBorder}`}>
+            {activePersona?.avatarUrl ? (
+              <img src={activePersona.avatarUrl} alt="" className="w-16 h-16 rounded-full object-cover border border-white/20" />
+            ) : (
+              <Sparkles size={32} className="text-indigo-400" />
             )}
           </div>
         </div>
 
-        {/* Error */}
+        {/* Error message if mic is denied */}
         {(!isSupported || errorMessage) && (
           <div className="mt-4 max-w-sm bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-center">
             <p className="text-xs text-red-300 mb-3">{errorMessage || "Speech API not supported."}</p>
             <button
-              onClick={() => { setErrorMessage(null); setAppState("start"); unlockedRef.current = false; }}
+              onClick={() => { setErrorMessage(null); startListening(); }}
               className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-red-500/20 text-red-300 text-xs font-semibold rounded-xl border border-red-500/30 active:scale-95"
             >
               <RefreshCw size={13} /> Retry
@@ -537,8 +470,8 @@ export function LiveVoiceModal({
           </div>
         )}
 
-        {/* Transcript & Response — no instruction text */}
-        {isSupported && !errorMessage && appState !== "start" && (
+        {/* Real-Time Live Transcript & AI Subtitles */}
+        {isSupported && !errorMessage && (
           <div className="mt-6 w-full max-w-lg text-center flex flex-col items-center gap-2 px-4 min-h-[60px]">
             {transcript && (
               <p className="text-sm font-medium text-indigo-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 backdrop-blur-md max-w-full">
@@ -554,22 +487,18 @@ export function LiveVoiceModal({
         )}
       </div>
 
-      {/* Bottom Controls — only mic mute + end */}
+      {/* Bottom Controls */}
       <div className="w-full flex items-center justify-center gap-6 z-10 pb-6">
         <button
           onClick={() => {
             if (isMuted) {
               setIsMuted(false);
-              // Resume listening if live
-              if (unlockedRef.current && isLiveRef.current && appStateRef.current === "listening") {
-                startListeningRef.current();
-              }
+              startListening();
             } else {
               setIsMuted(true);
               try { recognitionRef.current?.abort(); } catch (_) {}
               recognitionRef.current = null;
               synthRef.current?.cancel();
-              if (appStateRef.current !== "thinking") setAppState("listening");
             }
           }}
           className={`p-4 rounded-full transition-all active:scale-95 ${
