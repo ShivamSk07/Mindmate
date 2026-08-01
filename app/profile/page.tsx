@@ -142,11 +142,11 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-[var(--bg-main)] text-[var(--text-primary)] transition-colors duration-300 relative overflow-hidden">
+    <div className="h-[100dvh] w-full flex flex-col md:flex-row bg-[var(--bg-main)] text-[var(--text-primary)] relative overflow-hidden">
 
 
       {/* Settings Navigation Sidebar */}
-      <aside className="w-full md:w-60 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.04)] p-6 flex flex-row md:flex-col gap-4 items-center md:items-start glass-sidebar relative z-10">
+      <aside className="w-full md:w-60 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.04)] p-6 flex flex-row md:flex-col gap-4 items-center md:items-start glass-sidebar relative z-10 flex-shrink-0">
         <Link
           href="/chat"
           className="flex items-center justify-center w-8 h-8 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.04)] text-[var(--text-primary)] md:hidden"
@@ -170,7 +170,7 @@ export default function ProfilePage() {
       </aside>
 
       {/* Settings Options Scroll area */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto max-w-3xl relative z-10 scrollbar-thin">
+      <main className="flex-1 h-full min-h-0 overflow-y-auto p-6 md:p-12 max-w-3xl relative z-10 scrollbar-thin">
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-white">Settings</h1>
           <p className="text-xs text-[#94a3b8] mt-1">
@@ -179,13 +179,13 @@ export default function ProfilePage() {
         </div>
 
         {error && (
-          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs mb-6 animate-fade-in">
+          <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-3 rounded-xl text-xs mb-6">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-xl text-xs mb-6 animate-fade-in">
+          <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-xl text-xs mb-6">
             Preferences saved successfully!
           </div>
         )}
