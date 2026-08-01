@@ -22,7 +22,7 @@ interface LiveVoiceModalProps {
   onNewMessageSent?: (userText: string, assistantReply: string) => void;
 }
 
-type ModeState = "idle" | "listening" | "thinking" | "speaking" | "error";
+type ModeState = "idle" | "tap_to_start" | "listening" | "thinking" | "speaking" | "error";
 
 const SUPPORTED_LANGUAGES = [
   { code: "en-IN", label: "Hinglish / Indian Eng" },
@@ -38,14 +38,16 @@ export function LiveVoiceModal({
   activeFolder,
   onNewMessageSent,
 }: LiveVoiceModalProps) {
-  const [state, setState] = useState<ModeState>("idle");
+  const [state, setState] = useState<ModeState>("tap_to_start");
   const [transcript, setTranscript] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [isMuted, setIsMuted] = useState(false);
-  const [statusText, setStatusText] = useState("Listening...");
+  const [statusText, setStatusText] = useState("Tap orb to start");
   const [selectedLang, setSelectedLang] = useState("en-IN");
   const [isSupported, setIsSupported] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Whether the user has given the first gesture unlock
+  const [gestureUnlocked, setGestureUnlocked] = useState(false);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -56,21 +58,21 @@ export function LiveVoiceModal({
   const currentChunkRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // All control via refs to avoid stale closures
+  // Control refs — avoid stale closures in callbacks
   const isMutedRef = useRef(false);
   const isLiveActiveRef = useRef(false);
   const isProcessingRef = useRef(false);
+  const gestureUnlockedRef = useRef(false);
 
-  // Web Audio API refs
+  // Web Audio refs (for visualizer only)
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const audioLevelRef = useRef<number>(0);
 
-  useEffect(() => {
-    isMutedRef.current = isMuted;
-  }, [isMuted]);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+  useEffect(() => { gestureUnlockedRef.current = gestureUnlocked; }, [gestureUnlocked]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -78,7 +80,7 @@ export function LiveVoiceModal({
     }
   }, []);
 
-  // Canvas Visualizer
+  // ─── Canvas Visualizer ───────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     const canvas = canvasRef.current;
@@ -87,51 +89,37 @@ export function LiveVoiceModal({
     if (!ctx) return;
     let phase = 0;
     const render = () => {
-      canvas.width = canvas.offsetWidth * window.devicePixelRatio || 300;
-      canvas.height = canvas.offsetHeight * window.devicePixelRatio || 300;
-      const width = canvas.width;
-      const height = canvas.height;
-      const cx = width / 2;
-      const cy = height / 2;
-      ctx.clearRect(0, 0, width, height);
-      const targetLevel = audioLevelRef.current;
-      phase += 0.04 + targetLevel * 0.08;
-      const numRings = 3;
-      const baseRadius = Math.min(width, height) * 0.26;
-      for (let r = 0; r < numRings; r++) {
+      canvas.width = canvas.offsetWidth * (window.devicePixelRatio || 1);
+      canvas.height = canvas.offsetHeight * (window.devicePixelRatio || 1);
+      const W = canvas.width, H = canvas.height;
+      const cx = W / 2, cy = H / 2;
+      ctx.clearRect(0, 0, W, H);
+      const lvl = audioLevelRef.current;
+      phase += 0.04 + lvl * 0.08;
+      const baseR = Math.min(W, H) * 0.26;
+      const ringColors = [
+        ["rgba(99,102,241,0.45)", "rgba(168,85,247,0.25)"],
+        ["rgba(56,189,248,0.35)", "rgba(99,102,241,0.15)"],
+        ["rgba(236,72,153,0.25)", "rgba(129,140,248,0.1)"],
+      ];
+      for (let r = 0; r < 3; r++) {
         ctx.beginPath();
-        const points = 128;
-        const ringOffset = r * (Math.PI / 3);
-        for (let i = 0; i <= points; i++) {
-          const angle = (i / points) * Math.PI * 2;
-          const noise =
-            Math.sin(angle * 4 + phase + ringOffset) * (8 + targetLevel * 35) +
-            Math.cos(angle * 6 - phase * 0.8) * (4 + targetLevel * 20);
-          const radius = baseRadius + noise;
-          const x = cx + Math.cos(angle) * radius;
-          const y = cy + Math.sin(angle) * radius;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+        const off = r * (Math.PI / 3);
+        for (let i = 0; i <= 128; i++) {
+          const a = (i / 128) * Math.PI * 2;
+          const n = Math.sin(a * 4 + phase + off) * (8 + lvl * 35) + Math.cos(a * 6 - phase * 0.8) * (4 + lvl * 20);
+          const rad = baseR + n;
+          const x = cx + Math.cos(a) * rad, y = cy + Math.sin(a) * rad;
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
         }
         ctx.closePath();
-        const grad = ctx.createRadialGradient(cx, cy, baseRadius * 0.2, cx, cy, baseRadius * 1.5);
-        if (r === 0) {
-          grad.addColorStop(0, "rgba(99, 102, 241, 0.45)");
-          grad.addColorStop(0.6, "rgba(168, 85, 247, 0.25)");
-          grad.addColorStop(1, "rgba(255, 255, 255, 0)");
-        } else if (r === 1) {
-          grad.addColorStop(0, "rgba(56, 189, 248, 0.35)");
-          grad.addColorStop(0.7, "rgba(99, 102, 241, 0.15)");
-          grad.addColorStop(1, "rgba(255, 255, 255, 0)");
-        } else {
-          grad.addColorStop(0, "rgba(236, 72, 153, 0.25)");
-          grad.addColorStop(0.8, "rgba(129, 140, 248, 0.1)");
-          grad.addColorStop(1, "rgba(255, 255, 255, 0)");
-        }
-        ctx.fillStyle = grad;
+        const g = ctx.createRadialGradient(cx, cy, baseR * 0.2, cx, cy, baseR * 1.5);
+        g.addColorStop(0, ringColors[r][0]);
+        g.addColorStop(1, ringColors[r][1]);
+        ctx.fillStyle = g;
         ctx.fill();
         ctx.lineWidth = 1.5;
-        ctx.strokeStyle = r === 0 ? "rgba(255, 255, 255, 0.35)" : "rgba(255, 255, 255, 0.15)";
+        ctx.strokeStyle = r === 0 ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.15)";
         ctx.stroke();
       }
       animFrameRef.current = requestAnimationFrame(render);
@@ -140,29 +128,29 @@ export function LiveVoiceModal({
     return () => { if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current); };
   }, [isOpen]);
 
-  // Start mic audio stream for visualizer
+  // ─── Audio Analyzer (visualizer — no gesture required) ─────────────────────
   const startAudioAnalyzer = useCallback(async () => {
     try {
       if (mediaStreamRef.current) return;
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
       mediaStreamRef.current = stream;
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const audioCtx = new AudioContextClass();
-      if (audioCtx.state === "suspended") await audioCtx.resume();
-      audioCtxRef.current = audioCtx;
-      const source = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
+      const AudioCtxClass = (window as any).AudioContext || (window as any).webkitAudioContext;
+      const ctx = new AudioCtxClass();
+      if (ctx.state === "suspended") await ctx.resume();
+      audioCtxRef.current = ctx;
+      const src = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
       analyser.fftSize = 64;
       analyser.smoothingTimeConstant = 0.8;
-      source.connect(analyser);
+      src.connect(analyser);
       analyserRef.current = analyser;
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const data = new Uint8Array(analyser.frequencyBinCount);
       const loop = () => {
         if (!analyserRef.current) return;
-        analyserRef.current.getByteFrequencyData(dataArray);
+        analyserRef.current.getByteFrequencyData(data);
         let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-        audioLevelRef.current = Math.min(1, (sum / dataArray.length) / 100);
+        for (let i = 0; i < data.length; i++) sum += data[i];
+        audioLevelRef.current = Math.min(1, (sum / data.length) / 100);
         requestAnimationFrame(loop);
       };
       loop();
@@ -176,55 +164,47 @@ export function LiveVoiceModal({
 
   const stopAudioAnalyzer = useCallback(() => {
     analyserRef.current = null;
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((t) => t.stop());
-      mediaStreamRef.current = null;
-    }
-    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
-      audioCtxRef.current.close();
-      audioCtxRef.current = null;
-    }
+    mediaStreamRef.current?.getTracks().forEach(t => t.stop());
+    mediaStreamRef.current = null;
+    if (audioCtxRef.current?.state !== "closed") audioCtxRef.current?.close();
+    audioCtxRef.current = null;
     audioLevelRef.current = 0;
   }, []);
 
-  // Clean Markdown for Speech
-  const cleanMarkdownForSpeech = (rawText: string) =>
-    rawText
-      .replace(/```[\s\S]*?```/g, "")
-      .replace(/`([^`]+)`/g, "$1")
-      .replace(/\*\*([^*]+)\*\*/g, "$1")
-      .replace(/\*([^*]+)\*/g, "$1")
-      .replace(/#+\s+/g, "")
-      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-      .replace(/[-*]\s+/g, "")
-      .trim();
+  // ─── TTS ────────────────────────────────────────────────────────────────────
+  const cleanForSpeech = (raw: string) =>
+    raw.replace(/```[\s\S]*?```/g, "").replace(/`([^`]+)`/g, "$1")
+      .replace(/\*\*([^*]+)\*\*/g, "$1").replace(/\*([^*]+)\*/g, "$1")
+      .replace(/#+\s+/g, "").replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/[-*]\s+/g, "").trim();
 
-  // TTS Queue Processor
+  // Forward-declared so processSentenceQueue can call startRecognitionOnce
+  const startRecognitionOnceRef = useRef<() => void>(() => {});
+
   const processSentenceQueue = useCallback(() => {
     if (!synthRef.current || currentSentenceQueueRef.current.length === 0 || isSpeakingRef.current) return;
-    const nextRaw = currentSentenceQueueRef.current.shift();
-    if (!nextRaw) return;
-    const cleanText = cleanMarkdownForSpeech(nextRaw);
-    if (!cleanText) { if (currentSentenceQueueRef.current.length > 0) processSentenceQueue(); return; }
+    const raw = currentSentenceQueueRef.current.shift();
+    if (!raw) return;
+    const clean = cleanForSpeech(raw);
+    if (!clean) { if (currentSentenceQueueRef.current.length > 0) processSentenceQueue(); return; }
 
     isSpeakingRef.current = true;
     isProcessingRef.current = true;
     setState("speaking");
     setStatusText("Speaking...");
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.20;
-    utterance.pitch = 1.0;
+    const utt = new SpeechSynthesisUtterance(clean);
+    utt.rate = 1.2;
+    utt.pitch = 1.0;
     const voices = synthRef.current.getVoices();
-    const langPrefix = selectedLang.split("-")[0];
-    const preferredVoice =
-      voices.find((v) => v.lang.startsWith(langPrefix) && (v.name.includes("Natural") || v.name.includes("Online") || v.name.includes("Neural") || v.name.includes("Google"))) ||
-      voices.find((v) => v.lang.startsWith(langPrefix)) ||
-      voices.find((v) => v.lang.startsWith("en")) ||
-      voices[0];
-    if (preferredVoice) utterance.voice = preferredVoice;
+    const lp = selectedLang.split("-")[0];
+    utt.voice =
+      voices.find(v => v.lang.startsWith(lp) && /Natural|Online|Neural|Google/i.test(v.name)) ||
+      voices.find(v => v.lang.startsWith(lp)) ||
+      voices.find(v => v.lang.startsWith("en")) ||
+      voices[0] || null;
 
-    utterance.onend = () => {
+    const afterSpeak = () => {
       isSpeakingRef.current = false;
       if (currentSentenceQueueRef.current.length > 0) {
         processSentenceQueue();
@@ -232,150 +212,132 @@ export function LiveVoiceModal({
         isProcessingRef.current = false;
         setState("listening");
         setStatusText("Listening...");
-        startRecognitionOnce();
+        setTranscript("");
+        // Restart recognition after AI finishes speaking
+        // This is called from TTS onend — NOT a direct user gesture,
+        // but Android allows it because AudioContext is already unlocked.
+        startRecognitionOnceRef.current();
       }
     };
-    utterance.onerror = () => {
-      isSpeakingRef.current = false;
-      if (currentSentenceQueueRef.current.length > 0) {
-        processSentenceQueue();
-      } else {
-        isProcessingRef.current = false;
-        setState("listening");
-        setStatusText("Listening...");
-        startRecognitionOnce();
-      }
-    };
-    synthRef.current.speak(utterance);
+    utt.onend = afterSpeak;
+    utt.onerror = afterSpeak;
+    synthRef.current.speak(utt);
   }, [selectedLang]);
 
-  // Destroy Recognition Instance
+  // ─── Destroy Recognition ────────────────────────────────────────────────────
   const destroyRecognition = useCallback(() => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-    if (abortControllerRef.current) abortControllerRef.current.abort();
-    if (synthRef.current) synthRef.current.cancel();
+    abortControllerRef.current?.abort();
+    synthRef.current?.cancel();
     isSpeakingRef.current = false;
     if (recognitionRef.current) {
       try {
         recognitionRef.current.onend = null;
         recognitionRef.current.onerror = null;
         recognitionRef.current.abort();
-      } catch (e) {}
+      } catch (_) {}
       recognitionRef.current = null;
     }
   }, []);
 
-  // Send Spoken Text to AI
-  const sendSpokenTextToAI = useCallback(
-    async (textToSend: string) => {
-      if (!textToSend.trim() || isProcessingRef.current) return;
+  // ─── Send to AI ─────────────────────────────────────────────────────────────
+  const sendSpokenTextToAI = useCallback(async (text: string) => {
+    if (!text.trim() || isProcessingRef.current) return;
 
-      destroyRecognition();
-      isProcessingRef.current = true;
-      isSpeakingRef.current = false;
+    destroyRecognition();
+    isProcessingRef.current = true;
+    isSpeakingRef.current = false;
+    setState("thinking");
+    setStatusText("Thinking...");
+    setAiResponse("");
+    currentSentenceQueueRef.current = [];
+    currentChunkRef.current = "";
 
-      setState("thinking");
-      setStatusText("Thinking...");
-      setAiResponse("");
-      currentSentenceQueueRef.current = [];
-      currentChunkRef.current = "";
+    try {
+      abortControllerRef.current = new AbortController();
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: text,
+          conversation_id: sessionId,
+          persona_id: activePersona?.id,
+          folder: activeFolder || "",
+          mode: "fast",
+        }),
+        signal: abortControllerRef.current.signal,
+      });
 
-      try {
-        abortControllerRef.current = new AbortController();
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: textToSend,
-            conversation_id: sessionId,
-            persona_id: activePersona?.id,
-            folder: activeFolder || "",
-            mode: "fast",
-          }),
-          signal: abortControllerRef.current.signal,
-        });
+      if (!res.ok || !res.body) throw new Error("API error");
 
-        if (!res.ok || !res.body) throw new Error("API response error");
+      const reader = res.body.getReader();
+      const dec = new TextDecoder("utf-8");
+      let full = "", buf = "";
 
-        const reader = res.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let fullAnswer = "";
-        let buffer = "";
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n\n");
-          buffer = lines.pop() || "";
-
-          for (const line of lines) {
-            if (line.startsWith("data: ")) {
-              const dataStr = line.substring(6).trim();
-              if (dataStr) {
-                try {
-                  const data = JSON.parse(dataStr);
-                  if (data.content) {
-                    fullAnswer += data.content;
-                    currentChunkRef.current += data.content;
-                    setAiResponse(fullAnswer);
-
-                    const chunkText = currentChunkRef.current;
-                    const matches = chunkText.match(/[^.!?\n,;:]+[.!?\n,;:]+/g);
-
-                    if (matches) {
-                      for (const s of matches) {
-                        currentSentenceQueueRef.current.push(s);
-                        currentChunkRef.current = currentChunkRef.current.slice(s.length);
-                      }
-                      processSentenceQueue();
-                    } else if (chunkText.length > 35) {
-                      currentSentenceQueueRef.current.push(chunkText);
-                      currentChunkRef.current = "";
-                      processSentenceQueue();
-                    }
-                  }
-                } catch (e) {}
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split("\n\n");
+        buf = lines.pop() || "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const dataStr = line.substring(6).trim();
+          if (!dataStr) continue;
+          try {
+            const d = JSON.parse(dataStr);
+            if (d.content) {
+              full += d.content;
+              currentChunkRef.current += d.content;
+              setAiResponse(full);
+              const chunk = currentChunkRef.current;
+              const matches = chunk.match(/[^.!?\n,;:]+[.!?\n,;:]+/g);
+              if (matches) {
+                matches.forEach(s => {
+                  currentSentenceQueueRef.current.push(s);
+                  currentChunkRef.current = currentChunkRef.current.slice(s.length);
+                });
+                processSentenceQueue();
+              } else if (chunk.length > 35) {
+                currentSentenceQueueRef.current.push(chunk);
+                currentChunkRef.current = "";
+                processSentenceQueue();
               }
             }
-          }
+          } catch (_) {}
         }
-
-        if (currentChunkRef.current.trim()) {
-          currentSentenceQueueRef.current.push(currentChunkRef.current.trim());
-          currentChunkRef.current = "";
-          processSentenceQueue();
-        }
-
-        if (onNewMessageSent) onNewMessageSent(textToSend, fullAnswer);
-      } catch (err: any) {
-        if (err.name === "AbortError") return;
-        isProcessingRef.current = false;
-        setState("listening");
-        setStatusText("Listening...");
-        startRecognitionOnce();
       }
-    },
-    [activePersona, sessionId, activeFolder, processSentenceQueue, onNewMessageSent, destroyRecognition]
-  );
 
-  // Start Recognition
+      if (currentChunkRef.current.trim()) {
+        currentSentenceQueueRef.current.push(currentChunkRef.current.trim());
+        currentChunkRef.current = "";
+        processSentenceQueue();
+      }
+
+      onNewMessageSent?.(text, full);
+    } catch (err: any) {
+      if (err.name === "AbortError") return;
+      isProcessingRef.current = false;
+      setState("listening");
+      setStatusText("Listening...");
+      startRecognitionOnceRef.current();
+    }
+  }, [activePersona, sessionId, activeFolder, processSentenceQueue, onNewMessageSent, destroyRecognition]);
+
+  // ─── Core: Start Recognition (must be called from user gesture OR after first unlock) ──
   const startRecognitionOnce = useCallback(() => {
     if (recognitionRef.current || isProcessingRef.current || !isLiveActiveRef.current || isMutedRef.current) return;
 
-    const SpeechRecognitionClass =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-
-    if (!SpeechRecognitionClass) {
+    const SpeechRecClass = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecClass) {
       setIsSupported(false);
-      setErrorMessage("Web Speech API not supported. Use Chrome, Edge, or Safari.");
+      setErrorMessage("Web Speech API not supported. Please use Chrome on Android or Safari on iOS.");
       setState("error");
       return;
     }
 
     setErrorMessage(null);
-
-    const rec = new SpeechRecognitionClass();
+    const rec = new SpeechRecClass();
     rec.continuous = true;
     rec.interimResults = true;
     rec.lang = selectedLang;
@@ -388,64 +350,73 @@ export function LiveVoiceModal({
     rec.onresult = (event: any) => {
       if (isProcessingRef.current || isMutedRef.current || !isLiveActiveRef.current) return;
 
-      let fullText = "";
+      let text = "";
       for (let i = 0; i < event.results.length; i++) {
-        fullText += event.results[i][0].transcript + " ";
+        text += event.results[i][0].transcript + " ";
       }
+      const trimmed = text.trim();
+      if (!trimmed) return;
 
-      const currentText = fullText.trim();
-      if (!currentText) return;
-
-      setTranscript(currentText);
-
-      // Fast 650ms silence detection -> Triggers AI call reliably!
+      setTranscript(trimmed);
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       silenceTimerRef.current = setTimeout(() => {
-        if (!isProcessingRef.current && currentText.length > 1) {
-          sendSpokenTextToAI(currentText);
+        if (!isProcessingRef.current && trimmed.length > 1) {
+          sendSpokenTextToAI(trimmed);
         }
-      }, 650);
+      }, 700);
     };
 
     rec.onerror = (event: any) => {
-      const errType = event.error;
-      if (errType === "not-allowed" || errType === "service-not-allowed") {
-        setErrorMessage("Microphone access denied. Allow mic in browser settings.");
+      const err = event.error;
+      if (err === "not-allowed" || err === "service-not-allowed") {
+        setErrorMessage("Microphone access denied. Please allow mic in browser settings.");
         setState("error");
         recognitionRef.current = null;
+        return;
       }
+      // no-speech / audio-capture / network — rec stays alive or will onend-restart
     };
 
     rec.onend = () => {
       recognitionRef.current = null;
-      if (isLiveActiveRef.current && !isMutedRef.current && !isProcessingRef.current) {
+      // Auto-restart only if gesture was already unlocked
+      if (isLiveActiveRef.current && !isMutedRef.current && !isProcessingRef.current && gestureUnlockedRef.current) {
         setTimeout(() => {
           if (isLiveActiveRef.current && !isMutedRef.current && !isProcessingRef.current && !recognitionRef.current) {
-            startRecognitionOnce();
+            startRecognitionOnceRef.current();
           }
-        }, 300);
+        }, 250);
       }
     };
 
     recognitionRef.current = rec;
     try {
       rec.start();
-    } catch (e) {
+    } catch (_) {
       recognitionRef.current = null;
     }
   }, [selectedLang, sendSpokenTextToAI]);
 
-  // Open/Close Lifecycle
+  // Keep the ref up to date so TTS onend / onend auto-restart can call the latest version
+  useEffect(() => {
+    startRecognitionOnceRef.current = startRecognitionOnce;
+  }, [startRecognitionOnce]);
+
+  // ─── Modal Open/Close ────────────────────────────────────────────────────────
   useEffect(() => {
     if (isOpen) {
       isLiveActiveRef.current = true;
       isProcessingRef.current = false;
+      gestureUnlockedRef.current = false;
+      setGestureUnlocked(false);
       setTranscript("");
       setAiResponse("");
       setErrorMessage(null);
-      setState("listening");
+      setIsMuted(false);
+      setState("tap_to_start");
+      setStatusText("Tap orb to start");
+      // Start visualizer ONLY (no recognition — needs user gesture on Android)
       startAudioAnalyzer();
-      startRecognitionOnce();
     } else {
       isLiveActiveRef.current = false;
       destroyRecognition();
@@ -459,7 +430,7 @@ export function LiveVoiceModal({
     };
   }, [isOpen, selectedLang]);
 
-  // Shake to exit
+  // ─── Shake to Exit ──────────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
     let lastShake = 0;
@@ -467,32 +438,37 @@ export function LiveVoiceModal({
       const acc = e.accelerationIncludingGravity || e.acceleration;
       if (!acc) return;
       const total = Math.abs(acc.x || 0) + Math.abs(acc.y || 0) + Math.abs(acc.z || 0);
-      if (total > 32) {
-        const now = Date.now();
-        if (now - lastShake > 2000) {
-          lastShake = now;
-          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
-          isLiveActiveRef.current = false;
-          destroyRecognition();
-          stopAudioAnalyzer();
-          onClose();
-        }
+      if (total > 32 && Date.now() - lastShake > 2000) {
+        lastShake = Date.now();
+        navigator.vibrate?.([100, 50, 100]);
+        isLiveActiveRef.current = false;
+        destroyRecognition();
+        stopAudioAnalyzer();
+        onClose();
       }
     };
-    if (typeof window !== "undefined" && "DeviceMotionEvent" in window)
-      window.addEventListener("devicemotion", handleMotion);
-    return () => {
-      if (typeof window !== "undefined" && "DeviceMotionEvent" in window)
-        window.removeEventListener("devicemotion", handleMotion);
-    };
+    if ("DeviceMotionEvent" in window) window.addEventListener("devicemotion", handleMotion);
+    return () => { if ("DeviceMotionEvent" in window) window.removeEventListener("devicemotion", handleMotion); };
   }, [isOpen, onClose, destroyRecognition, stopAudioAnalyzer]);
 
   if (!isOpen) return null;
 
-  const handleOrbClick = () => {
+  // ─── Orb Tap Handler ────────────────────────────────────────────────────────
+  const handleOrbTap = () => {
+    if (state === "tap_to_start" || (!gestureUnlocked && !isProcessingRef.current)) {
+      // FIRST TAP = gesture unlock → starts recognition on Android safely
+      setGestureUnlocked(true);
+      gestureUnlockedRef.current = true;
+      setState("listening");
+      setStatusText("Listening...");
+      startRecognitionOnce();
+      return;
+    }
+
     if (transcript.trim() && !isProcessingRef.current) {
       sendSpokenTextToAI(transcript.trim());
     } else if (isProcessingRef.current) {
+      // Interrupt AI
       destroyRecognition();
       isProcessingRef.current = false;
       isSpeakingRef.current = false;
@@ -505,12 +481,14 @@ export function LiveVoiceModal({
     }
   };
 
+  const isTapToStart = state === "tap_to_start" || !gestureUnlocked;
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-between bg-[#090a0f] p-6 text-white select-none">
-      {/* Top Header */}
+      {/* Header */}
       <div className="w-full flex items-center justify-between z-10 pt-2">
         <div className="flex items-center gap-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <div className={`w-2.5 h-2.5 rounded-full ${gestureUnlocked ? "bg-emerald-400 animate-pulse" : "bg-zinc-600"}`} />
           <span className="text-sm font-semibold tracking-wide text-zinc-300">
             {activePersona?.name || "Clarity"} Live
           </span>
@@ -521,51 +499,58 @@ export function LiveVoiceModal({
             <Globe size={13} className="text-indigo-400" />
             <select
               value={selectedLang}
-              onChange={(e) => setSelectedLang(e.target.value)}
+              onChange={e => setSelectedLang(e.target.value)}
               className="bg-transparent text-xs text-zinc-200 outline-none cursor-pointer pr-1"
             >
-              {SUPPORTED_LANGUAGES.map((lang) => (
-                <option key={lang.code} value={lang.code} className="bg-[#12131a] text-white">
-                  {lang.label}
-                </option>
+              {SUPPORTED_LANGUAGES.map(l => (
+                <option key={l.code} value={l.code} className="bg-[#12131a] text-white">{l.label}</option>
               ))}
             </select>
           </div>
-
           <button
-            onClick={() => {
-              isLiveActiveRef.current = false;
-              destroyRecognition();
-              stopAudioAnalyzer();
-              onClose();
-            }}
+            onClick={() => { isLiveActiveRef.current = false; destroyRecognition(); stopAudioAnalyzer(); onClose(); }}
             className="p-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white transition-all active:scale-95"
-            title="Close Live Mode"
           >
             <X size={20} />
           </button>
         </div>
       </div>
 
-      {/* Visualizer Orb */}
+      {/* Orb */}
       <div className="relative flex flex-col items-center justify-center flex-1 z-10 w-full">
         <div
-          onClick={handleOrbClick}
-          className="relative w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center cursor-pointer group"
-          title="Tap orb to send or interrupt"
+          onClick={handleOrbTap}
+          className="relative w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center cursor-pointer group active:scale-95 transition-transform"
         >
           <canvas ref={canvasRef} className="w-full h-full object-contain" />
-          <div className="absolute inset-0 m-auto w-28 h-28 rounded-full bg-black/60 border border-white/10 flex flex-col items-center justify-center shadow-2xl transition-transform duration-200 group-hover:scale-105 backdrop-blur-md">
-            {activePersona?.avatarUrl ? (
-              <img src={activePersona.avatarUrl} alt={activePersona.name} className="w-14 h-14 rounded-full object-cover border border-white/20" />
+
+          {/* Center glow ring — pulsing if tap_to_start */}
+          {isTapToStart && (
+            <div className="absolute inset-0 m-auto w-32 h-32 rounded-full animate-ping bg-indigo-500/20 pointer-events-none" />
+          )}
+
+          <div className="absolute inset-0 m-auto w-28 h-28 rounded-full bg-black/60 border border-white/10 flex flex-col items-center justify-center shadow-2xl backdrop-blur-md transition-transform group-hover:scale-105">
+            {isTapToStart ? (
+              <>
+                <Mic size={28} className="text-indigo-400 animate-pulse" />
+                <span className="text-[10px] font-semibold tracking-widest uppercase text-indigo-300 mt-1.5">tap</span>
+              </>
+            ) : activePersona?.avatarUrl ? (
+              <>
+                <img src={activePersona.avatarUrl} alt={activePersona.name} className="w-14 h-14 rounded-full object-cover border border-white/20" />
+                <span className="text-[10px] font-medium tracking-wider text-zinc-400 capitalize mt-1.5">{state}</span>
+              </>
             ) : (
-              <Sparkles size={28} className="text-indigo-400" />
+              <>
+                <Sparkles size={28} className="text-indigo-400" />
+                <span className="text-[10px] font-medium tracking-wider text-zinc-400 capitalize mt-1.5">{state}</span>
+              </>
             )}
-            <span className="text-[10px] font-medium tracking-wider text-zinc-400 capitalize mt-1.5">{state}</span>
           </div>
         </div>
 
-        {!isSupported || errorMessage ? (
+        {/* Error */}
+        {(!isSupported || errorMessage) && (
           <div className="mt-6 max-w-md bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-center backdrop-blur-md">
             <div className="flex items-center justify-center gap-2 text-red-400 font-medium text-xs mb-1">
               <AlertCircle size={16} />
@@ -573,26 +558,40 @@ export function LiveVoiceModal({
             </div>
             <p className="text-xs text-zinc-300 leading-relaxed mb-3">{errorMessage}</p>
             <button
-              onClick={() => { setErrorMessage(null); destroyRecognition(); startRecognitionOnce(); }}
+              onClick={() => {
+                setErrorMessage(null);
+                setGestureUnlocked(true);
+                gestureUnlockedRef.current = true;
+                destroyRecognition();
+                startRecognitionOnce();
+              }}
               className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold rounded-xl border border-red-500/30 transition-all"
             >
               <RefreshCw size={13} />
-              <span>Retry Mic Connection</span>
+              <span>Retry Mic</span>
             </button>
           </div>
-        ) : (
+        )}
+
+        {/* Subtitles */}
+        {isSupported && !errorMessage && (
           <div className="mt-8 w-full max-w-lg text-center min-h-[60px] flex flex-col items-center justify-center px-4">
-            {transcript && (
-              <p className="text-sm font-medium text-indigo-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 text-center backdrop-blur-md max-w-full">
+            {isTapToStart && (
+              <p className="text-sm font-medium text-zinc-400 animate-pulse">
+                Tap the orb above to start listening
+              </p>
+            )}
+            {!isTapToStart && transcript && (
+              <p className="text-sm font-medium text-indigo-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 backdrop-blur-md max-w-full">
                 "{transcript}"
               </p>
             )}
-            {aiResponse && (
-              <p className="text-sm font-medium text-zinc-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 text-center backdrop-blur-md max-h-24 overflow-y-auto scrollbar-thin mt-1.5">
+            {!isTapToStart && aiResponse && (
+              <p className="text-sm font-medium text-zinc-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 backdrop-blur-md max-h-24 overflow-y-auto mt-1.5">
                 {aiResponse}
               </p>
             )}
-            {!transcript && !aiResponse && (
+            {!isTapToStart && !transcript && !aiResponse && (
               <p className="text-xs font-medium tracking-widest uppercase text-zinc-500">{statusText}</p>
             )}
           </div>
@@ -605,11 +604,11 @@ export function LiveVoiceModal({
           onClick={() => {
             if (isMuted) {
               setIsMuted(false);
-              startRecognitionOnce();
+              if (gestureUnlockedRef.current) startRecognitionOnce();
             } else {
               setIsMuted(true);
               destroyRecognition();
-              setState("idle");
+              setState(gestureUnlocked ? "idle" : "tap_to_start");
               setStatusText("Muted");
             }
           }}
@@ -618,18 +617,12 @@ export function LiveVoiceModal({
               ? "bg-red-500/20 border border-red-500/30 text-red-400"
               : "bg-white/[0.08] border border-white/[0.1] text-zinc-300 hover:text-white"
           }`}
-          title={isMuted ? "Unmute Mic" : "Mute Mic"}
         >
           {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
         </button>
 
         <button
-          onClick={() => {
-            isLiveActiveRef.current = false;
-            destroyRecognition();
-            stopAudioAnalyzer();
-            onClose();
-          }}
+          onClick={() => { isLiveActiveRef.current = false; destroyRecognition(); stopAudioAnalyzer(); onClose(); }}
           className="flex items-center gap-2 px-8 py-4 rounded-full bg-red-600 hover:bg-red-500 text-white font-semibold text-sm tracking-wide transition-all active:scale-95 shadow-lg shadow-red-600/30"
         >
           <PhoneOff size={18} />
