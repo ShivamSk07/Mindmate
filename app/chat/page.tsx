@@ -264,29 +264,7 @@ export default function ChatPage() {
     };
   }, []);
 
-  // 8. Mobile Swipe Up Gesture -> Triggers Live Voice Mode
-  useEffect(() => {
-    let startY = 0;
-    const handleTouchStart = (e: TouchEvent) => {
-      if (window.innerHeight - e.touches[0].clientY < 60) {
-        startY = e.touches[0].clientY;
-      }
-    };
 
-    const handleTouchEnd = (e: TouchEvent) => {
-      if (startY > window.innerHeight - 60 && startY - e.changedTouches[0].clientY > 90) {
-        setShowLiveVoice(true);
-      }
-    };
-
-    document.addEventListener("touchstart", handleTouchStart);
-    document.addEventListener("touchend", handleTouchEnd);
-
-    return () => {
-      document.removeEventListener("touchstart", handleTouchStart);
-      document.removeEventListener("touchend", handleTouchEnd);
-    };
-  }, []);
 
   const botAvatar = activePersona?.avatarUrl || "/img/logo.png";
 

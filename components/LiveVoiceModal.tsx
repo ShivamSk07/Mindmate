@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Mic, MicOff, X, Sparkles, PhoneOff, Disc } from "lucide-react";
+import { Mic, MicOff, X, Sparkles, PhoneOff, Globe, AlertCircle, RefreshCw } from "lucide-react";
 
 interface Persona {
   id: string;
@@ -22,7 +22,13 @@ interface LiveVoiceModalProps {
   onNewMessageSent?: (userText: string, assistantReply: string) => void;
 }
 
-type ModeState = "idle" | "listening" | "thinking" | "speaking";
+type ModeState = "idle" | "listening" | "thinking" | "speaking" | "error";
+
+const SUPPORTED_LANGUAGES = [
+  { code: "en-IN", label: "Hinglish / Indian Eng" },
+  { code: "hi-IN", label: "Hindi (हिंदी)" },
+  { code: "en-US", label: "English (US)" },
+];
 
 export function LiveVoiceModal({
   isOpen,
@@ -36,7 +42,10 @@ export function LiveVoiceModal({
   const [transcript, setTranscript] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [isMuted, setIsMuted] = useState(false);
-  const [statusText, setStatusText] = useState("Gemini Live");
+  const [statusText, setStatusText] = useState("Initializing Gemini Live...");
+  const [selectedLang, setSelectedLang] = useState("en-IN");
+  const [isSupported, setIsSupported] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const recognitionRef = useRef<any>(null);
@@ -47,6 +56,11 @@ export function LiveVoiceModal({
   const currentChunkRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Mutable refs to prevent stale closure bugs in Speech API callbacks
+  const stateRef = useRef<ModeState>("idle");
+  const isMutedRef = useRef(false);
+  const isLiveActiveRef = useRef(false);
+
   // Web Audio API refs
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -54,9 +68,21 @@ export function LiveVoiceModal({
   const animFrameRef = useRef<number | null>(null);
   const audioLevelRef = useRef<number>(0);
 
+  // Sync state & mute refs
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       synthRef.current = window.speechSynthesis;
+      const SpeechRecognitionClass =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      setIsSupported(!!SpeechRecognitionClass);
     }
   }, []);
 
@@ -164,6 +190,9 @@ export function LiveVoiceModal({
 
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = new AudioContextClass();
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+      }
       audioCtxRef.current = audioCtx;
 
       const source = audioCtx.createMediaStreamSource(stream);
@@ -189,8 +218,13 @@ export function LiveVoiceModal({
         requestAnimationFrame(loop);
       };
       loop();
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Could not access mic audio stream", err);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setErrorMessage("Microphone access denied. Please grant microphone permission in your browser.");
+        setStatusText("Mic Permission Denied");
+        setState("error");
+      }
     }
   }, [stopAudioAnalyzer]);
 
@@ -200,8 +234,11 @@ export function LiveVoiceModal({
     if (abortControllerRef.current) abortControllerRef.current.abort();
     if (recognitionRef.current) {
       try {
+        recognitionRef.current.onend = null;
+        recognitionRef.current.onerror = null;
         recognitionRef.current.stop();
       } catch (e) {}
+      recognitionRef.current = null;
     }
     if (synthRef.current) {
       synthRef.current.cancel();
@@ -222,7 +259,7 @@ export function LiveVoiceModal({
       .trim();
   };
 
-  // Process sentence queue for ultra-fast, snappy speech synthesis
+  // Process sentence queue for ultra-fast speech synthesis
   const processSentenceQueue = useCallback(() => {
     if (
       !synthRef.current ||
@@ -245,26 +282,30 @@ export function LiveVoiceModal({
 
     isSpeakingRef.current = true;
     setState("speaking");
-    setStatusText("Speaking");
+    setStatusText("Speaking...");
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.18; // Snappy conversational speed
+    utterance.rate = 1.15;
     utterance.pitch = 1.0;
 
     const voices = synthRef.current.getVoices();
-    const preferredVoice = voices.find(
-      (v) =>
-        v.lang.startsWith("en") &&
-        (v.name.includes("Natural") ||
-          v.name.includes("Online") ||
-          v.name.includes("Neural") ||
-          v.name.includes("Google") ||
-          v.name.includes("Samantha") ||
-          v.name.includes("Karen") ||
-          v.name.includes("Daniel") ||
-          v.name.includes("Alex") ||
-          v.name.includes("Serena"))
-    ) || voices.find((v) => v.lang.startsWith("en")) || voices[0];
+    const preferredVoice =
+      voices.find(
+        (v) =>
+          v.lang.startsWith(selectedLang.split("-")[0]) &&
+          (v.name.includes("Natural") ||
+            v.name.includes("Online") ||
+            v.name.includes("Neural") ||
+            v.name.includes("Google") ||
+            v.name.includes("Samantha") ||
+            v.name.includes("Karen") ||
+            v.name.includes("Daniel") ||
+            v.name.includes("Alex") ||
+            v.name.includes("Serena"))
+      ) ||
+      voices.find((v) => v.lang.startsWith(selectedLang.split("-")[0])) ||
+      voices.find((v) => v.lang.startsWith("en")) ||
+      voices[0];
 
     if (preferredVoice) utterance.voice = preferredVoice;
 
@@ -273,9 +314,11 @@ export function LiveVoiceModal({
       if (currentSentenceQueueRef.current.length > 0) {
         processSentenceQueue();
       } else {
-        setState("listening");
-        setStatusText("Listening...");
-        startListening();
+        if (isLiveActiveRef.current && !isMutedRef.current) {
+          setState("listening");
+          setStatusText("Listening...");
+          startListening();
+        }
       }
     };
 
@@ -284,23 +327,21 @@ export function LiveVoiceModal({
       if (currentSentenceQueueRef.current.length > 0) {
         processSentenceQueue();
       } else {
-        startListening();
+        if (isLiveActiveRef.current && !isMutedRef.current) {
+          startListening();
+        }
       }
     };
 
     synthRef.current.speak(utterance);
-  }, [activePersona?.name]);
+  }, [selectedLang]);
 
   // Send user text to AI
   const sendSpokenTextToAI = useCallback(
     async (textToSend: string) => {
       if (!textToSend.trim()) return;
 
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {}
-      }
+      stopAllVoice();
 
       setState("thinking");
       setStatusText("Thinking...");
@@ -319,11 +360,12 @@ export function LiveVoiceModal({
             conversation_id: sessionId,
             persona_id: activePersona?.id,
             folder: activeFolder || "",
+            mode: "fast", // Fast response for live mode
           }),
           signal: abortControllerRef.current.signal,
         });
 
-        if (!res.ok || !res.body) throw new Error("Failed request");
+        if (!res.ok || !res.body) throw new Error("API response error");
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
@@ -373,35 +415,44 @@ export function LiveVoiceModal({
         if (onNewMessageSent) {
           onNewMessageSent(textToSend, fullAnswer);
         }
-
       } catch (err: any) {
         if (err.name === "AbortError") return;
-        setStatusText("Error processing voice");
-        setTimeout(() => startListening(), 2000);
+        console.error("Live voice send error:", err);
+        setStatusText("Error processing response");
+        setState("error");
+        setTimeout(() => {
+          if (isLiveActiveRef.current && !isMutedRef.current) {
+            startListening();
+          }
+        }, 2000);
       }
     },
-    [activePersona, sessionId, activeFolder, processSentenceQueue, onNewMessageSent]
+    [activePersona, sessionId, activeFolder, processSentenceQueue, onNewMessageSent, stopAllVoice]
   );
 
   // Start continuous Web Speech recognition
   const startListening = useCallback(() => {
-    if (isMuted) return;
+    if (isMutedRef.current || !isLiveActiveRef.current) return;
 
     stopAllVoice();
     startAudioAnalyzer();
 
-    const SpeechRecognition =
+    const SpeechRecognitionClass =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-    if (!SpeechRecognition) {
-      setStatusText("Speech recognition unsuported");
+    if (!SpeechRecognitionClass) {
+      setIsSupported(false);
+      setErrorMessage("Web Speech API is not supported in this browser. Please try Chrome, Edge, or Safari.");
+      setStatusText("Unsupported Browser");
+      setState("error");
       return;
     }
 
-    const rec = new SpeechRecognition();
+    setErrorMessage(null);
+    const rec = new SpeechRecognitionClass();
     rec.continuous = true;
     rec.interimResults = true;
-    rec.lang = "en-US";
+    rec.lang = selectedLang;
 
     rec.onstart = () => {
       setState("listening");
@@ -409,37 +460,45 @@ export function LiveVoiceModal({
     };
 
     rec.onresult = (event: any) => {
-      let finalStr = "";
-      let interimStr = "";
-
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const text = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalStr += text + " ";
-        } else {
-          interimStr += text;
-        }
+      let fullTranscript = "";
+      for (let i = 0; i < event.results.length; i++) {
+        fullTranscript += event.results[i][0].transcript + " ";
       }
 
-      const currentText = (finalStr + interimStr).trim();
+      const currentText = fullTranscript.trim();
       if (currentText) {
         setTranscript(currentText);
 
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
-          if (currentText.trim().length > 1) {
-            sendSpokenTextToAI(currentText.trim());
+          if (currentText.length > 1) {
+            sendSpokenTextToAI(currentText);
           }
         }, 1200);
       }
     };
 
-    rec.onerror = (err: any) => {
-      if (err.error !== "no-speech") console.error("Rec error:", err);
+    rec.onerror = (event: any) => {
+      const errType = event.error;
+      console.warn("Speech recognition error:", errType);
+
+      if (errType === "not-allowed" || errType === "service-not-allowed") {
+        setErrorMessage("Microphone access denied or blocked. Please allow mic access in browser settings.");
+        setStatusText("Mic Permission Denied");
+        setState("error");
+      } else if (errType === "network") {
+        setStatusText("Network Error - Retrying...");
+        setTimeout(() => {
+          if (isLiveActiveRef.current && !isMutedRef.current) startListening();
+        }, 1500);
+      } else if (errType !== "no-speech" && errType !== "aborted") {
+        setStatusText(`Mic error: ${errType}`);
+      }
     };
 
     rec.onend = () => {
-      if (state === "listening" && isOpen && !isMuted) {
+      // Use ref values to avoid stale closure state bugs!
+      if (isLiveActiveRef.current && stateRef.current === "listening" && !isMutedRef.current) {
         try {
           rec.start();
         } catch (e) {}
@@ -449,24 +508,31 @@ export function LiveVoiceModal({
     recognitionRef.current = rec;
     try {
       rec.start();
-    } catch (e) {}
-  }, [isMuted, stopAllVoice, startAudioAnalyzer, state, isOpen, sendSpokenTextToAI]);
+    } catch (e) {
+      console.error("Failed to start speech recognition:", e);
+    }
+  }, [selectedLang, stopAllVoice, startAudioAnalyzer, sendSpokenTextToAI]);
 
+  // Handle modal lifecycle
   useEffect(() => {
     if (isOpen) {
+      isLiveActiveRef.current = true;
       setTranscript("");
       setAiResponse("");
+      setErrorMessage(null);
       startListening();
     } else {
+      isLiveActiveRef.current = false;
       stopAllVoice();
       stopAudioAnalyzer();
       setState("idle");
     }
     return () => {
+      isLiveActiveRef.current = false;
       stopAllVoice();
       stopAudioAnalyzer();
     };
-  }, [isOpen]);
+  }, [isOpen, selectedLang]);
 
   // Shake sensor feature while in Live Mode -> Exits Live Mode
   useEffect(() => {
@@ -483,6 +549,7 @@ export function LiveVoiceModal({
           if (typeof navigator !== "undefined" && navigator.vibrate) {
             navigator.vibrate([100, 50, 100]);
           }
+          isLiveActiveRef.current = false;
           stopAllVoice();
           stopAudioAnalyzer();
           onClose();
@@ -509,31 +576,53 @@ export function LiveVoiceModal({
       startListening();
     } else if (state === "listening" && transcript.trim()) {
       sendSpokenTextToAI(transcript.trim());
+    } else if (state === "error") {
+      setErrorMessage(null);
+      startListening();
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-between bg-[#090a0f] p-6 text-white select-none transition-all duration-300">
-      
       {/* Top Header */}
       <div className="w-full flex items-center justify-between z-10 pt-2">
         <div className="flex items-center gap-2">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-sm font-semibold tracking-wide text-zinc-300">
             {activePersona?.name || "Clarity"} Live
           </span>
         </div>
 
-        <button
-          onClick={() => {
-            stopAllVoice();
-            stopAudioAnalyzer();
-            onClose();
-          }}
-          className="p-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white transition-all active:scale-95"
-          title="Close"
-        >
-          <X size={20} />
-        </button>
+        {/* Language Selector & Close */}
+        <div className="flex items-center gap-3">
+          <div className="relative flex items-center gap-1 bg-white/[0.06] border border-white/[0.08] rounded-xl px-2.5 py-1 text-xs text-zinc-300">
+            <Globe size={13} className="text-indigo-400" />
+            <select
+              value={selectedLang}
+              onChange={(e) => setSelectedLang(e.target.value)}
+              className="bg-transparent text-xs text-zinc-200 outline-none cursor-pointer pr-1"
+            >
+              {SUPPORTED_LANGUAGES.map((lang) => (
+                <option key={lang.code} value={lang.code} className="bg-[#12131a] text-white">
+                  {lang.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => {
+              isLiveActiveRef.current = false;
+              stopAllVoice();
+              stopAudioAnalyzer();
+              onClose();
+            }}
+            className="p-2.5 rounded-full bg-white/[0.06] hover:bg-white/[0.12] text-zinc-400 hover:text-white transition-all active:scale-95"
+            title="Close Live Mode"
+          >
+            <X size={20} />
+          </button>
+        </div>
       </div>
 
       {/* Main Full-Screen Fluid Visualizer */}
@@ -541,9 +630,10 @@ export function LiveVoiceModal({
         <div
           onClick={handleOrbClick}
           className="relative w-72 h-72 sm:w-96 sm:h-96 flex items-center justify-center cursor-pointer group"
+          title="Click to interrupt or speak"
         >
           <canvas ref={canvasRef} className="w-full h-full object-contain" />
-          
+
           {/* Center Minimal Avatar Indicator */}
           <div className="absolute inset-0 m-auto w-28 h-28 rounded-full bg-black/60 border border-white/10 flex flex-col items-center justify-center shadow-2xl transition-transform duration-200 group-hover:scale-105 backdrop-blur-md">
             {activePersona?.avatarUrl ? (
@@ -561,26 +651,47 @@ export function LiveVoiceModal({
           </div>
         </div>
 
-        {/* Live Subtitle / Transcript */}
-        <div className="mt-8 w-full max-w-lg text-center min-h-[60px] flex flex-col items-center justify-center px-4">
-          {transcript && (
-            <p className="text-sm font-medium text-indigo-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 text-center backdrop-blur-md animate-fade-in max-w-full">
-              “{transcript}”
-            </p>
-          )}
+        {/* Error Banner if Browser/Mic fails */}
+        {!isSupported || errorMessage ? (
+          <div className="mt-6 max-w-md bg-red-500/10 border border-red-500/30 rounded-2xl p-4 text-center backdrop-blur-md">
+            <div className="flex items-center justify-center gap-2 text-red-400 font-medium text-xs mb-1">
+              <AlertCircle size={16} />
+              <span>Speech Engine Issue</span>
+            </div>
+            <p className="text-xs text-zinc-300 leading-relaxed mb-3">{errorMessage}</p>
+            <button
+              onClick={() => {
+                setErrorMessage(null);
+                startListening();
+              }}
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold rounded-xl border border-red-500/30 transition-all"
+            >
+              <RefreshCw size={13} />
+              <span>Retry Mic Connection</span>
+            </button>
+          </div>
+        ) : (
+          /* Live Subtitle / Transcript */
+          <div className="mt-8 w-full max-w-lg text-center min-h-[60px] flex flex-col items-center justify-center px-4">
+            {transcript && (
+              <p className="text-sm font-medium text-indigo-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 text-center backdrop-blur-md animate-fade-in max-w-full">
+                “{transcript}”
+              </p>
+            )}
 
-          {aiResponse && (
-            <p className="text-sm font-medium text-zinc-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 text-center backdrop-blur-md max-h-24 overflow-y-auto scrollbar-thin animate-fade-in mt-1.5">
-              {aiResponse}
-            </p>
-          )}
+            {aiResponse && (
+              <p className="text-sm font-medium text-zinc-200 bg-white/[0.04] border border-white/[0.08] rounded-2xl px-5 py-2.5 text-center backdrop-blur-md max-h-24 overflow-y-auto scrollbar-thin animate-fade-in mt-1.5">
+                {aiResponse}
+              </p>
+            )}
 
-          {!transcript && !aiResponse && (
-            <p className="text-xs font-medium tracking-widest uppercase text-zinc-500">
-              {statusText}
-            </p>
-          )}
-        </div>
+            {!transcript && !aiResponse && (
+              <p className="text-xs font-medium tracking-widest uppercase text-zinc-500">
+                {statusText}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Bottom Controls */}
@@ -603,13 +714,14 @@ export function LiveVoiceModal({
               ? "bg-red-500/20 border border-red-500/30 text-red-400"
               : "bg-white/[0.08] border border-white/[0.1] text-zinc-300 hover:text-white"
           }`}
-          title={isMuted ? "Unmute" : "Mute"}
+          title={isMuted ? "Unmute Mic" : "Mute Mic"}
         >
           {isMuted ? <MicOff size={22} /> : <Mic size={22} />}
         </button>
 
         <button
           onClick={() => {
+            isLiveActiveRef.current = false;
             stopAllVoice();
             stopAudioAnalyzer();
             onClose();
