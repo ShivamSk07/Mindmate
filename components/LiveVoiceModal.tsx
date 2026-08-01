@@ -51,17 +51,17 @@ export function LiveVoiceModal({
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const restartTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentSentenceQueueRef = useRef<string[]>([]);
   const isSpeakingRef = useRef(false);
   const currentChunkRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Mutable refs to prevent stale closure bugs & mobile mic loops
+  // Mutable refs to prevent stale closure bugs & mobile mic loop beeps
   const stateRef = useRef<ModeState>("idle");
   const isMutedRef = useRef(false);
   const isLiveActiveRef = useRef(false);
   const hasSpokenThisTurnRef = useRef(false);
+  const isRecRunningRef = useRef(false);
 
   // Web Audio API refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -192,57 +192,9 @@ export function LiveVoiceModal({
     audioLevelRef.current = 0;
   }, []);
 
-  // Setup REAL Web Audio API Microphone Analyzer
-  const startAudioAnalyzer = useCallback(async () => {
-    try {
-      stopAudioAnalyzer();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-      mediaStreamRef.current = stream;
-
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      const audioCtx = new AudioContextClass();
-      if (audioCtx.state === "suspended") {
-        await audioCtx.resume();
-      }
-      audioCtxRef.current = audioCtx;
-
-      const source = audioCtx.createMediaStreamSource(stream);
-      const analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 64;
-      analyser.smoothingTimeConstant = 0.8;
-      source.connect(analyser);
-      analyserRef.current = analyser;
-
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-      const loop = () => {
-        if (!analyserRef.current) return;
-        analyserRef.current.getByteFrequencyData(dataArray);
-
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-          sum += dataArray[i];
-        }
-        const avg = sum / dataArray.length;
-        audioLevelRef.current = Math.min(1, avg / 100);
-
-        requestAnimationFrame(loop);
-      };
-      loop();
-    } catch (err: any) {
-      console.warn("Could not access mic audio stream", err);
-      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
-        setErrorMessage("Microphone access denied. Please grant microphone permission in your browser.");
-        setStatusText("Mic Permission Denied");
-        setState("error");
-      }
-    }
-  }, [stopAudioAnalyzer]);
-
   // Stop speech recognition & timers
   const stopAllVoice = useCallback(() => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
-    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     if (abortControllerRef.current) abortControllerRef.current.abort();
     if (recognitionRef.current) {
       try {
@@ -252,6 +204,7 @@ export function LiveVoiceModal({
       } catch (e) {}
       recognitionRef.current = null;
     }
+    isRecRunningRef.current = false;
     if (synthRef.current) {
       synthRef.current.cancel();
     }
@@ -297,7 +250,7 @@ export function LiveVoiceModal({
     setStatusText("Speaking...");
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.22; // Snappy conversational speed
+    utterance.rate = 1.22;
     utterance.pitch = 1.0;
 
     const voices = synthRef.current.getVoices();
@@ -341,6 +294,8 @@ export function LiveVoiceModal({
         processSentenceQueue();
       } else {
         if (isLiveActiveRef.current && !isMutedRef.current) {
+          setState("listening");
+          setStatusText("Listening...");
           startListening();
         }
       }
@@ -354,7 +309,6 @@ export function LiveVoiceModal({
     async (textToSend: string) => {
       if (!textToSend.trim()) return;
 
-      // Stop speech recognition immediately before sending to avoid mobile mic beep loops
       stopAllVoice();
 
       setState("thinking");
@@ -375,7 +329,7 @@ export function LiveVoiceModal({
             conversation_id: sessionId,
             persona_id: activePersona?.id,
             folder: activeFolder || "",
-            mode: "fast", // Fast mode for quick response
+            mode: "fast",
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -406,10 +360,9 @@ export function LiveVoiceModal({
                     currentChunkRef.current += data.content;
                     setAiResponse(fullAnswer);
 
-                    // Ultra-fast sentence & clause chunking for rapid TTS start
                     const chunkText = currentChunkRef.current;
                     const matches = chunkText.match(/[^.!?\n,;:]+[.!?\n,;:]+/g);
-                    
+
                     if (matches) {
                       for (const sentence of matches) {
                         currentSentenceQueueRef.current.push(sentence);
@@ -417,7 +370,6 @@ export function LiveVoiceModal({
                       }
                       processSentenceQueue();
                     } else if (chunkText.length > 35) {
-                      // Trigger early TTS if 35+ characters arrive without punctuation
                       currentSentenceQueueRef.current.push(chunkText);
                       currentChunkRef.current = "";
                       processSentenceQueue();
@@ -445,6 +397,8 @@ export function LiveVoiceModal({
         setState("error");
         setTimeout(() => {
           if (isLiveActiveRef.current && !isMutedRef.current) {
+            setState("listening");
+            setStatusText("Listening...");
             startListening();
           }
         }, 1500);
@@ -453,12 +407,11 @@ export function LiveVoiceModal({
     [activePersona, sessionId, activeFolder, processSentenceQueue, onNewMessageSent, stopAllVoice]
   );
 
-  // Start single-session Speech Recognition (Prevents mobile mic beep loops)
+  // Single-Session Speech Recognition with Voice Activity Standby (VAD)
   const startListening = useCallback(() => {
-    if (isMutedRef.current || !isLiveActiveRef.current) return;
+    if (isMutedRef.current || !isLiveActiveRef.current || isRecRunningRef.current) return;
 
     stopAllVoice();
-    startAudioAnalyzer();
 
     const SpeechRecognitionClass =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -475,12 +428,12 @@ export function LiveVoiceModal({
     hasSpokenThisTurnRef.current = false;
 
     const rec = new SpeechRecognitionClass();
-    // continuous = false prevents repeated mobile mic on/off beep sounds!
-    rec.continuous = false;
+    rec.continuous = false; // Single query mode to eliminate mobile mic beep loops
     rec.interimResults = true;
     rec.lang = selectedLang;
 
     rec.onstart = () => {
+      isRecRunningRef.current = true;
       setState("listening");
       setStatusText("Listening...");
     };
@@ -495,7 +448,6 @@ export function LiveVoiceModal({
       if (currentText) {
         setTranscript(currentText);
 
-        // Fast 500ms silence detection for super snappy turn taking
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
           if (currentText.length > 1 && !hasSpokenThisTurnRef.current) {
@@ -506,6 +458,7 @@ export function LiveVoiceModal({
     };
 
     rec.onerror = (event: any) => {
+      isRecRunningRef.current = false;
       const errType = event.error;
       console.warn("Speech recognition error:", errType);
 
@@ -518,49 +471,82 @@ export function LiveVoiceModal({
         setTimeout(() => {
           if (isLiveActiveRef.current && !isMutedRef.current) startListening();
         }, 1500);
-      } else if (errType === "no-speech") {
-        // Soft silence handling without noisy mic toggle
-        if (isLiveActiveRef.current && stateRef.current === "listening" && !isMutedRef.current) {
-          restartTimerRef.current = setTimeout(() => {
-            if (isLiveActiveRef.current && stateRef.current === "listening" && !isMutedRef.current) {
-              startListening();
-            }
-          }, 800);
-        }
-      } else if (errType !== "aborted") {
-        setStatusText(`Mic error: ${errType}`);
       }
     };
 
     rec.onend = () => {
-      // If user was listening and hasn't submitted text yet, restart gracefully with delay
-      if (
-        isLiveActiveRef.current &&
-        stateRef.current === "listening" &&
-        !isMutedRef.current &&
-        !hasSpokenThisTurnRef.current
-      ) {
-        restartTimerRef.current = setTimeout(() => {
-          if (
-            isLiveActiveRef.current &&
-            stateRef.current === "listening" &&
-            !isMutedRef.current
-          ) {
-            try {
-              rec.start();
-            } catch (e) {}
-          }
-        }, 600);
-      }
+      isRecRunningRef.current = false;
+      // DO NOT auto-restart rec here!
+      // VAD audio analyzer loop will auto-start rec when user speaks into mic!
     };
 
     recognitionRef.current = rec;
     try {
       rec.start();
     } catch (e) {
-      console.error("Failed to start speech recognition:", e);
+      isRecRunningRef.current = false;
     }
-  }, [selectedLang, stopAllVoice, startAudioAnalyzer, sendSpokenTextToAI]);
+  }, [selectedLang, stopAllVoice, sendSpokenTextToAI]);
+
+  // Setup REAL Web Audio API Microphone Analyzer + Voice Activity Detection (VAD)
+  const startAudioAnalyzer = useCallback(async () => {
+    try {
+      stopAudioAnalyzer();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      mediaStreamRef.current = stream;
+
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioContextClass();
+      if (audioCtx.state === "suspended") {
+        await audioCtx.resume();
+      }
+      audioCtxRef.current = audioCtx;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      analyser.smoothingTimeConstant = 0.8;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const loop = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const level = Math.min(1, avg / 100);
+        audioLevelRef.current = level;
+
+        // VAD: Auto start recognition ONLY when user starts speaking (eliminates mobile beep loops!)
+        if (
+          isLiveActiveRef.current &&
+          stateRef.current === "listening" &&
+          !isMutedRef.current &&
+          !isRecRunningRef.current &&
+          !isSpeakingRef.current &&
+          level > 0.07
+        ) {
+          startListening();
+        }
+
+        requestAnimationFrame(loop);
+      };
+      loop();
+    } catch (err: any) {
+      console.warn("Could not access mic audio stream", err);
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        setErrorMessage("Microphone access denied. Please grant microphone permission in your browser.");
+        setStatusText("Mic Permission Denied");
+        setState("error");
+      }
+    }
+  }, [stopAudioAnalyzer, startListening]);
 
   // Handle modal lifecycle
   useEffect(() => {
@@ -569,6 +555,7 @@ export function LiveVoiceModal({
       setTranscript("");
       setAiResponse("");
       setErrorMessage(null);
+      startAudioAnalyzer();
       startListening();
     } else {
       isLiveActiveRef.current = false;
@@ -623,8 +610,12 @@ export function LiveVoiceModal({
       setTranscript("");
       setAiResponse("");
       startListening();
-    } else if (state === "listening" && transcript.trim()) {
-      sendSpokenTextToAI(transcript.trim());
+    } else if (state === "listening") {
+      if (transcript.trim()) {
+        sendSpokenTextToAI(transcript.trim());
+      } else {
+        startListening();
+      }
     } else if (state === "error") {
       setErrorMessage(null);
       startListening();

@@ -135,8 +135,8 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#020204] text-[#f8fafc]">
-        <div className="text-sm font-bold uppercase tracking-widest animate-pulse">Loading settings...</div>
+      <div className="h-[100dvh] w-full flex items-center justify-center bg-[#020204] text-[#f8fafc]">
+        <div className="text-xs font-semibold text-zinc-400">Settings</div>
       </div>
     );
   }
