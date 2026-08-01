@@ -42,7 +42,7 @@ export function LiveVoiceModal({
   const [transcript, setTranscript] = useState("");
   const [aiResponse, setAiResponse] = useState("");
   const [isMuted, setIsMuted] = useState(false);
-  const [statusText, setStatusText] = useState("Initializing Gemini Live...");
+  const [statusText, setStatusText] = useState("Initializing Live Mode...");
   const [selectedLang, setSelectedLang] = useState("en-IN");
   const [isSupported, setIsSupported] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -51,15 +51,17 @@ export function LiveVoiceModal({
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const restartTimerRef = useRef<NodeJS.Timeout | null>(null);
   const currentSentenceQueueRef = useRef<string[]>([]);
   const isSpeakingRef = useRef(false);
   const currentChunkRef = useRef("");
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Mutable refs to prevent stale closure bugs in Speech API callbacks
+  // Mutable refs to prevent stale closure bugs & mobile mic loops
   const stateRef = useRef<ModeState>("idle");
   const isMutedRef = useRef(false);
   const isLiveActiveRef = useRef(false);
+  const hasSpokenThisTurnRef = useRef(false);
 
   // Web Audio API refs
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -83,6 +85,15 @@ export function LiveVoiceModal({
       const SpeechRecognitionClass =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       setIsSupported(!!SpeechRecognitionClass);
+
+      // Warm up mobile TTS synthesis engine
+      if (window.speechSynthesis) {
+        try {
+          const dummy = new SpeechSynthesisUtterance("");
+          dummy.volume = 0;
+          window.speechSynthesis.speak(dummy);
+        } catch (e) {}
+      }
     }
   }, []);
 
@@ -228,9 +239,10 @@ export function LiveVoiceModal({
     }
   }, [stopAudioAnalyzer]);
 
-  // Stop all speech recognition & TTS
+  // Stop speech recognition & timers
   const stopAllVoice = useCallback(() => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (restartTimerRef.current) clearTimeout(restartTimerRef.current);
     if (abortControllerRef.current) abortControllerRef.current.abort();
     if (recognitionRef.current) {
       try {
@@ -246,7 +258,7 @@ export function LiveVoiceModal({
     isSpeakingRef.current = false;
   }, []);
 
-  // Clean Markdown formatting for clean human-like speech output
+  // Clean Markdown formatting for speech output
   const cleanMarkdownForSpeech = (rawText: string) => {
     return rawText
       .replace(/```[\s\S]*?```/g, "")
@@ -259,7 +271,7 @@ export function LiveVoiceModal({
       .trim();
   };
 
-  // Process sentence queue for ultra-fast speech synthesis
+  // Ultra-fast sentence queue processing
   const processSentenceQueue = useCallback(() => {
     if (
       !synthRef.current ||
@@ -285,14 +297,15 @@ export function LiveVoiceModal({
     setStatusText("Speaking...");
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.rate = 1.15;
+    utterance.rate = 1.22; // Snappy conversational speed
     utterance.pitch = 1.0;
 
     const voices = synthRef.current.getVoices();
+    const langPrefix = selectedLang.split("-")[0];
     const preferredVoice =
       voices.find(
         (v) =>
-          v.lang.startsWith(selectedLang.split("-")[0]) &&
+          v.lang.startsWith(langPrefix) &&
           (v.name.includes("Natural") ||
             v.name.includes("Online") ||
             v.name.includes("Neural") ||
@@ -303,7 +316,7 @@ export function LiveVoiceModal({
             v.name.includes("Alex") ||
             v.name.includes("Serena"))
       ) ||
-      voices.find((v) => v.lang.startsWith(selectedLang.split("-")[0])) ||
+      voices.find((v) => v.lang.startsWith(langPrefix)) ||
       voices.find((v) => v.lang.startsWith("en")) ||
       voices[0];
 
@@ -336,11 +349,12 @@ export function LiveVoiceModal({
     synthRef.current.speak(utterance);
   }, [selectedLang]);
 
-  // Send user text to AI
+  // Send user text to AI (Fast Mode)
   const sendSpokenTextToAI = useCallback(
     async (textToSend: string) => {
       if (!textToSend.trim()) return;
 
+      // Stop speech recognition immediately before sending to avoid mobile mic beep loops
       stopAllVoice();
 
       setState("thinking");
@@ -348,6 +362,7 @@ export function LiveVoiceModal({
       setAiResponse("");
       currentSentenceQueueRef.current = [];
       currentChunkRef.current = "";
+      hasSpokenThisTurnRef.current = true;
 
       try {
         abortControllerRef.current = new AbortController();
@@ -360,7 +375,7 @@ export function LiveVoiceModal({
             conversation_id: sessionId,
             persona_id: activePersona?.id,
             folder: activeFolder || "",
-            mode: "fast", // Fast response for live mode
+            mode: "fast", // Fast mode for quick response
           }),
           signal: abortControllerRef.current.signal,
         });
@@ -391,12 +406,20 @@ export function LiveVoiceModal({
                     currentChunkRef.current += data.content;
                     setAiResponse(fullAnswer);
 
-                    const matches = currentChunkRef.current.match(/[^.!?\n,;:]+[.!?\n,;:]+/g);
+                    // Ultra-fast sentence & clause chunking for rapid TTS start
+                    const chunkText = currentChunkRef.current;
+                    const matches = chunkText.match(/[^.!?\n,;:]+[.!?\n,;:]+/g);
+                    
                     if (matches) {
                       for (const sentence of matches) {
                         currentSentenceQueueRef.current.push(sentence);
                         currentChunkRef.current = currentChunkRef.current.slice(sentence.length);
                       }
+                      processSentenceQueue();
+                    } else if (chunkText.length > 35) {
+                      // Trigger early TTS if 35+ characters arrive without punctuation
+                      currentSentenceQueueRef.current.push(chunkText);
+                      currentChunkRef.current = "";
                       processSentenceQueue();
                     }
                   }
@@ -424,13 +447,13 @@ export function LiveVoiceModal({
           if (isLiveActiveRef.current && !isMutedRef.current) {
             startListening();
           }
-        }, 2000);
+        }, 1500);
       }
     },
     [activePersona, sessionId, activeFolder, processSentenceQueue, onNewMessageSent, stopAllVoice]
   );
 
-  // Start continuous Web Speech recognition
+  // Start single-session Speech Recognition (Prevents mobile mic beep loops)
   const startListening = useCallback(() => {
     if (isMutedRef.current || !isLiveActiveRef.current) return;
 
@@ -449,8 +472,11 @@ export function LiveVoiceModal({
     }
 
     setErrorMessage(null);
+    hasSpokenThisTurnRef.current = false;
+
     const rec = new SpeechRecognitionClass();
-    rec.continuous = true;
+    // continuous = false prevents repeated mobile mic on/off beep sounds!
+    rec.continuous = false;
     rec.interimResults = true;
     rec.lang = selectedLang;
 
@@ -469,12 +495,13 @@ export function LiveVoiceModal({
       if (currentText) {
         setTranscript(currentText);
 
+        // Fast 500ms silence detection for super snappy turn taking
         if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
         silenceTimerRef.current = setTimeout(() => {
-          if (currentText.length > 1) {
+          if (currentText.length > 1 && !hasSpokenThisTurnRef.current) {
             sendSpokenTextToAI(currentText);
           }
-        }, 1200);
+        }, 500);
       }
     };
 
@@ -491,17 +518,39 @@ export function LiveVoiceModal({
         setTimeout(() => {
           if (isLiveActiveRef.current && !isMutedRef.current) startListening();
         }, 1500);
-      } else if (errType !== "no-speech" && errType !== "aborted") {
+      } else if (errType === "no-speech") {
+        // Soft silence handling without noisy mic toggle
+        if (isLiveActiveRef.current && stateRef.current === "listening" && !isMutedRef.current) {
+          restartTimerRef.current = setTimeout(() => {
+            if (isLiveActiveRef.current && stateRef.current === "listening" && !isMutedRef.current) {
+              startListening();
+            }
+          }, 800);
+        }
+      } else if (errType !== "aborted") {
         setStatusText(`Mic error: ${errType}`);
       }
     };
 
     rec.onend = () => {
-      // Use ref values to avoid stale closure state bugs!
-      if (isLiveActiveRef.current && stateRef.current === "listening" && !isMutedRef.current) {
-        try {
-          rec.start();
-        } catch (e) {}
+      // If user was listening and hasn't submitted text yet, restart gracefully with delay
+      if (
+        isLiveActiveRef.current &&
+        stateRef.current === "listening" &&
+        !isMutedRef.current &&
+        !hasSpokenThisTurnRef.current
+      ) {
+        restartTimerRef.current = setTimeout(() => {
+          if (
+            isLiveActiveRef.current &&
+            stateRef.current === "listening" &&
+            !isMutedRef.current
+          ) {
+            try {
+              rec.start();
+            } catch (e) {}
+          }
+        }, 600);
       }
     };
 
