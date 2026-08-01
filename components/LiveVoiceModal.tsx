@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Mic, MicOff, X, Sparkles, PhoneOff, Globe, AlertCircle, RefreshCw, Loader2 } from "lucide-react";
 
+
 interface Persona {
   id: string;
   name: string;
@@ -39,8 +40,8 @@ function createRecognition(lang: string) {
     (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
   if (!SpeechRecClass) return null;
   const rec = new SpeechRecClass();
-  rec.continuous = false;       // Single utterance — no loop, no beep cycle
-  rec.interimResults = false;   // Only fire onresult when speech is final
+  rec.continuous = false;      // Single utterance — no loop, no beep cycle on Android
+  rec.interimResults = true;   // Show live text as user speaks (critical for Android feedback)
   rec.lang = lang;
   rec.maxAlternatives = 1;
   return rec;
@@ -79,6 +80,8 @@ export function LiveVoiceModal({
   const isLiveRef = useRef(false);
   const appStateRef = useRef<AppState>("ready");
   const isMutedRef = useRef(false);
+  // Capture live transcript across onresult calls
+  const liveTranscriptRef = useRef("");
 
   useEffect(() => { appStateRef.current = appState; }, [appState]);
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
@@ -304,19 +307,23 @@ export function LiveVoiceModal({
     setErrorMessage(null);
     setNoSpeechHint(false);
     setTranscript("");
+    liveTranscriptRef.current = "";
     setAppState("recording");
 
     rec.onresult = (event: any) => {
-      // Grab the best final transcript
-      let best = "";
+      // Collect ALL results — both interim and final — for live visual feedback
+      let finalText = "";
+      let interimText = "";
       for (let i = 0; i < event.results.length; i++) {
-        if (event.results[i].isFinal) best += event.results[i][0].transcript + " ";
+        const t = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText += t + " ";
+        else interimText += t;
       }
-      const text = best.trim();
-      if (text) {
-        setTranscript(text);
-        recognitionRef.current = null;
-        sendToAI(text);
+      const combined = (finalText + interimText).trim();
+      if (combined) {
+        // Show live transcription on screen so user sees it's working
+        setTranscript(combined);
+        liveTranscriptRef.current = combined;
       }
     };
 
@@ -327,23 +334,33 @@ export function LiveVoiceModal({
         setErrorMessage("Microphone access denied. Allow mic in browser settings.");
         setAppState("error");
       } else if (err === "no-speech") {
-        setNoSpeechHint(true);
-        setAppState("ready");
+        // Only show hint if nothing was captured at all
+        if (!liveTranscriptRef.current) {
+          setNoSpeechHint(true);
+          setAppState("ready");
+        }
       } else {
-        // network / audio-capture etc — go back to ready
-        setAppState("ready");
+        // For network/audio errors — use whatever was captured
+        const captured = liveTranscriptRef.current;
+        if (captured && captured.length > 1) {
+          sendToAI(captured);
+        } else {
+          setAppState("ready");
+        }
       }
     };
 
     rec.onend = () => {
-      // If onresult already fired → sendToAI is running → do nothing
-      // If onresult never fired → go back to ready
-      if (appStateRef.current === "recording") {
-        recognitionRef.current = null;
+      recognitionRef.current = null;
+      if (appStateRef.current !== "recording") return; // Already processing
+      // Use whatever transcript was captured — final OR interim
+      const captured = liveTranscriptRef.current;
+      if (captured && captured.length > 1) {
+        sendToAI(captured);
+      } else {
         setNoSpeechHint(true);
         setAppState("ready");
       }
-      recognitionRef.current = null;
     };
 
     recognitionRef.current = rec;
