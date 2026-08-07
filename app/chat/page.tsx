@@ -147,8 +147,9 @@ export default function ChatPage() {
       const res = await fetch(`/api/history?sessionId=${selectedSessionId}${pinQuery}`);
       const data = await res.json();
 
-      if (res.status === 403 || data.isLocked) {
-        setLockTargetSession(targetSession || { id: selectedSessionId, title: "Locked Chat", is_pinned: false, folder: "", active_persona_id: null, _count: { messages: 0 } });
+      if (res.status === 403 || !res.ok) {
+        const foundTitle = targetSession ? (targetSession as SidebarSession).title : "Protected Conversation";
+        setLockTargetSession(targetSession || { id: selectedSessionId, title: foundTitle, is_pinned: false, folder: "", active_persona_id: null, _count: { messages: 0 } });
         setLockModalMode("auth");
         setLockErrorMessage(data.error || "Incorrect PIN code.");
         setShowLockModal(true);
