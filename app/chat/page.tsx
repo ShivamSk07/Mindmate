@@ -57,7 +57,7 @@ export default function ChatPage() {
   // New Features State
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
   const [sessionsList, setSessionsList] = useState<SidebarSession[]>([]);
-  const [unlockedSessionIds, setUnlockedSessionIds] = useState<Record<string, string>>({});
+  const [currentUnlockedSession, setCurrentUnlockedSession] = useState<{ id: string; pin: string } | null>(null);
   const [showLockModal, setShowLockModal] = useState(false);
   const [lockTargetSession, setLockTargetSession] = useState<SidebarSession | null>(null);
   const [lockModalMode, setLockModalMode] = useState<"lock" | "auth" | "remove">("auth");
@@ -132,7 +132,7 @@ export default function ChatPage() {
   // 2. Select Session with PIN lock check
   const handleSelectSession = useCallback(async (selectedSessionId: string, providedPin?: string) => {
     const targetSession = sessionsList.find((s) => s.id === selectedSessionId);
-    const activePin = providedPin || unlockedSessionIds[selectedSessionId];
+    const activePin = providedPin || (currentUnlockedSession?.id === selectedSessionId ? currentUnlockedSession.pin : undefined);
 
     if (targetSession?.is_locked && !activePin) {
       setLockTargetSession(targetSession);
@@ -162,7 +162,9 @@ export default function ChatPage() {
       setLockErrorMessage(null);
 
       if (activePin) {
-        setUnlockedSessionIds((prev) => ({ ...prev, [selectedSessionId]: activePin }));
+        setCurrentUnlockedSession({ id: selectedSessionId, pin: activePin });
+      } else {
+        setCurrentUnlockedSession(null);
       }
 
       const loadedMessages: Message[] = (data.messages || []).map((m: any) => ({
@@ -182,7 +184,7 @@ export default function ChatPage() {
     } catch (e) {
       console.error("Failed to load session", e);
     }
-  }, [sessionsList, unlockedSessionIds, clearChat, setMessages, setSessionId]);
+  }, [sessionsList, currentUnlockedSession, clearChat, setMessages, setSessionId]);
 
   // Lock Management Handlers
   const handleOpenLockModal = (session: SidebarSession) => {
@@ -210,7 +212,7 @@ export default function ChatPage() {
         });
 
         if (res.ok) {
-          setUnlockedSessionIds((prev) => ({ ...prev, [lockTargetSession.id]: enteredPin }));
+          setCurrentUnlockedSession({ id: lockTargetSession.id, pin: enteredPin });
           setShowLockModal(false);
           fetchInitialData();
         } else {
@@ -232,6 +234,7 @@ export default function ChatPage() {
         });
 
         if (res.ok) {
+          setCurrentUnlockedSession(null);
           setShowLockModal(false);
           fetchInitialData();
         } else {
