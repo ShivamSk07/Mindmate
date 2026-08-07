@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -32,6 +34,7 @@ export function ChatWindow({
   onExtractNewChat,
 }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const selectedTextRef = useRef("");
   const [selectedText, setSelectedText] = useState("");
   const [injectedInputText, setInjectedInputText] = useState("");
   const [selectionPos, setSelectionPos] = useState<{ top: number; left: number } | null>(null);
@@ -42,61 +45,91 @@ export function ChatWindow({
   }, [messages, isLoading]);
 
   useEffect(() => {
-    const handleSelectionChange = () => {
+    const updateSelection = () => {
       const selection = window.getSelection();
       const text = selection?.toString().trim();
 
-      if (text && text.length > 2) {
-        setSelectedText(text);
+      if (text && text.length >= 2) {
         try {
           const range = selection?.getRangeAt(0);
           const rect = range?.getBoundingClientRect();
-          if (rect) {
-            setSelectionPos({
-              top: Math.max(10, rect.top - 48),
-              left: Math.min(window.innerWidth - 220, Math.max(20, rect.left + rect.width / 2 - 100)),
-            });
+          if (rect && rect.width > 0 && rect.height > 0) {
+            selectedTextRef.current = text;
+            setSelectedText(text);
+
+            const popoverWidth = 270;
+            const popoverHeight = 44;
+
+            let top = rect.top - popoverHeight - 8;
+            if (top < 65) {
+              top = rect.bottom + 8;
+            }
+            top = Math.max(10, Math.min(window.innerHeight - 60, top));
+
+            let left = rect.left + rect.width / 2 - popoverWidth / 2;
+            left = Math.max(16, Math.min(window.innerWidth - popoverWidth - 16, left));
+
+            setSelectionPos({ top, left });
           }
         } catch (e) {}
-      } else {
-        setSelectedText("");
-        setSelectionPos(null);
       }
     };
 
-    document.addEventListener("mouseup", handleSelectionChange);
-    return () => document.removeEventListener("mouseup", handleSelectionChange);
+    const handleMouseUp = (e: MouseEvent) => {
+      const popover = document.getElementById("selection-action-popover");
+      if (popover && popover.contains(e.target as Node)) {
+        return;
+      }
+      setTimeout(() => {
+        const selection = window.getSelection();
+        const text = selection?.toString().trim();
+        if (!text) {
+          setSelectedText("");
+          setSelectionPos(null);
+          selectedTextRef.current = "";
+        } else {
+          updateSelection();
+        }
+      }, 20);
+    };
+
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => document.removeEventListener("mouseup", handleMouseUp);
   }, []);
 
   const handleCopySelection = () => {
-    if (selectedText) {
-      navigator.clipboard.writeText(selectedText);
+    const targetText = selectedTextRef.current || selectedText;
+    if (targetText) {
+      navigator.clipboard.writeText(targetText);
       setCopiedSelection(true);
       setTimeout(() => setCopiedSelection(false), 1500);
     }
   };
 
   const handleInsertToInput = () => {
-    if (selectedText) {
-      setInjectedInputText(selectedText);
+    const targetText = selectedTextRef.current || selectedText;
+    if (targetText) {
+      setInjectedInputText(targetText);
       setSelectedText("");
       setSelectionPos(null);
+      selectedTextRef.current = "";
       window.getSelection()?.removeAllRanges();
+      setTimeout(() => setInjectedInputText(""), 100);
     }
   };
 
   const handleCreateNewChatWithSelection = () => {
-    if (selectedText && onExtractNewChat) {
-      onExtractNewChat(selectedText);
+    const targetText = selectedTextRef.current || selectedText;
+    if (targetText && onExtractNewChat) {
+      onExtractNewChat(targetText);
       setSelectedText("");
       setSelectionPos(null);
+      selectedTextRef.current = "";
       window.getSelection()?.removeAllRanges();
     }
   };
 
   const firstName = username.split(" ")[0] || username;
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] main-chat overflow-hidden relative">
@@ -104,23 +137,38 @@ export function ChatWindow({
       {/* Floating Selection Extraction Action Bar */}
       {selectedText && selectionPos && (
         <div
+          id="selection-action-popover"
           style={{ top: `${selectionPos.top}px`, left: `${selectionPos.left}px` }}
-          className="fixed z-50 flex items-center gap-1 p-1 bg-[rgba(10,10,16,0.94)] backdrop-blur-xl border border-[rgba(255,255,255,0.12)] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] animate-fade-in"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="fixed z-50 flex items-center gap-1 p-1 bg-[#09090b] text-white border border-[#27272a] rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.8)] animate-fade-in"
         >
           {onExtractNewChat && (
             <button
-              onClick={handleCreateNewChatWithSelection}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 transition-all active:scale-95"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleCreateNewChatWithSelection();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] transition-all active:scale-95"
               title="Create New Chat with Selected Paragraph"
             >
-              <Sparkles size={13} className="text-indigo-400" />
+              <Sparkles size={13} className="text-white" />
               <span>New Chat</span>
             </button>
           )}
 
           <button
-            onClick={handleInsertToInput}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all active:scale-95"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleInsertToInput();
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-[#18181b] transition-all active:scale-95"
             title="Insert into Input"
           >
             <CornerDownLeft size={13} className="text-emerald-400" />
@@ -128,8 +176,13 @@ export function ChatWindow({
           </button>
 
           <button
-            onClick={handleCopySelection}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleCopySelection();
+            }}
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-[#18181b] transition-all"
             title="Copy Text"
           >
             {copiedSelection ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
@@ -142,16 +195,13 @@ export function ChatWindow({
         <div className="w-full max-w-3xl flex flex-col">
           <div className="flex-1">
 
-            {/* ── Welcome Screen (Minimal Gemini Style) ── */}
+            {/* Welcome Screen */}
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-200px)] md:min-h-[70vh] text-center animate-fade-in px-4 relative">
-
-                {/* Minimal Logo */}
                 <div className="mb-6">
                   <img src="/img/logo.png" alt="Clarity" className="w-12 h-12 object-cover opacity-90" />
                 </div>
 
-                {/* Greeting text */}
                 <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-white/90 mb-3">
                   Hello, {firstName}
                 </h1>
