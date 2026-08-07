@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, MessageSquare, Menu, Folder, LogOut, ChevronRight, ChevronDown, Search, FolderPlus, Grid } from "lucide-react";
+import { Plus, Trash2, MessageSquare, Menu, Folder, LogOut, ChevronRight, ChevronDown, Search, FolderPlus, Grid, Sparkles, ShoppingBag, Play } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { MiniApp } from "@/types";
 
 interface SidebarSession {
   id: string;
@@ -25,6 +26,9 @@ interface SidebarProps {
   setFolders: React.Dispatch<React.SetStateAction<string[]>>;
   isOpen?: boolean;
   setIsOpen?: (open: boolean) => void;
+  onOpenAppStore?: () => void;
+  installedApps?: MiniApp[];
+  onLaunchApp?: (app: MiniApp) => void;
 }
 
 export function Sidebar({
@@ -38,6 +42,9 @@ export function Sidebar({
   setFolders,
   isOpen: propsIsOpen,
   setIsOpen: propsSetIsOpen,
+  onOpenAppStore,
+  installedApps = [],
+  onLaunchApp,
 }: SidebarProps) {
   const [sessions, setSessions] = useState<SidebarSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -192,8 +199,8 @@ export function Sidebar({
           </button>
         </div>
 
-        {/* Action: New Chat */}
-        <div className="p-4">
+        {/* Actions: New Chat & AI App Store */}
+        <div className="p-4 flex flex-col gap-2 border-b border-[rgba(255,255,255,0.04)]">
           <button
             onClick={() => {
               onNewChat();
@@ -204,7 +211,51 @@ export function Sidebar({
             <span>New chat</span>
             <Plus size={14} />
           </button>
+
+          {onOpenAppStore && (
+            <button
+              onClick={() => {
+                onOpenAppStore();
+                if (window.innerWidth <= 768) setIsOpen(false);
+              }}
+              className="w-full flex items-center justify-between bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 hover:text-white rounded-xl px-4 py-2.5 text-xs font-semibold transition-all active:scale-98"
+            >
+              <span className="flex items-center gap-1.5">
+                <ShoppingBag size={13} className="text-indigo-400" />
+                AI App Store
+              </span>
+              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-1.5 py-0.5 rounded">
+                NEW
+              </span>
+            </button>
+          )}
         </div>
+
+        {/* Installed Mini Apps Section */}
+        {installedApps.length > 0 && (
+          <div className="px-3 pt-3 pb-1 border-b border-[rgba(255,255,255,0.04)]">
+            <div className="px-2 text-[10px] uppercase font-bold tracking-widest text-[#64748b] mb-1.5 flex items-center justify-between">
+              <span>Installed Apps ({installedApps.length})</span>
+              <Sparkles size={11} className="text-indigo-400" />
+            </div>
+
+            <div className="space-y-1 max-h-36 overflow-y-auto scrollbar-none">
+              {installedApps.map((app) => (
+                <div
+                  key={app.id}
+                  onClick={() => {
+                    if (onLaunchApp) onLaunchApp(app);
+                    if (window.innerWidth <= 768) setIsOpen(false);
+                  }}
+                  className="flex items-center justify-between px-3 py-1.5 rounded-xl cursor-pointer text-xs text-zinc-300 hover:text-white hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20 transition-all group"
+                >
+                  <span className="truncate flex-1 font-medium">{app.name}</span>
+                  <Play size={10} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Folders List label & actions */}
         <div className="px-5 py-2 flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#64748b]">

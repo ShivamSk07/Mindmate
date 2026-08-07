@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
-import { Send, Square, Mic, MicOff, Globe, Wand2, Paperclip, Radio } from "lucide-react";
+import { Send, Square, Globe, Wand2, Paperclip, Radio } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (message: string, forceSearch?: boolean, mode?: string, tone?: string, length?: string) => void;
@@ -9,12 +9,10 @@ interface ChatInputProps {
   isLoading: boolean;
   disabled?: boolean;
   sessionId?: string;
-  onOpenLiveVoice?: () => void;
 }
 
-export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOpenLiveVoice }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId }: ChatInputProps) {
   const [input, setInput] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
 
   const [attachedFile, setAttachedFile] = useState<{ id: string; name: string; type: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -33,7 +31,6 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
   const filteredCommands = slashCommands.filter((c) => c.name.startsWith(input));
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const recognitionRef = useRef<any>(null);
 
   const handleInput = () => {
     const textarea = textareaRef.current;
@@ -147,40 +144,6 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
     setInput((prev) => "Draft a clear, structured response for this query: " + prev);
   };
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const rec = new SpeechRecognition();
-        rec.continuous = false;
-        rec.interimResults = true;
-        rec.lang = "hi-IN";
-        rec.onstart = () => setIsRecording(true);
-        rec.onresult = (event: any) => {
-          let final = "";
-          let interim = "";
-          for (let i = event.resultIndex; i < event.results.length; ++i) {
-            const t = event.results[i][0].transcript;
-            if (event.results[i].isFinal) final += t + " ";
-            else interim += t;
-          }
-          if (final || interim) {
-            setInput((prev) => (prev + " " + final + interim).trim());
-          }
-        };
-        rec.onerror = () => setIsRecording(false);
-        rec.onend = () => setIsRecording(false);
-        recognitionRef.current = rec;
-      }
-    }
-  }, []);
-
-  const toggleVoiceInput = () => {
-    if (!recognitionRef.current) return;
-    if (isRecording) recognitionRef.current.stop();
-    else recognitionRef.current.start();
-  };
-
   return (
     <div className="bg-transparent px-3 sm:px-4 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-5 pt-1.5 relative z-10">
       <div className="max-w-3xl mx-auto flex flex-col gap-2 relative">
@@ -278,17 +241,6 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, onOp
             className="hidden"
           />
 
-          {/* Mic */}
-          <button
-            type="button"
-            onClick={toggleVoiceInput}
-            className={`p-1.5 sm:p-2 rounded-xl text-[#94a3b8] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-all flex-shrink-0 ${
-              isRecording ? "text-red-400 bg-red-500/5 animate-pulse" : ""
-            }`}
-            title="Voice Input"
-          >
-            {isRecording ? <MicOff size={15} /> : <Mic size={15} />}
-          </button>
 
           {/* Textarea */}
           <textarea

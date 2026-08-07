@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import type { Message } from "@/types";
+import type { Message, Project } from "@/types";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -16,7 +16,7 @@ interface ChatWindowProps {
   activePersonaAvatar?: string;
   activeFolder: string | null;
   sessionId?: string;
-  onOpenLiveVoice?: () => void;
+  onOpenProject?: (project: Project) => void;
 }
 
 export function ChatWindow({
@@ -30,7 +30,7 @@ export function ChatWindow({
   activePersonaAvatar,
   activeFolder,
   sessionId,
-  onOpenLiveVoice,
+  onOpenProject,
 }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -85,6 +85,7 @@ export function ChatWindow({
                   username={username}
                   assistantName={activePersonaName}
                   avatarUrl={activePersonaAvatar}
+                  onOpenProject={onOpenProject}
                 />
               ))}
             </div>
@@ -137,7 +138,6 @@ export function ChatWindow({
           onStop={onStop}
           isLoading={isLoading}
           sessionId={sessionId}
-          onOpenLiveVoice={onOpenLiveVoice}
         />
       </div>
     </div>

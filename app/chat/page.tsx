@@ -6,13 +6,14 @@ import { useState, useEffect, useCallback } from "react";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useChat } from "@/hooks/useChat";
-import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Mic, Menu, MoreVertical } from "lucide-react";
+import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, ShoppingBag, FolderKanban } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Message } from "@/types";
+import type { Message, MiniApp, Project } from "@/types";
 import { PersonaModal } from "@/components/PersonaModal";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { LiveVoiceModal } from "@/components/LiveVoiceModal";
+import { AppStoreModal, PREBUILT_MINI_APPS } from "@/components/AppStoreModal";
+import { ProjectWorkspaceDrawer } from "@/components/ProjectWorkspaceDrawer";
 
 interface Persona {
   id: string;
@@ -50,10 +51,55 @@ export default function ChatPage() {
   const [showKanban, setShowKanban] = useState(false);
   const [showPersonaModal, setShowPersonaModal] = useState(false);
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
-  const [showLiveVoice, setShowLiveVoice] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showToolsDropdown, setShowToolsDropdown] = useState(false);
+
+  // New Feature States: App Store & AI Project Manager
+  const [showAppStore, setShowAppStore] = useState(false);
+  const [installedApps, setInstalledApps] = useState<MiniApp[]>([]);
+  const [activeProject, setActiveProject] = useState<Project | null>(null);
+  const [showProjectDrawer, setShowProjectDrawer] = useState(false);
+
   const router = useRouter();
+
+  // Load Installed Apps from localStorage
+  const loadInstalledApps = useCallback(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("clarity_installed_apps");
+      if (stored) {
+        try {
+          const appIds: string[] = JSON.parse(stored);
+          const apps = PREBUILT_MINI_APPS.filter((a) => appIds.includes(a.id));
+          setInstalledApps(apps);
+        } catch (e) {
+          setInstalledApps(PREBUILT_MINI_APPS.slice(0, 2));
+        }
+      } else {
+        setInstalledApps(PREBUILT_MINI_APPS.slice(0, 2));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    loadInstalledApps();
+  }, [loadInstalledApps, showAppStore]);
+
+  const handleLaunchApp = (app: MiniApp) => {
+    // Convert MiniApp to active Persona mode
+    const appPersona: Persona = {
+      id: app.id,
+      name: app.name,
+      tone: app.category,
+      colorTheme: "#6366f1",
+      systemPrompt: app.systemPrompt,
+      isCustom: true,
+    };
+    setActivePersona(appPersona);
+
+    if (app.initialPrompt) {
+      sendMessage(app.initialPrompt, app.id);
+    }
+  };
 
   // 1. Initial Data Fetching
   const fetchInitialData = useCallback(async () => {
@@ -233,36 +279,7 @@ export default function ChatPage() {
     }
   };
 
-  // 7. Enhanced Mobile Sensor Shake Feature -> Triggers Live Voice Mode
-  useEffect(() => {
-    let lastShake = 0;
-    const handleMotion = (e: DeviceMotionEvent) => {
-      const acc = e.accelerationIncludingGravity || e.acceleration;
-      if (!acc) return;
-      const total = Math.abs(acc.x || 0) + Math.abs(acc.y || 0) + Math.abs(acc.z || 0);
 
-      // Shake sensitivity threshold
-      if (total > 30) {
-        const now = Date.now();
-        if (now - lastShake > 1800) {
-          lastShake = now;
-          if (typeof navigator !== "undefined" && navigator.vibrate) {
-            navigator.vibrate([120, 60, 120]);
-          }
-          setShowLiveVoice(true);
-        }
-      }
-    };
-
-    if (typeof window !== "undefined" && "DeviceMotionEvent" in window) {
-      window.addEventListener("devicemotion", handleMotion);
-    }
-    return () => {
-      if (typeof window !== "undefined" && "DeviceMotionEvent" in window) {
-        window.removeEventListener("devicemotion", handleMotion);
-      }
-    };
-  }, []);
 
 
 
@@ -415,14 +432,6 @@ export default function ChatPage() {
 
           {/* Right: Tools (Desktop) */}
           <div className="hidden sm:flex items-center gap-2 text-[#94a3b8]">
-            <button
-              onClick={() => setShowLiveVoice(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 border border-[rgba(255,255,255,0.05)] hover:border-[rgba(255,255,255,0.12)] rounded-xl text-xs font-medium text-[#94a3b8] hover:text-white bg-[rgba(255,255,255,0.02)] hover:bg-[rgba(255,255,255,0.05)] transition-all active:scale-95"
-              title="Live Voice Mode"
-            >
-              <Mic size={13} className="text-indigo-400 opacity-90" />
-              <span>Live Voice</span>
-            </button>
             {sessionId && (
               <a
                 href={`/api/export/${sessionId}`}
@@ -463,20 +472,8 @@ export default function ChatPage() {
             </button>
           </div>
 
-          {/* Right: Mobile — Mic + More */}
+          {/* Right: Mobile — More */}
           <div className="flex sm:hidden items-center gap-1.5">
-            <button
-              onClick={() => setShowLiveVoice(true)}
-              className="p-2 rounded-xl text-indigo-300 active:scale-95 transition-all"
-              style={{
-                background: "rgba(99,102,241,0.1)",
-                border: "1px solid rgba(99,102,241,0.2)",
-                boxShadow: "0 2px 8px rgba(99,102,241,0.15), inset 0 1px 0 rgba(255,255,255,0.06)",
-              }}
-              title="Live Voice Mode"
-            >
-              <Mic size={16} />
-            </button>
             <button
               onClick={() => setShowToolsDropdown(!showToolsDropdown)}
               className="p-2 rounded-xl text-[#a1a1aa] active:scale-95 transition-all"
@@ -559,54 +556,48 @@ export default function ChatPage() {
             activePersonaAvatar={botAvatar}
             activeFolder={activeFolder}
             sessionId={sessionId}
-            onOpenLiveVoice={() => setShowLiveVoice(true)}
+            onOpenProject={(proj) => {
+              setActiveProject(proj);
+              setShowProjectDrawer(true);
+            }}
           />
         </div>
       </main>
 
-      {/* Floating Swipe-Up/Shake Quick Persona Switcher overlay */}
-      {showQuickSwitcher && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="glass-premium rounded-t-3xl border-t border-[rgba(255,255,255,0.06)] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
-            <div
-              onClick={() => setShowQuickSwitcher(false)}
-              className="w-10 h-1 bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.2)] rounded-full mx-auto mb-5 cursor-pointer transition-colors"
-            />
-            <h3 className="text-sm font-bold text-white text-center mb-5 uppercase tracking-wider text-xs">Switch Persona</h3>
-            <div className="grid grid-cols-3 gap-3">
-              {personas.map((p) => {
-                const avatar = p.avatarUrl || "/img/logo.png";
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => handleSelectPersona(p)}
-                    className="flex flex-col items-center p-3 rounded-2xl border border-[rgba(255,255,255,0.04)] hover:bg-[rgba(255,255,255,0.03)] cursor-pointer text-center transition-all active:scale-95"
-                  >
-                    <img src={avatar} className="w-10 h-10 rounded-full border border-[rgba(255,255,255,0.06)] mb-2 object-cover" />
-                    <span className="text-[10px] font-semibold text-white truncate max-w-full">{p.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* App Store Modal */}
+      <AppStoreModal
+        isOpen={showAppStore}
+        onClose={() => setShowAppStore(false)}
+        onLaunchApp={handleLaunchApp}
+      />
+
+      {/* AI Project Manager Drawer */}
+      <ProjectWorkspaceDrawer
+        project={activeProject}
+        isOpen={showProjectDrawer}
+        onClose={() => setShowProjectDrawer(false)}
+        onUpdateProject={(updated) => setActiveProject(updated)}
+      />
 
       {/* Memory Vault Modal */}
       {showMemoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-          <div className="glass-premium rounded-2xl p-6 max-w-[400px] w-full mx-4 shadow-2xl animate-fade-in border border-[rgba(255,255,255,0.06)]">
-            <h2 className="text-sm font-bold text-white mb-1.5">Memory Vault</h2>
-            <p className="text-xs text-[#94a3b8] mb-4 leading-relaxed">
-              Clarity automatically extracts and remembers key facts about you across your sessions. Review or wipe them here.
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className="glass-premium max-w-md w-full rounded-2xl border border-[rgba(255,255,255,0.08)] p-6 shadow-2xl">
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+              <Archive size={16} className="text-amber-400" />
+              Memory Vault
+            </h3>
+            <p className="text-xs text-[#94a3b8] mb-4">
+              Explicit instructions or long-term facts Clarity should always remember about you across all chats.
             </p>
             <textarea
               value={memoryBox}
               onChange={(e) => setMemoryBox(e.target.value)}
-              className="w-full h-32 bg-[#050508]/85 border border-[rgba(255,255,255,0.04)] rounded-xl p-3 text-xs text-[#a5b4fc] font-mono outline-none focus:border-indigo-500/40 resize-none mb-4 shadow-inner"
-              placeholder="No memories stored yet..."
+              placeholder="e.g. I prefer short, concise code answers in TypeScript. My target framework is Next.js App Router."
+              rows={5}
+              className="w-full bg-[rgba(0,0,0,0.4)] border border-[rgba(255,255,255,0.08)] rounded-xl p-3 text-xs text-white placeholder-[#64748b] focus:outline-none focus:border-amber-400/50 transition-colors resize-none mb-4"
             />
-            <div className="flex gap-2.5">
+            <div className="flex gap-2">
               <button
                 onClick={handleSaveMemory}
                 className="flex-1 bg-white text-black font-semibold text-xs py-2.5 rounded-xl hover:bg-opacity-90 active:scale-95 transition-all shadow-md"
@@ -645,22 +636,6 @@ export default function ChatPage() {
       <KanbanBoard
         isOpen={showKanban}
         onClose={() => setShowKanban(false)}
-      />
-
-      {/* Real-time Live Voice Modal */}
-      <LiveVoiceModal
-        isOpen={showLiveVoice}
-        onClose={() => setShowLiveVoice(false)}
-        activePersona={activePersona}
-        sessionId={sessionId}
-        activeFolder={activeFolder}
-        onNewMessageSent={(userText, assistantReply) => {
-          setMessages((prev) => [
-            ...prev,
-            { id: crypto.randomUUID(), role: "user", content: userText, createdAt: new Date() },
-            { id: crypto.randomUUID(), role: "assistant", content: assistantReply, createdAt: new Date() },
-          ]);
-        }}
       />
     </div>
   );

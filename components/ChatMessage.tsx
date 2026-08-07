@@ -2,18 +2,20 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Volume2, VolumeX } from "lucide-react";
-import type { Message } from "@/types";
+import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Volume2, VolumeX, FolderKanban, Sparkles, ArrowRight } from "lucide-react";
+import type { Message, Project } from "@/types";
 import { useState, useEffect } from "react";
+import { ConfidenceBadge } from "./ConfidenceBadge";
 
 interface ChatMessageProps {
   message: Message;
   username: string;
   assistantName: string;
   avatarUrl?: string;
+  onOpenProject?: (project: Project) => void;
 }
 
-export function ChatMessage({ message, username, assistantName, avatarUrl }: ChatMessageProps) {
+export function ChatMessage({ message, username, assistantName, avatarUrl, onOpenProject }: ChatMessageProps) {
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
   const [feedbackState, setFeedbackState] = useState<number>(message.feedback || 0);
@@ -98,9 +100,8 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
       .replace(/`([^`]+)`/g, "$1")
       .replace(/<[^>]*>/g, "")
       .replace(/[*#_\[\]()]/g, "");
+
     const utterance = new SpeechSynthesisUtterance(plainText);
-    const hasHindi = /[\u0900-\u097F]/.test(plainText);
-    utterance.lang = hasHindi ? "hi-IN" : "en-US";
     utterance.onend = () => setIsPlayingSpeech(false);
     utterance.onerror = () => setIsPlayingSpeech(false);
     setIsPlayingSpeech(true);
@@ -131,16 +132,21 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
         /* ── AI: left-aligned with avatar header ── */
         <div className="flex flex-col w-full">
 
-          {/* AI name + timestamp */}
-          <div className="flex items-center gap-2 text-xs text-[#94a3b8] mb-2">
-            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)]">
-              <img src={botAvatar} alt={assistantName} className="w-full h-full object-cover" />
+          {/* AI name + timestamp + Confidence Badge */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
+              <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)]">
+                <img src={botAvatar} alt={assistantName} className="w-full h-full object-cover" />
+              </div>
+              <span className="font-semibold text-[11px] text-white">{assistantName}</span>
+              <span className="opacity-30 text-[9px]">•</span>
+              <span className="opacity-40 text-[10px]">
+                {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
             </div>
-            <span className="font-semibold text-[11px] text-white">{assistantName}</span>
-            <span className="opacity-30 text-[9px]">•</span>
-            <span className="opacity-40 text-[10px]">
-              {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-            </span>
+
+            {/* Render Feature 2: Confidence Score Meter */}
+            <ConfidenceBadge confidence={message.confidenceData} />
           </div>
 
           {/* Content indented under avatar */}
@@ -254,6 +260,48 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
 
                     return null;
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Render Feature 1: AI Project Manager Interactive Workspace Card */}
+            {message.projectData && (
+              <div className="w-full max-w-2xl bg-gradient-to-r from-indigo-950/40 via-purple-950/30 to-slate-900/50 border border-indigo-500/30 rounded-2xl p-4 mt-2 shadow-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      <FolderKanban size={16} />
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">AI Project Workspace</span>
+                      <h4 className="text-xs font-bold text-white truncate max-w-xs sm:max-w-md">{message.projectData.title}</h4>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    {message.projectData.difficulty}
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-zinc-300 line-clamp-2 mb-3">
+                  {message.projectData.description}
+                </p>
+
+                <div className="flex items-center justify-between pt-2 border-t border-white/[0.06]">
+                  <div className="flex items-center gap-3 text-[11px]">
+                    <span className="text-zinc-400 font-mono">
+                      Phases: <strong className="text-white">{message.projectData.phases.length}</strong>
+                    </span>
+                    <span className="text-indigo-300 font-mono">
+                      Progress: <strong>{message.projectData.progressPercentage}%</strong>
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => onOpenProject && onOpenProject(message.projectData!)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold text-xs transition-all active:scale-95 shadow-md"
+                  >
+                    Open Workspace <ArrowRight size={12} />
+                  </button>
                 </div>
               </div>
             )}

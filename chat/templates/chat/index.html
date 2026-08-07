@@ -1528,8 +1528,6 @@
                 </div>
 
                 <div class="input-row">
-                    <button class="action-btn" onclick="toggleVoice()" style="margin-bottom: 2px;"
-                        title="Use Voice Input"><i class="fas fa-microphone"></i></button>
                     <textarea id="messageInput" placeholder="Message MindMate..." rows="1"
                         onkeypress="handleEnter(event)"
                         oninput="this.style.height = ''; this.style.height = this.scrollHeight + 'px'"></textarea>
@@ -1786,80 +1784,7 @@
             }
         }
 
-        let isRecording = false;
-        let recognition = null;
-        let final_transcript = '';
 
-
-        function toggleVoice() {
-            const btn = document.querySelector('.fa-microphone');
-            const input = getEl('messageInput');
-
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                customAlert("Unsupported", "Voice input is not supported in this browser.");
-                return;
-            }
-
-            if (!recognition) {
-                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SpeechRecognition();
-                recognition.continuous = false; 
-                recognition.interimResults = true;
-                recognition.lang = 'hi-IN';
-
-                recognition.onstart = function () {
-                    isRecording = true;
-                    btn.style.color = '#ef4444';
-                    btn.classList.add('fa-beat-fade');
-                };
-
-                recognition.onresult = function (event) {
-                    let interim = '';
-                    let recent_final = '';
-                    for (let i = event.resultIndex; i < event.results.length; ++i) {
-                        const transcript = event.results[i][0].transcript;
-                        if (event.results[i].isFinal) {
-                            recent_final += transcript + ' ';
-                        } else {
-                            interim += transcript;
-                        }
-                    }
-                    if (recent_final) final_transcript += recent_final;
-                    input.value = (final_transcript + interim).trim();
-                    input.style.height = '';
-                    input.style.height = input.scrollHeight + 'px';
-                };
-
-                recognition.onerror = function (event) {
-                    console.error("Speech recognition error", event.error);
-                    stopVoice();
-                };
-
-                recognition.onend = function () {
-                    if (isRecording) {
-                        try { recognition.start(); } catch(e) { stopVoice(); }
-                    } else {
-                        stopVoice();
-                    }
-                };
-            }
-
-            if (isRecording) {
-                isRecording = false;
-                recognition.stop();
-            } else {
-                input.value = '';
-                final_transcript = '';
-                recognition.start();
-            }
-        }
-
-        function stopVoice() {
-            isRecording = false;
-            const btn = document.querySelector('.fa-microphone');
-            btn.style.color = '';
-            btn.classList.remove('fa-beat-fade');
-        }
 
         async function exportChat() {
             if (!currentConversationId) return;
