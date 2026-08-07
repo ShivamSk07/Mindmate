@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, MessageSquare, Menu, Folder, LogOut, ChevronRight, ChevronDown, Search, FolderPlus, Grid, Sparkles, ShoppingBag, Play } from "lucide-react";
+import { Plus, Trash2, MessageSquare, Menu, Folder, LogOut, ChevronRight, ChevronDown, Search, FolderPlus, Grid, Pin, Lock, Unlock, PanelLeftClose, GitMerge, MoreVertical } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { MiniApp } from "@/types";
 
-interface SidebarSession {
+export interface SidebarSession {
   id: string;
   title: string;
   is_pinned: boolean;
+  is_locked?: boolean;
+  has_pin?: boolean;
   folder: string;
   active_persona_id: string | null;
   _count: { messages: number };
@@ -26,9 +27,10 @@ interface SidebarProps {
   setFolders: React.Dispatch<React.SetStateAction<string[]>>;
   isOpen?: boolean;
   setIsOpen?: (open: boolean) => void;
-  onOpenAppStore?: () => void;
-  installedApps?: MiniApp[];
-  onLaunchApp?: (app: MiniApp) => void;
+  isDesktopCollapsed?: boolean;
+  onToggleDesktopCollapse?: () => void;
+  onOpenMergeModal?: () => void;
+  onOpenLockModal?: (session: SidebarSession) => void;
 }
 
 export function Sidebar({
@@ -42,9 +44,10 @@ export function Sidebar({
   setFolders,
   isOpen: propsIsOpen,
   setIsOpen: propsSetIsOpen,
-  onOpenAppStore,
-  installedApps = [],
-  onLaunchApp,
+  isDesktopCollapsed,
+  onToggleDesktopCollapse,
+  onOpenMergeModal,
+  onOpenLockModal,
 }: SidebarProps) {
   const [sessions, setSessions] = useState<SidebarSession[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,6 +117,22 @@ export function Sidebar({
     }
   };
 
+  async function togglePinSession(session: SidebarSession, e: React.MouseEvent) {
+    e.stopPropagation();
+    try {
+      const res = await fetch("/api/history/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: session.id, isPinned: !session.is_pinned }),
+      });
+      if (res.ok) {
+        fetchSessions();
+      }
+    } catch (e) {
+      console.error("Failed to toggle pin", e);
+    }
+  }
+
   async function deleteSession(sessionId: string, e: React.MouseEvent) {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this conversation?")) return;
@@ -167,6 +186,9 @@ export function Sidebar({
     (s) => !s.folder || !folders.includes(s.folder)
   );
 
+  // Pinned sessions list
+  const pinnedSessions = filteredSessions.filter((s) => s.is_pinned);
+
   return (
     <>
       {/* Backdrop for mobile */}
@@ -179,149 +201,190 @@ export function Sidebar({
 
       {/* Sidebar Panel */}
       <aside
-        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[280px] glass-sidebar rounded-none lg:rounded-[24px] border-r lg:border border-[rgba(255,255,255,0.06)] flex flex-col transition-transform duration-300 ease-out lg:h-full ${
+        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[280px] glass-sidebar rounded-none lg:rounded-[24px] border-r lg:border border-[rgba(255,255,255,0.06)] flex flex-col transition-all duration-300 ease-out lg:h-full ${
           isOpen ? "translate-x-0 shadow-[4px_0_40px_rgba(0,0,0,0.6)]" : "-translate-x-full lg:translate-x-0"
         }`}
       >
-        {/* Header Logo + Close */}
+        {/* Header Logo + Collapse button */}
         <div className="px-5 py-4 flex items-center justify-between border-b border-[rgba(255,255,255,0.04)]">
           <div className="flex items-center gap-2.5 tracking-tight text-white">
             <img src="/img/branding.png" alt="Clarity" className="h-6 object-contain" />
           </div>
-          {/* Mobile close button */}
-          <button
-            onClick={() => setIsOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-[#64748b] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-all"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-1">
+            {/* Desktop collapse button */}
+            {onToggleDesktopCollapse && (
+              <button
+                onClick={onToggleDesktopCollapse}
+                className="hidden lg:flex p-1.5 rounded-lg text-[#64748b] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-all"
+                title="Collapse Sidebar"
+              >
+                <PanelLeftClose size={16} />
+              </button>
+            )}
+            {/* Mobile close button */}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg text-[#64748b] hover:text-white hover:bg-[rgba(255,255,255,0.05)] transition-all"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
-        {/* Actions: New Chat & AI App Store */}
-        <div className="p-4 flex flex-col gap-2 border-b border-[rgba(255,255,255,0.04)]">
+        {/* Action: New Chat & Merge */}
+        <div className="p-4 flex gap-2">
           <button
             onClick={() => {
               onNewChat();
               if (window.innerWidth <= 768) setIsOpen(false);
             }}
-            className="w-full flex items-center justify-between bg-transparent hover:bg-[#18181b] border border-[#27272a] hover:border-neutral-400 text-neutral-200 hover:text-white rounded-xl px-4 py-2.5 text-xs font-semibold shadow-sm transition-all active:scale-98"
+            className="flex-1 flex items-center justify-between bg-transparent hover:bg-[#18181b] border border-[#27272a] hover:border-neutral-400 text-neutral-200 hover:text-white rounded-xl px-4 py-2.5 text-xs font-semibold shadow-sm transition-all active:scale-98"
           >
             <span>New chat</span>
             <Plus size={14} />
           </button>
-
-          {onOpenAppStore && (
+          {onOpenMergeModal && (
             <button
-              onClick={() => {
-                onOpenAppStore();
-                if (window.innerWidth <= 768) setIsOpen(false);
-              }}
-              className="w-full flex items-center justify-between bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 text-indigo-300 hover:text-white rounded-xl px-4 py-2.5 text-xs font-semibold transition-all active:scale-98"
+              onClick={onOpenMergeModal}
+              className="p-2.5 rounded-xl bg-transparent hover:bg-[#18181b] border border-[#27272a] hover:border-indigo-500/40 text-neutral-300 hover:text-indigo-400 transition-all"
+              title="Merge Duplicate Chats"
             >
-              <span className="flex items-center gap-1.5">
-                <ShoppingBag size={13} className="text-indigo-400" />
-                AI App Store
-              </span>
-              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 font-bold px-1.5 py-0.5 rounded">
-                NEW
-              </span>
+              <GitMerge size={14} />
             </button>
           )}
         </div>
 
-        {/* Installed Mini Apps Section */}
-        {installedApps.length > 0 && (
-          <div className="px-3 pt-3 pb-1 border-b border-[rgba(255,255,255,0.04)]">
-            <div className="px-2 text-[10px] uppercase font-bold tracking-widest text-[#64748b] mb-1.5 flex items-center justify-between">
-              <span>Installed Apps ({installedApps.length})</span>
-              <Sparkles size={11} className="text-indigo-400" />
-            </div>
+        {/* Scroll Area */}
+        <div className="overflow-y-auto px-3 flex-1 space-y-3 scrollbar-thin">
 
-            <div className="space-y-1 max-h-36 overflow-y-auto scrollbar-none">
-              {installedApps.map((app) => (
-                <div
-                  key={app.id}
-                  onClick={() => {
-                    if (onLaunchApp) onLaunchApp(app);
-                    if (window.innerWidth <= 768) setIsOpen(false);
-                  }}
-                  className="flex items-center justify-between px-3 py-1.5 rounded-xl cursor-pointer text-xs text-zinc-300 hover:text-white hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20 transition-all group"
-                >
-                  <span className="truncate flex-1 font-medium">{app.name}</span>
-                  <Play size={10} className="text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Folders List label & actions */}
-        <div className="px-5 py-2 flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#64748b]">
-          <span>Folders</span>
-          <button
-            onClick={() => setShowFolderModal(true)}
-            className="hover:text-[var(--text-primary)] transition-colors"
-            title="Create Folder"
-          >
-            <FolderPlus size={13} />
-          </button>
-        </div>
-
-        {/* Folders & Categorized chats */}
-        <div className="overflow-y-auto px-3 flex-1 space-y-1.5 scrollbar-thin">
-          {/* All Chats Option */}
-          <div
-            onClick={() => setActiveFolder(null)}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => handleDropOnFolder(e, "")}
-            className={`flex items-center gap-2 px-3 py-2.5 rounded-xl cursor-pointer text-xs font-medium transition-all ${
-              activeFolder === null
-                ? "bg-[rgba(255,255,255,0.05)] text-white shadow-sm border border-[rgba(255,255,255,0.03)]"
-                : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white"
-            }`}
-          >
-            <Grid size={13} className="opacity-80" />
-            <span>All Chats</span>
-          </div>
-
-          {/* Folder groups */}
-          {folders.map((f) => {
-            const isActive = activeFolder === f;
-            const folderChats = folderMap[f] || [];
-            const isExpanded = openFolders[f];
-
-            return (
-              <div key={f} className="space-y-1">
-                <div
-                  onClick={() => setActiveFolder(f)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDrop={(e) => handleDropOnFolder(e, f)}
-                  className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs font-medium transition-all border ${
-                    isActive
-                      ? "bg-[#18181b] text-white border-[#27272a] shadow-sm"
-                      : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white border-transparent"
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Folder size={13} className={isActive ? "text-white" : "text-[#64748b]"} />
-                    <span className="truncate max-w-[110px]">{f}</span>
-                  </div>
-                  <button
-                    onClick={(e) => toggleFolderCollapse(f, e)}
-                    className="p-0.5 hover:text-white opacity-60 hover:opacity-100 transition-all"
+          {/* Pinned Chats Section */}
+          {pinnedSessions.length > 0 && (
+            <div>
+              <div className="px-2 py-1 flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-indigo-400">
+                <Pin size={11} className="rotate-45" />
+                <span>Pinned Chats</span>
+              </div>
+              <div className="space-y-1 mt-1">
+                {pinnedSessions.map((session) => (
+                  <div
+                    key={session.id}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, session.id)}
+                    onClick={() => {
+                      onSelectSession(session.id);
+                      if (window.innerWidth <= 768) setIsOpen(false);
+                    }}
+                    className={`group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer text-xs transition-all border ${
+                      session.id === currentSessionId
+                        ? "bg-indigo-500/10 text-white border-indigo-500/30"
+                        : "text-[#cbd5e1] hover:bg-[rgba(255,255,255,0.03)] hover:text-white border-transparent"
+                    }`}
                   >
-                    {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                  </button>
-                </div>
+                    <div className="flex items-center gap-2 truncate">
+                      {session.is_locked ? (
+                        <Lock size={12} className="text-amber-400 flex-shrink-0" />
+                      ) : (
+                        <Pin size={12} className="text-indigo-400 flex-shrink-0 rotate-45" />
+                      )}
+                      <span className="truncate pr-1">{session.title}</span>
+                    </div>
 
-                {isExpanded && (
-                  <div className="pl-3 border-l border-[rgba(255,255,255,0.05)] ml-4.5 space-y-1">
-                    {folderChats.length === 0 ? (
-                      <p className="text-[10px] text-[#64748b] py-1 pl-2.5 opacity-55">Empty folder</p>
-                    ) : (
-                      folderChats.map((session) => (
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                      <button
+                        onClick={(e) => togglePinSession(session, e)}
+                        className="text-[#64748b] hover:text-indigo-400 p-0.5"
+                        title="Unpin Chat"
+                      >
+                        <Pin size={11} className="rotate-45" />
+                      </button>
+                      {onOpenLockModal && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onOpenLockModal(session); }}
+                          className="text-[#64748b] hover:text-amber-400 p-0.5"
+                          title={session.is_locked ? "Unlock / Remove PIN" : "Lock Chat with PIN"}
+                        >
+                          {session.is_locked ? <Unlock size={11} /> : <Lock size={11} />}
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => deleteSession(session.id, e)}
+                        className="text-[#64748b] hover:text-red-400 p-0.5"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Folders List label & actions */}
+          <div>
+            <div className="px-2 py-1 flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#64748b]">
+              <span>Folders</span>
+              <button
+                onClick={() => setShowFolderModal(true)}
+                className="hover:text-[var(--text-primary)] transition-colors"
+                title="Create Folder"
+              >
+                <FolderPlus size={13} />
+              </button>
+            </div>
+
+            {/* All Chats Option */}
+            <div
+              onClick={() => setActiveFolder(null)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => handleDropOnFolder(e, "")}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl cursor-pointer text-xs font-medium transition-all my-1 ${
+                activeFolder === null
+                  ? "bg-[rgba(255,255,255,0.05)] text-white shadow-sm border border-[rgba(255,255,255,0.03)]"
+                  : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white"
+              }`}
+            >
+              <Grid size={13} className="opacity-80" />
+              <span>All Chats</span>
+            </div>
+
+            {/* Folder groups */}
+            {folders.map((f) => {
+              const isActive = activeFolder === f;
+              const folderChats = folderMap[f] || [];
+              const isExpanded = openFolders[f];
+
+              return (
+                <div key={f} className="space-y-1 mb-1">
+                  <div
+                    onClick={() => setActiveFolder(f)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => handleDropOnFolder(e, f)}
+                    className={`group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer text-xs font-medium transition-all border ${
+                      isActive
+                        ? "bg-[#18181b] text-white border-[#27272a] shadow-sm"
+                        : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white border-transparent"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Folder size={13} className={isActive ? "text-white" : "text-[#64748b]"} />
+                      <span className="truncate max-w-[110px]">{f}</span>
+                    </div>
+                    <button
+                      onClick={(e) => toggleFolderCollapse(f, e)}
+                      className="p-0.5 hover:text-white opacity-60 hover:opacity-100 transition-all"
+                    >
+                      {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="pl-3 border-l border-[rgba(255,255,255,0.05)] ml-4.5 space-y-1">
+                      {folderChats.length === 0 ? (
+                        <p className="text-[10px] text-[#64748b] py-1 pl-2.5 opacity-55">Empty folder</p>
+                      ) : (
+                        folderChats.map((session) => (
                           <div
                             key={session.id}
                             draggable
@@ -336,72 +399,119 @@ export function Sidebar({
                                 : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.03)] hover:text-white"
                             }`}
                           >
-                            <span className="truncate flex-1 pr-1">{session.title}</span>
-                            <button
-                              onClick={(e) => deleteSession(session.id, e)}
-                              className="opacity-0 group-hover:opacity-100 text-[#64748b] hover:text-red-400 transition-all"
-                            >
-                              <Trash2 size={11} />
-                            </button>
+                            <div className="flex items-center gap-1.5 truncate">
+                              {session.is_locked && <Lock size={11} className="text-amber-400 flex-shrink-0" />}
+                              <span className="truncate pr-1">{session.title}</span>
+                            </div>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                              <button
+                                onClick={(e) => togglePinSession(session, e)}
+                                className="text-[#64748b] hover:text-indigo-400"
+                                title="Pin Chat"
+                              >
+                                <Pin size={11} className="rotate-45" />
+                              </button>
+                              {onOpenLockModal && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onOpenLockModal(session); }}
+                                  className="text-[#64748b] hover:text-amber-400"
+                                  title={session.is_locked ? "Unlock / Remove PIN" : "Lock Chat with PIN"}
+                                >
+                                  {session.is_locked ? <Unlock size={11} /> : <Lock size={11} />}
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => deleteSession(session.id, e)}
+                                className="text-[#64748b] hover:text-red-400"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
                           </div>
                         ))
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          <div className="px-3 py-1 text-[10px] uppercase font-bold tracking-widest text-[#64748b] pt-4">
-            Recent Chats
-          </div>
-
-          {/* Search box */}
-          <div className="px-1 pb-1">
-            <div className="flex items-center gap-2 input-premium rounded-xl px-3 py-2 text-xs">
-              <Search size={12} className="text-[#64748b] flex-shrink-0" />
-              <input
-                type="text"
-                placeholder="Search chats..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none outline-none text-[#f8fafc] w-full placeholder-[#475569]"
-              />
-            </div>
-          </div>
-
-          {/* Uncategorized list */}
-          {uncategorizedSessions.length === 0 ? (
-            <p className="text-center text-[10px] text-[#64748b] py-6 opacity-50">No conversations</p>
-          ) : (
-            uncategorizedSessions.map((session) => (
-              <div
-                key={session.id}
-                draggable
-                onDragStart={(e) => handleDragStart(e, session.id)}
-                onClick={() => {
-                  onSelectSession(session.id);
-                  if (window.innerWidth <= 768) setIsOpen(false);
-                }}
-                className={`group flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer text-xs transition-all border ${
-                  session.id === currentSessionId
-                    ? "bg-[rgba(255,255,255,0.06)] text-white border-[rgba(255,255,255,0.04)] shadow-sm"
-                    : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white border-transparent"
-                }`}
-              >
-                <div className="flex items-center gap-2 truncate">
-                  <MessageSquare size={13} className="text-[#64748b] flex-shrink-0" />
-                  <span className="truncate pr-1">{session.title}</span>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={(e) => deleteSession(session.id, e)}
-                  className="opacity-0 group-hover:opacity-100 text-[#64748b] hover:text-red-400 transition-all"
-                >
-                  <Trash2 size={12} />
-                </button>
+              );
+            })}
+          </div>
+
+          <div>
+            <div className="px-2 py-1 flex items-center justify-between text-[10px] uppercase font-bold tracking-widest text-[#64748b]">
+              <span>Recent Chats</span>
+            </div>
+
+            {/* Search box */}
+            <div className="pb-2">
+              <div className="flex items-center gap-2 input-premium rounded-xl px-3 py-2 text-xs">
+                <Search size={12} className="text-[#64748b] flex-shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search chats..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none outline-none text-[#f8fafc] w-full placeholder-[#475569]"
+                />
               </div>
-            ))
-          )}
+            </div>
+
+            {/* Uncategorized list */}
+            {uncategorizedSessions.length === 0 ? (
+              <p className="text-center text-[10px] text-[#64748b] py-4 opacity-50">No recent conversations</p>
+            ) : (
+              uncategorizedSessions.map((session) => (
+                <div
+                  key={session.id}
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, session.id)}
+                  onClick={() => {
+                    onSelectSession(session.id);
+                    if (window.innerWidth <= 768) setIsOpen(false);
+                  }}
+                  className={`group flex items-center justify-between px-3 py-2 rounded-xl cursor-pointer text-xs transition-all border my-1 ${
+                    session.id === currentSessionId
+                      ? "bg-[rgba(255,255,255,0.06)] text-white border-[rgba(255,255,255,0.04)] shadow-sm"
+                      : "text-[#94a3b8] hover:bg-[rgba(255,255,255,0.02)] hover:text-white border-transparent"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    {session.is_locked ? (
+                      <Lock size={12} className="text-amber-400 flex-shrink-0" />
+                    ) : (
+                      <MessageSquare size={13} className="text-[#64748b] flex-shrink-0" />
+                    )}
+                    <span className="truncate pr-1">{session.title}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+                    <button
+                      onClick={(e) => togglePinSession(session, e)}
+                      className="text-[#64748b] hover:text-indigo-400 p-0.5"
+                      title="Pin Chat"
+                    >
+                      <Pin size={11} className="rotate-45" />
+                    </button>
+                    {onOpenLockModal && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onOpenLockModal(session); }}
+                        className="text-[#64748b] hover:text-amber-400 p-0.5"
+                        title={session.is_locked ? "Unlock / Remove PIN" : "Lock Chat with PIN"}
+                      >
+                        {session.is_locked ? <Unlock size={11} /> : <Lock size={11} />}
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => deleteSession(session.id, e)}
+                      className="text-[#64748b] hover:text-red-400 p-0.5"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Footer Profile & Signout */}

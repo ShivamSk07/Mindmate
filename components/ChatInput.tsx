@@ -9,10 +9,17 @@ interface ChatInputProps {
   isLoading: boolean;
   disabled?: boolean;
   sessionId?: string;
+  injectedText?: string;
 }
 
-export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId }: ChatInputProps) {
+export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, injectedText }: ChatInputProps) {
   const [input, setInput] = useState("");
+
+  useEffect(() => {
+    if (injectedText) {
+      setInput((prev) => (prev ? `${prev}\n${injectedText}` : injectedText));
+    }
+  }, [injectedText]);
 
   const [attachedFile, setAttachedFile] = useState<{ id: string; name: string; type: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -249,6 +256,14 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId }: Ch
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onInput={handleInput}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const text = e.dataTransfer.getData("text/plain");
+              if (text) {
+                setInput((prev) => (prev ? `${prev}\n${text}` : text));
+              }
+            }}
             placeholder="Message Clarity..."
             disabled={disabled}
             rows={1}

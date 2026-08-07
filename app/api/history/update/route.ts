@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { sessionId, folder, title, isPinned } = body;
+    const { sessionId, folder, title, isPinned, isLocked, pinCode } = body;
 
     if (!sessionId) {
       return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
@@ -30,6 +30,8 @@ export async function POST(request: NextRequest) {
         folder: folder !== undefined ? folder : session.folder,
         title: title !== undefined ? title : session.title,
         isPinned: isPinned !== undefined ? isPinned : session.isPinned,
+        isLocked: isLocked !== undefined ? isLocked : session.isLocked,
+        pinCode: pinCode !== undefined ? pinCode : session.pinCode,
       },
     });
 

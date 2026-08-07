@@ -27,6 +27,17 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "Conversation not found" }, { status: 404 });
       }
 
+      // Check PIN lock authentication
+      const reqPin = searchParams.get("pinCode");
+      if (session.isLocked && session.pinCode) {
+        if (reqPin !== session.pinCode) {
+          return NextResponse.json({
+            isLocked: true,
+            error: "Chat is locked. Please enter valid 4-digit PIN."
+          }, { status: 403 });
+        }
+      }
+
       // Map to correct properties
       const messages = session.messages.map(m => ({
         id: m.id,
@@ -41,39 +52,48 @@ export async function GET(request: NextRequest) {
         createdAt: m.createdAt
       }));
 
-      return NextResponse.json({ messages });
+      return NextResponse.json({
+        messages,
+        isLocked: session.isLocked,
+        isPinned: session.isPinned
+      });
     }
 
     // Get all sessions for the logged-in user
-      const sessions = await prisma.session.findMany({
-        where: { userId: user.userId },
-        orderBy: { updatedAt: "desc" },
-        include: {
-          messages: {
-            select: { id: true }
-          }
+    const sessions = await prisma.session.findMany({
+      where: { userId: user.userId },
+      orderBy: [
+        { isPinned: "desc" },
+        { updatedAt: "desc" }
+      ],
+      include: {
+        messages: {
+          select: { id: true }
         }
-      });
+      }
+    });
 
-      const profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId }
-      });
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId }
+    });
 
-      const data = sessions.map(s => ({
-        id: s.id,
-        title: s.title,
-        is_pinned: s.isPinned,
-        folder: s.folder,
-        active_persona_id: s.activePersonaId,
-        _count: { messages: s.messages.length }
-      }));
+    const data = sessions.map(s => ({
+      id: s.id,
+      title: s.title,
+      is_pinned: s.isPinned,
+      is_locked: s.isLocked,
+      has_pin: Boolean(s.pinCode),
+      folder: s.folder,
+      active_persona_id: s.activePersonaId,
+      _count: { messages: s.messages.length }
+    }));
 
-      return NextResponse.json({
-        conversations: data,
-        sessions: data,
-        username: user.username,
-        profile: profile
-      });
+    return NextResponse.json({
+      conversations: data,
+      sessions: data,
+      username: user.username,
+      profile: profile
+    });
     } catch (error) {
     console.error("[History API Error]", error);
     return NextResponse.json({ error: "Failed to fetch history" }, { status: 500 });

@@ -3,7 +3,7 @@ import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generateStreamResponse, getCerebrasClient, MODEL } from "@/lib/cerebras";
 import { searchWeb } from "@/lib/search";
-import { needsWebSearch, extractSearchQuery } from "@/lib/intent";
+import { needsWebSearch, extractSearchQuery, detectSearchIntentWithAI } from "@/lib/intent";
 import { buildNormalPrompt, buildSearchAugmentedPrompt } from "@/lib/prompts";
 
 // Helper function to extract and update memory in the background
@@ -202,13 +202,19 @@ export async function POST(request: NextRequest) {
     const personaName = conv.activePersona?.name || "Clarity";
     const personaPrompt = conv.activePersona?.systemPrompt || "Friendly and supportive assistant.";
 
-    // 5. DuckDuckGo Web Search Trigger
-    if (finalForceSearch || needsWebSearch(userQuery)) {
-      const searchQuery = extractSearchQuery(userQuery);
-      console.log(`[Instant Search Query]: "${searchQuery}"`);
+    // 5. Autonomous Real-Time Web Search Trigger (AI + Heuristic)
+    let searchDecision = { needsSearch: false, searchQuery: userQuery };
+    if (finalForceSearch) {
+      searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
+    } else {
+      searchDecision = await detectSearchIntentWithAI(userQuery);
+    }
 
-      // Execute DuckDuckGo Web Search with 1.8s fast timeout
-      const results = await searchWeb(searchQuery, 5);
+    if (searchDecision.needsSearch) {
+      console.log(`[Autonomous AI Search Triggered]: "${searchDecision.searchQuery}"`);
+
+      // Execute DuckDuckGo Web Search
+      const results = await searchWeb(searchDecision.searchQuery, 5);
 
       if (results.length > 0) {
         searched = true;

@@ -11,7 +11,7 @@ function getCacheKey(query: string): string {
   return query.trim().toLowerCase();
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 2200): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 4000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -42,7 +42,7 @@ async function searchDDGPOST(query: string, maxResults = 5): Promise<SearchResul
       "Cache-Control": "no-cache",
     },
     body: new URLSearchParams({ q: query, b: "", kl: "us-en" }).toString(),
-  }, 2200);
+  }, 4000);
 
   if (!response.ok) return [];
 

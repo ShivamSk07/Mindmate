@@ -1,57 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { Message, ConfidenceData, Project } from "@/types";
-
-function parseMessageMetadata(rawText: string) {
-  let confidenceData: ConfidenceData | undefined;
-  let projectData: Project | undefined;
-  let cleanContent = rawText;
-
-  // 1. Parse Confidence Score Block
-  if (rawText.includes("---CONFIDENCE---")) {
-    const cMatch = rawText.match(/---CONFIDENCE---\s*([\s\S]*?)\s*---END_CONFIDENCE---/);
-    if (cMatch && cMatch[1]) {
-      try {
-        confidenceData = JSON.parse(cMatch[1].trim());
-        cleanContent = cleanContent.replace(/---CONFIDENCE---\s*[\s\S]*?\s*---END_CONFIDENCE---/, "").trim();
-      } catch (e) {
-        console.warn("Failed to parse confidence JSON", e);
-      }
-    }
-  }
-
-  // 2. Parse AI Project Workspace Block
-  if (rawText.includes("---PROJECT---")) {
-    const pMatch = rawText.match(/---PROJECT---\s*([\s\S]*?)\s*---END_PROJECT---/);
-    if (pMatch && pMatch[1]) {
-      try {
-        projectData = JSON.parse(pMatch[1].trim());
-        cleanContent = cleanContent.replace(/---PROJECT---\s*[\s\S]*?\s*---END_PROJECT---/, "").trim();
-      } catch (e) {
-        console.warn("Failed to parse project JSON", e);
-      }
-    }
-  }
-
-  // Default Confidence Score Calculation if AI did not output block
-  if (!confidenceData && cleanContent.trim().length > 10) {
-    confidenceData = {
-      score: 93,
-      level: "High",
-      color: "green",
-      reason: "Large amount of verified knowledge exists and context is clear.",
-      factors: {
-        knowledge: 95,
-        consistency: 92,
-        context: 90,
-        hallucinationRisk: 4,
-      },
-    };
-  }
-
-  return { cleanContent, confidenceData, projectData };
-}
+import type { Message } from "@/types";
 
 export function useChat(initialSessionId?: string) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -73,7 +23,7 @@ export function useChat(initialSessionId?: string) {
 
     setError(null);
 
-    // 1. Add user message immediately
+    // 1. Add user message immediately (optimistic UI)
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -120,7 +70,7 @@ export function useChat(initialSessionId?: string) {
       const reader = response.body.getReader();
       const decoder = new TextDecoder("utf-8");
 
-      // 2. Insert initial empty assistant response
+      // 2. Insert an empty assistant response that we will update
       const assistantMessageId = crypto.randomUUID();
       const initialAssistantMessage: Message = {
         id: assistantMessageId,
@@ -144,6 +94,7 @@ export function useChat(initialSessionId?: string) {
         buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split("\n\n");
         
+        // Keep the last item in the buffer as it might be incomplete
         buffer = lines.pop() || "";
 
         for (const line of lines) {
@@ -155,17 +106,10 @@ export function useChat(initialSessionId?: string) {
                 
                 if (data.content) {
                   accumulatedText += data.content;
-                  const { cleanContent, confidenceData, projectData } = parseMessageMetadata(accumulatedText);
-
                   setMessages((prev) =>
                     prev.map((msg) =>
                       msg.id === assistantMessageId
-                        ? {
-                            ...msg,
-                            content: cleanContent,
-                            confidenceData: confidenceData || msg.confidenceData,
-                            projectData: projectData || msg.projectData,
-                          }
+                        ? { ...msg, content: accumulatedText }
                         : msg
                     )
                   );
@@ -195,7 +139,7 @@ export function useChat(initialSessionId?: string) {
       const errorMessage = err.message || "Something went wrong";
       setError(errorMessage);
 
-      // Remove optimistic user message on error
+      // Remove optimistic messages on error
       setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
 
     } finally {

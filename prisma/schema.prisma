@@ -56,6 +56,8 @@ model Session {
   activePersonaId String?
   activePersona   Persona?  @relation(fields: [activePersonaId], references: [id], onDelete: SetNull)
   isPinned        Boolean   @default(false)
+  isLocked        Boolean   @default(false)
+  pinCode         String?
   folder          String    @default("")
   isPublic        Boolean   @default(false)
   messages        Message[]

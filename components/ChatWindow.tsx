@@ -1,9 +1,8 @@
-"use client";
-
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
-import type { Message, Project } from "@/types";
+import type { Message } from "@/types";
+import { Sparkles, CornerDownLeft, Copy, Check } from "lucide-react";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -16,7 +15,7 @@ interface ChatWindowProps {
   activePersonaAvatar?: string;
   activeFolder: string | null;
   sessionId?: string;
-  onOpenProject?: (project: Project) => void;
+  onExtractNewChat?: (selectedText: string) => void;
 }
 
 export function ChatWindow({
@@ -30,13 +29,70 @@ export function ChatWindow({
   activePersonaAvatar,
   activeFolder,
   sessionId,
-  onOpenProject,
+  onExtractNewChat,
 }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [selectedText, setSelectedText] = useState("");
+  const [injectedInputText, setInjectedInputText] = useState("");
+  const [selectionPos, setSelectionPos] = useState<{ top: number; left: number } | null>(null);
+  const [copiedSelection, setCopiedSelection] = useState(false);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  useEffect(() => {
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      const text = selection?.toString().trim();
+
+      if (text && text.length > 2) {
+        setSelectedText(text);
+        try {
+          const range = selection?.getRangeAt(0);
+          const rect = range?.getBoundingClientRect();
+          if (rect) {
+            setSelectionPos({
+              top: Math.max(10, rect.top - 48),
+              left: Math.min(window.innerWidth - 220, Math.max(20, rect.left + rect.width / 2 - 100)),
+            });
+          }
+        } catch (e) {}
+      } else {
+        setSelectedText("");
+        setSelectionPos(null);
+      }
+    };
+
+    document.addEventListener("mouseup", handleSelectionChange);
+    return () => document.removeEventListener("mouseup", handleSelectionChange);
+  }, []);
+
+  const handleCopySelection = () => {
+    if (selectedText) {
+      navigator.clipboard.writeText(selectedText);
+      setCopiedSelection(true);
+      setTimeout(() => setCopiedSelection(false), 1500);
+    }
+  };
+
+  const handleInsertToInput = () => {
+    if (selectedText) {
+      setInjectedInputText(selectedText);
+      setSelectedText("");
+      setSelectionPos(null);
+      window.getSelection()?.removeAllRanges();
+    }
+  };
+
+  const handleCreateNewChatWithSelection = () => {
+    if (selectedText && onExtractNewChat) {
+      onExtractNewChat(selectedText);
+      setSelectedText("");
+      setSelectionPos(null);
+      window.getSelection()?.removeAllRanges();
+    }
+  };
 
   const firstName = username.split(" ")[0] || username;
   const hour = new Date().getHours();
@@ -44,6 +100,42 @@ export function ChatWindow({
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] main-chat overflow-hidden relative">
+
+      {/* Floating Selection Extraction Action Bar */}
+      {selectedText && selectionPos && (
+        <div
+          style={{ top: `${selectionPos.top}px`, left: `${selectionPos.left}px` }}
+          className="fixed z-50 flex items-center gap-1 p-1 bg-[rgba(10,10,16,0.94)] backdrop-blur-xl border border-[rgba(255,255,255,0.12)] rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] animate-fade-in"
+        >
+          {onExtractNewChat && (
+            <button
+              onClick={handleCreateNewChatWithSelection}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-indigo-500/20 hover:bg-indigo-500/30 border border-indigo-500/30 transition-all active:scale-95"
+              title="Create New Chat with Selected Paragraph"
+            >
+              <Sparkles size={13} className="text-indigo-400" />
+              <span>New Chat</span>
+            </button>
+          )}
+
+          <button
+            onClick={handleInsertToInput}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all active:scale-95"
+            title="Insert into Input"
+          >
+            <CornerDownLeft size={13} className="text-emerald-400" />
+            <span>Send to Input</span>
+          </button>
+
+          <button
+            onClick={handleCopySelection}
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-[rgba(255,255,255,0.06)] transition-all"
+            title="Copy Text"
+          >
+            {copiedSelection ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
+          </button>
+        </div>
+      )}
 
       {/* Messages Scroll Area */}
       <div className="flex-1 overflow-y-auto px-3 md:px-8 py-4 md:py-6 flex justify-center relative z-10 scrollbar-thin">
@@ -85,7 +177,6 @@ export function ChatWindow({
                   username={username}
                   assistantName={activePersonaName}
                   avatarUrl={activePersonaAvatar}
-                  onOpenProject={onOpenProject}
                 />
               ))}
             </div>
@@ -138,6 +229,7 @@ export function ChatWindow({
           onStop={onStop}
           isLoading={isLoading}
           sessionId={sessionId}
+          injectedText={injectedInputText}
         />
       </div>
     </div>

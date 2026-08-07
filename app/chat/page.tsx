@@ -3,17 +3,17 @@
 export const dynamic = "force-dynamic";
 
 import { useState, useEffect, useCallback } from "react";
-import { Sidebar } from "@/components/Sidebar";
+import { Sidebar, type SidebarSession } from "@/components/Sidebar";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useChat } from "@/hooks/useChat";
-import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, ShoppingBag, FolderKanban } from "lucide-react";
+import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, PanelLeftOpen, Lock, GitMerge } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Message, MiniApp, Project } from "@/types";
+import type { Message } from "@/types";
 import { PersonaModal } from "@/components/PersonaModal";
 import { KanbanBoard } from "@/components/KanbanBoard";
-import { AppStoreModal, PREBUILT_MINI_APPS } from "@/components/AppStoreModal";
-import { ProjectWorkspaceDrawer } from "@/components/ProjectWorkspaceDrawer";
+import { ChatLockModal } from "@/components/ChatLockModal";
+import { MergeChatsModal } from "@/components/MergeChatsModal";
 
 interface Persona {
   id: string;
@@ -54,57 +54,50 @@ export default function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showToolsDropdown, setShowToolsDropdown] = useState(false);
 
-  // New Feature States: App Store & AI Project Manager
-  const [showAppStore, setShowAppStore] = useState(false);
-  const [installedApps, setInstalledApps] = useState<MiniApp[]>([]);
-  const [activeProject, setActiveProject] = useState<Project | null>(null);
-  const [showProjectDrawer, setShowProjectDrawer] = useState(false);
+  // New Features State
+  const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(false);
+  const [sessionsList, setSessionsList] = useState<SidebarSession[]>([]);
+  const [unlockedSessionIds, setUnlockedSessionIds] = useState<Record<string, string>>({});
+  const [showLockModal, setShowLockModal] = useState(false);
+  const [lockTargetSession, setLockTargetSession] = useState<SidebarSession | null>(null);
+  const [lockModalMode, setLockModalMode] = useState<"lock" | "auth" | "remove">("auth");
+  const [lockErrorMessage, setLockErrorMessage] = useState<string | null>(null);
+  const [showMergeModal, setShowMergeModal] = useState(false);
 
   const router = useRouter();
 
-  // Load Installed Apps from localStorage
-  const loadInstalledApps = useCallback(() => {
+  useEffect(() => {
     if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("clarity_installed_apps");
-      if (stored) {
-        try {
-          const appIds: string[] = JSON.parse(stored);
-          const apps = PREBUILT_MINI_APPS.filter((a) => appIds.includes(a.id));
-          setInstalledApps(apps);
-        } catch (e) {
-          setInstalledApps(PREBUILT_MINI_APPS.slice(0, 2));
-        }
-      } else {
-        setInstalledApps(PREBUILT_MINI_APPS.slice(0, 2));
-      }
+      const savedCollapse = localStorage.getItem("clarity_desktop_collapsed");
+      if (savedCollapse === "true") setIsDesktopCollapsed(true);
     }
   }, []);
 
-  useEffect(() => {
-    loadInstalledApps();
-  }, [loadInstalledApps, showAppStore]);
+  const toggleDesktopCollapse = () => {
+    setIsDesktopCollapsed((prev) => {
+      const next = !prev;
+      if (typeof window !== "undefined") {
+        localStorage.setItem("clarity_desktop_collapsed", String(next));
+      }
+      return next;
+    });
+  };
 
-  const handleLaunchApp = (app: MiniApp) => {
-    // Convert MiniApp to active Persona mode
-    const appPersona: Persona = {
-      id: app.id,
-      name: app.name,
-      tone: app.category,
-      colorTheme: "#6366f1",
-      systemPrompt: app.systemPrompt,
-      isCustom: true,
-    };
-    setActivePersona(appPersona);
-
-    if (app.initialPrompt) {
-      sendMessage(app.initialPrompt, app.id);
+  // Apply settings to DOM element - always dark
+  const applyUserSettings = (profile: any) => {
+    if (typeof document !== "undefined") {
+      const bubble = profile.bubbleStyle || "modern";
+      const size = profile.fontSize || "14";
+      document.documentElement.className = "dark";
+      document.body.setAttribute("data-theme", "dark");
+      document.body.setAttribute("data-bubble-style", bubble);
+      document.body.style.setProperty("--font-size-base", `${size}px`);
     }
   };
 
   // 1. Initial Data Fetching
   const fetchInitialData = useCallback(async () => {
     try {
-      // Fetch session histories + user settings
       const historyRes = await fetch("/api/history");
       if (historyRes.status === 401) {
         window.location.href = "/login";
@@ -112,13 +105,13 @@ export default function ChatPage() {
       }
       const historyData = await historyRes.json();
       if (historyData.username) setUsername(historyData.username);
+      if (historyData.sessions) setSessionsList(historyData.sessions);
       if (historyData.profile) {
         setProfile(historyData.profile);
         setMemoryBox(historyData.profile.memoryVault || "");
         applyUserSettings(historyData.profile);
       }
 
-      // Fetch personas list
       const personasRes = await fetch("/api/personas");
       const personasData = await personasRes.json();
       const list = personasData.personas || [];
@@ -136,28 +129,42 @@ export default function ChatPage() {
     fetchInitialData();
   }, [fetchInitialData]);
 
-  // Apply settings to DOM element - always dark
-  const applyUserSettings = (profile: any) => {
-    if (typeof document !== "undefined") {
-      const bubble = profile.bubbleStyle || "modern";
-      const size = profile.fontSize || "14";
-      document.documentElement.className = "dark";
-      document.body.setAttribute("data-theme", "dark");
-      document.body.setAttribute("data-bubble-style", bubble);
-      document.body.style.setProperty("--font-size-base", `${size}px`);
-    }
-  };
+  // 2. Select Session with PIN lock check
+  const handleSelectSession = useCallback(async (selectedSessionId: string, providedPin?: string) => {
+    const targetSession = sessionsList.find((s) => s.id === selectedSessionId);
+    const activePin = providedPin || unlockedSessionIds[selectedSessionId];
 
-  // 2. Select Session
-  const handleSelectSession = useCallback(async (selectedSessionId: string) => {
-    clearChat();
-    setSessionId(selectedSessionId);
+    if (targetSession?.is_locked && !activePin) {
+      setLockTargetSession(targetSession);
+      setLockModalMode("auth");
+      setLockErrorMessage(null);
+      setShowLockModal(true);
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/history?sessionId=${selectedSessionId}`);
+      const pinQuery = activePin ? `&pinCode=${encodeURIComponent(activePin)}` : "";
+      const res = await fetch(`/api/history?sessionId=${selectedSessionId}${pinQuery}`);
       const data = await res.json();
 
-      const loadedMessages: Message[] = data.messages.map((m: any) => ({
+      if (res.status === 403 || data.isLocked) {
+        setLockTargetSession(targetSession || { id: selectedSessionId, title: "Locked Chat", is_pinned: false, folder: "", active_persona_id: null, _count: { messages: 0 } });
+        setLockModalMode("auth");
+        setLockErrorMessage(data.error || "Incorrect PIN code.");
+        setShowLockModal(true);
+        return;
+      }
+
+      clearChat();
+      setSessionId(selectedSessionId);
+      setShowLockModal(false);
+      setLockErrorMessage(null);
+
+      if (activePin) {
+        setUnlockedSessionIds((prev) => ({ ...prev, [selectedSessionId]: activePin }));
+      }
+
+      const loadedMessages: Message[] = (data.messages || []).map((m: any) => ({
         id: m.id,
         role: m.role,
         content: m.content,
@@ -171,21 +178,88 @@ export default function ChatPage() {
       }));
 
       setMessages(loadedMessages);
-
-      // Find if conversation has an active persona
-      // We can fetch details or just switch
-      const historyRes = await fetch("/api/history");
-      const historyData = await historyRes.json();
-      const currentConv = historyData.conversations?.find((c: any) => c.id === selectedSessionId);
-      if (currentConv && currentConv.active_persona_id) {
-        const found = personas.find(p => p.id === currentConv.active_persona_id);
-        if (found) setActivePersona(found);
-      }
-
     } catch (e) {
       console.error("Failed to load session", e);
     }
-  }, [clearChat, setMessages, setSessionId, personas]);
+  }, [sessionsList, unlockedSessionIds, clearChat, setMessages, setSessionId]);
+
+  // Lock Management Handlers
+  const handleOpenLockModal = (session: SidebarSession) => {
+    setLockTargetSession(session);
+    setLockModalMode(session.is_locked ? "remove" : "lock");
+    setLockErrorMessage(null);
+    setShowLockModal(true);
+  };
+
+  const handleSubmitPin = async (enteredPin: string) => {
+    if (!lockTargetSession) return;
+
+    if (lockModalMode === "auth") {
+      await handleSelectSession(lockTargetSession.id, enteredPin);
+    } else if (lockModalMode === "lock") {
+      try {
+        const res = await fetch("/api/history/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: lockTargetSession.id,
+            isLocked: true,
+            pinCode: enteredPin,
+          }),
+        });
+
+        if (res.ok) {
+          setUnlockedSessionIds((prev) => ({ ...prev, [lockTargetSession.id]: enteredPin }));
+          setShowLockModal(false);
+          fetchInitialData();
+        } else {
+          setLockErrorMessage("Failed to set security PIN.");
+        }
+      } catch (e) {
+        setLockErrorMessage("Failed to update security PIN.");
+      }
+    } else if (lockModalMode === "remove") {
+      try {
+        const res = await fetch("/api/history/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: lockTargetSession.id,
+            isLocked: false,
+            pinCode: null,
+          }),
+        });
+
+        if (res.ok) {
+          setShowLockModal(false);
+          fetchInitialData();
+        } else {
+          setLockErrorMessage("Failed to remove security PIN.");
+        }
+      } catch (e) {
+        setLockErrorMessage("Failed to remove lock.");
+      }
+    }
+  };
+
+  // Conversation Extraction Handler
+  const handleExtractNewChat = async (selectedText: string) => {
+    try {
+      const res = await fetch("/api/history/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedText }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.newSessionId) {
+        await fetchInitialData();
+        await handleSelectSession(data.newSessionId);
+      }
+    } catch (e) {
+      console.error("Failed to extract chat", e);
+    }
+  };
 
   // 3. Switch Persona logic
   const handleSelectPersona = async (p: Persona, notifyServer = true) => {
@@ -279,34 +353,36 @@ export default function ChatPage() {
     }
   };
 
-
-
-
-
   const botAvatar = activePersona?.avatarUrl || "/img/logo.png";
 
   return (
     <div className="flex h-[100dvh] w-full bg-[var(--bg-main)] text-[var(--text-primary)] overflow-hidden relative p-0 md:p-3 gap-0 md:gap-3">
       
       {/* Sidebar navigation */}
-      <Sidebar
-        currentSessionId={sessionId}
-        onSelectSession={(id) => {
-          handleSelectSession(id);
-          setIsSidebarOpen(false);
-        }}
-        onNewChat={() => {
-          clearChat();
-          setIsSidebarOpen(false);
-        }}
-        username={username}
-        activeFolder={activeFolder}
-        setActiveFolder={setActiveFolder}
-        folders={folders}
-        setFolders={setFolders}
-        isOpen={isSidebarOpen}
-        setIsOpen={setIsSidebarOpen}
-      />
+      <div className={`${isDesktopCollapsed ? "hidden lg:hidden" : "block lg:block"}`}>
+        <Sidebar
+          currentSessionId={sessionId}
+          onSelectSession={(id) => {
+            handleSelectSession(id);
+            setIsSidebarOpen(false);
+          }}
+          onNewChat={() => {
+            clearChat();
+            setIsSidebarOpen(false);
+          }}
+          username={username}
+          activeFolder={activeFolder}
+          setActiveFolder={setActiveFolder}
+          folders={folders}
+          setFolders={setFolders}
+          isOpen={isSidebarOpen}
+          setIsOpen={setIsSidebarOpen}
+          isDesktopCollapsed={isDesktopCollapsed}
+          onToggleDesktopCollapse={toggleDesktopCollapse}
+          onOpenMergeModal={() => setShowMergeModal(true)}
+          onOpenLockModal={handleOpenLockModal}
+        />
+      </div>
 
       {/* Main chat area */}
       <main className="flex-grow flex flex-col min-w-0 h-full relative glass-floating-panel rounded-none md:rounded-[24px] overflow-hidden border-0 md:border border-[rgba(255,255,255,0.06)]">
@@ -323,7 +399,7 @@ export default function ChatPage() {
           }}
         >
 
-          {/* Left: Menu + Persona Selector */}
+          {/* Left: Menu + Expand Desktop + Persona Selector */}
           <div className="flex items-center gap-2 relative min-w-0 flex-1">
             {/* Mobile menu toggle */}
             <button
@@ -338,6 +414,22 @@ export default function ChatPage() {
             >
               <Menu size={17} />
             </button>
+
+            {/* Desktop Expand Sidebar button when collapsed */}
+            {isDesktopCollapsed && (
+              <button
+                onClick={toggleDesktopCollapse}
+                className="hidden lg:flex p-2 rounded-xl text-white transition-all active:scale-95 flex-shrink-0"
+                style={{
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)",
+                }}
+                title="Expand Sidebar"
+              >
+                <PanelLeftOpen size={17} />
+              </button>
+            )}
 
             {/* Persona selector button */}
             <button
@@ -432,6 +524,13 @@ export default function ChatPage() {
 
           {/* Right: Tools (Desktop) */}
           <div className="hidden sm:flex items-center gap-2 text-[#94a3b8]">
+            <button
+              onClick={() => setShowMergeModal(true)}
+              className="p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-indigo-400 border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all flex items-center justify-center"
+              title="Merge Duplicate Chats"
+            >
+              <GitMerge size={14} />
+            </button>
             {sessionId && (
               <a
                 href={`/api/export/${sessionId}`}
@@ -499,6 +598,13 @@ export default function ChatPage() {
                   boxShadow: "0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03), inset 0 1px 0 rgba(255,255,255,0.06)",
                 }}
               >
+                <button
+                  onClick={() => { setShowToolsDropdown(false); setShowMergeModal(true); }}
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left w-full"
+                >
+                  <GitMerge size={14} className="text-indigo-400" />
+                  <span>Merge Chats</span>
+                </button>
                 {sessionId && (
                   <a
                     href={`/api/export/${sessionId}`}
@@ -556,28 +662,53 @@ export default function ChatPage() {
             activePersonaAvatar={botAvatar}
             activeFolder={activeFolder}
             sessionId={sessionId}
-            onOpenProject={(proj) => {
-              setActiveProject(proj);
-              setShowProjectDrawer(true);
-            }}
+            onExtractNewChat={handleExtractNewChat}
           />
         </div>
       </main>
 
-      {/* App Store Modal */}
-      <AppStoreModal
-        isOpen={showAppStore}
-        onClose={() => setShowAppStore(false)}
-        onLaunchApp={handleLaunchApp}
-      />
-
-      {/* AI Project Manager Drawer */}
-      <ProjectWorkspaceDrawer
-        project={activeProject}
-        isOpen={showProjectDrawer}
-        onClose={() => setShowProjectDrawer(false)}
-        onUpdateProject={(updated) => setActiveProject(updated)}
-      />
+      {/* Floating Swipe-Up/Shake Quick Persona Switcher overlay */}
+      {showQuickSwitcher && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="glass-premium rounded-t-3xl border-t border-[rgba(255,255,255,0.06)] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+            <div
+              onClick={() => setShowQuickSwitcher(false)}
+              className="w-10 h-1 bg-[rgba(255,255,255,0.1)] hover:bg-[rgba(255,255,255,0.2)] rounded-full mx-auto mb-5 cursor-pointer transition-colors"
+            />
+            <h3 className="text-sm font-bold text-white text-center mb-5 uppercase tracking-wider text-xs">Switch Persona</h3>
+            <div className="grid grid-cols-2 gap-3 max-h-[60vh] overflow-y-auto pr-1 scrollbar-thin">
+              {personas.map((p) => {
+                const isActive = activePersona?.id === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setActivePersona(p);
+                      setShowQuickSwitcher(false);
+                    }}
+                    className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all ${
+                      isActive
+                        ? "bg-indigo-500/10 border-indigo-500/30 text-white shadow-lg"
+                        : "bg-[rgba(255,255,255,0.02)] border-[rgba(255,255,255,0.04)] text-zinc-400 hover:text-white hover:bg-[rgba(255,255,255,0.04)]"
+                    }`}
+                  >
+                    <div
+                      className="w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs flex-shrink-0"
+                      style={{ background: p.colorTheme || "#6366f1" }}
+                    >
+                      {p.name.charAt(0)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-semibold truncate text-white">{p.name}</div>
+                      <div className="text-[10px] text-zinc-500 truncate capitalize">{p.tone}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Memory Vault Modal */}
       {showMemoryModal && (
@@ -636,6 +767,30 @@ export default function ChatPage() {
       <KanbanBoard
         isOpen={showKanban}
         onClose={() => setShowKanban(false)}
+      />
+
+      {/* 4-Digit Security PIN Modal */}
+      <ChatLockModal
+        isOpen={showLockModal}
+        onClose={() => {
+          setShowLockModal(false);
+          setLockErrorMessage(null);
+        }}
+        mode={lockModalMode}
+        sessionTitle={lockTargetSession?.title}
+        onSubmitPin={handleSubmitPin}
+        errorMessage={lockErrorMessage}
+      />
+
+      {/* Merge Duplicate Chats Modal */}
+      <MergeChatsModal
+        isOpen={showMergeModal}
+        onClose={() => setShowMergeModal(false)}
+        sessions={sessionsList}
+        onMergeComplete={async (newId) => {
+          await fetchInitialData();
+          handleSelectSession(newId);
+        }}
       />
     </div>
   );
