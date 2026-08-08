@@ -913,6 +913,21 @@ export default function CoworkPage() {
             </div>
 
             <div className="space-y-3 text-xs">
+              <a
+                href="/api/auth/github"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white text-black hover:bg-[#e5e5ea] font-semibold text-xs transition-all shadow-md"
+              >
+                <Github size={15} />
+                <span>Authorize on GitHub.com (1-Click Direct Redirect)</span>
+                <ExternalLink size={13} />
+              </a>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-[#2c2c2e]"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-[#8e8e93] font-mono">OR MANUAL ACCESS TOKEN</span>
+                <div className="flex-grow border-t border-[#2c2c2e]"></div>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">GitHub Username</label>
                 <input
@@ -951,9 +966,9 @@ export default function CoworkPage() {
               <button
                 type="submit"
                 disabled={connectingId === "github"}
-                className="flex-1 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] transition-all"
+                className="flex-1 py-2 rounded-xl bg-[#3a3a3c] hover:bg-[#4a4a4c] text-white font-semibold text-xs transition-all"
               >
-                {connectingId === "github" ? "Authorizing..." : "Authorize GitHub OAuth"}
+                {connectingId === "github" ? "Authorizing..." : "Save Manual Token"}
               </button>
             </div>
           </form>
@@ -979,6 +994,21 @@ export default function CoworkPage() {
             </div>
 
             <div className="space-y-3 text-xs">
+              <a
+                href="/api/auth/google"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white text-black hover:bg-[#e5e5ea] font-semibold text-xs transition-all shadow-md"
+              >
+                <HardDrive size={15} />
+                <span>Authorize on Google.com (1-Click Direct Redirect)</span>
+                <ExternalLink size={13} />
+              </a>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-[#2c2c2e]"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-[#8e8e93] font-mono">OR ENTER WORKSPACE EMAIL</span>
+                <div className="flex-grow border-t border-[#2c2c2e]"></div>
+              </div>
+
               <div>
                 <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">Google Workspace Email Account</label>
                 <input
@@ -1011,9 +1041,9 @@ export default function CoworkPage() {
               <button
                 type="submit"
                 disabled={connectingId === "google"}
-                className="flex-1 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] transition-all"
+                className="flex-1 py-2 rounded-xl bg-[#3a3a3c] hover:bg-[#4a4a4c] text-white font-semibold text-xs transition-all"
               >
-                {connectingId === "google" ? "Authorizing..." : "Authorize Google OAuth"}
+                {connectingId === "google" ? "Authorizing..." : "Save Workspace Account"}
               </button>
             </div>
           </form>
