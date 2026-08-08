@@ -114,14 +114,14 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
     <div className="flex flex-col mb-5 w-full group animate-fade-in break-words">
 
       {isUser ? (
-        /* ── USER: right-aligned pill bubble (Gemini style) ── */
+        /* ── USER: right-aligned pill bubble (Sleek Obsidian style) ── */
         <div className="flex justify-end w-full">
           <div className="max-w-[80%] md:max-w-[72%]">
-            <div className="bg-[rgba(255,255,255,0.07)] border border-[rgba(255,255,255,0.07)] rounded-[20px] rounded-tr-[6px] px-4 py-3 text-sm text-[#e4e4e7] leading-relaxed break-words">
+            <div className="bg-[#18181b] border border-[#27272a] rounded-[18px] rounded-tr-[4px] px-4 py-3 text-sm text-[#f4f4f5] leading-relaxed break-words shadow-sm">
               <p className="whitespace-pre-wrap break-words">{cleanContent}</p>
             </div>
             <div className="flex justify-end mt-1 pr-1">
-              <span className="text-[10px] text-[#3f3f46]">
+              <span className="text-[10px] text-zinc-500">
                 {new Date(message.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </span>
             </div>
@@ -133,7 +133,7 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
 
           {/* AI name + timestamp */}
           <div className="flex items-center gap-2 text-xs text-[#94a3b8] mb-2">
-            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)]">
+            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-[#18181b] border border-[#27272a]">
               <img src={botAvatar} alt={assistantName} className="w-full h-full object-cover" />
             </div>
             <span className="font-semibold text-[11px] text-white">{assistantName}</span>
@@ -148,27 +148,18 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
 
             {/* Thinking accordion */}
             {thinkingContent && (
-              <div className="w-full max-w-2xl bg-[rgba(255,255,255,0.015)] border border-[rgba(255,255,255,0.04)] rounded-2xl p-3 shadow-inner">
+              <div className="w-full max-w-2xl bg-[#121215] border border-[#27272a] rounded-xl p-3">
                 <details className="group" open={!cleanContent}>
-                  <summary className="flex items-center justify-between text-[10px] font-bold text-[#64748b] cursor-pointer list-none select-none uppercase tracking-wider">
+                  <summary className="flex items-center justify-between text-[10px] font-bold text-[#71717a] cursor-pointer list-none select-none uppercase tracking-wider">
                     <span className="flex items-center gap-2">
-                      <span className="relative flex h-1.5 w-1.5">
-                        {!cleanContent ? (
-                          <>
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-neutral-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-neutral-500" />
-                          </>
-                        ) : (
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#475569]" />
-                        )}
-                      </span>
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-zinc-500" />
                       Thinking Process
                     </span>
-                    <span className="transition-transform duration-200 group-open:rotate-180 text-[#475569] group-hover:text-[#64748b]">
+                    <span className="transition-transform duration-200 group-open:rotate-180 text-[#71717a] group-hover:text-[#a1a1aa]">
                       <ChevronDown size={11} />
                     </span>
                   </summary>
-                  <div className="mt-2.5 text-xs text-[#64748b] leading-relaxed font-mono whitespace-pre-wrap border-t border-[rgba(255,255,255,0.03)] pt-2.5 max-h-48 overflow-y-auto scrollbar-thin">
+                  <div className="mt-2.5 text-xs text-[#71717a] leading-relaxed font-mono whitespace-pre-wrap border-t border-[#27272a] pt-2.5 max-h-48 overflow-y-auto scrollbar-thin">
                     {thinkingContent}
                   </div>
                 </details>

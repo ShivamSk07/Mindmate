@@ -194,22 +194,22 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
 
         {/* Attachment & Upload Indicator */}
         {(isUploading || attachedFile) && (
-          <div className="flex items-center gap-2 bg-[rgba(255,255,255,0.02)] border border-[rgba(255,255,255,0.04)] rounded-xl p-2 self-start animate-fade-in shadow-inner">
-            <span className="text-[9px] font-bold text-[#64748b] uppercase tracking-wider">File:</span>
+          <div className="flex items-center gap-2 bg-[#121215] border border-[#27272a] rounded-xl px-3 py-1.5 self-start shadow-sm">
+            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">File:</span>
             {isUploading ? (
-              <div className="flex items-center gap-1.5 text-xs text-[#94a3b8]">
-                <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-ping" />
-                <span className="text-[9px] font-semibold font-mono text-indigo-300">Parsing document...</span>
+              <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+                <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full" />
+                <span className="text-[10px] font-medium font-mono text-zinc-300">Parsing document...</span>
               </div>
             ) : (
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-[#cbd5e1] font-mono truncate max-w-[200px]">
+                <span className="text-[11px] font-semibold text-zinc-200 font-mono truncate max-w-[200px]">
                   📎 {attachedFile?.name}
                 </span>
                 <button
                   type="button"
                   onClick={() => setAttachedFile(null)}
-                  className="text-[#64748b] hover:text-white text-xs font-bold px-1 transition-colors"
+                  className="text-zinc-500 hover:text-white text-xs font-bold px-1 transition-colors"
                   title="Remove attachment"
                 >
                   ✕
@@ -219,16 +219,9 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
           </div>
         )}
 
-        {/* Input Box */}
+        {/* Input Box — Matte Obsidian Aesthetic */}
         <div
-          className="flex items-end gap-1.5 sm:gap-2 rounded-[22px] sm:rounded-[24px] px-3 sm:px-4 py-2.5 sm:py-3"
-          style={{
-            background: "rgba(255,255,255,0.05)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            border: "1px solid rgba(255,255,255,0.09)",
-            boxShadow: "0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.2)",
-          }}
+          className="flex items-end gap-1.5 sm:gap-2 rounded-[20px] sm:rounded-[22px] px-3.5 sm:px-4 py-2.5 sm:py-3 bg-[#121215] border border-[#27272a] shadow-lg transition-all focus-within:border-zinc-500"
         >
           {/* File Attachment */}
           <button

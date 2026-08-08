@@ -231,28 +231,20 @@ export function ChatWindow({
               ))}
             </div>
 
-            {/* Typing Indicator */}
+            {/* Typing Indicator — Clean & Quiet (No Blinking Dots) */}
             {isLoading && (
-              <div className="flex flex-col mb-8 w-full animate-fade-in">
-                <div className="flex items-center gap-2 text-[10px] text-[#94a3b8] mb-2 uppercase tracking-widest font-bold">
-                  <div className="w-4 h-4 rounded overflow-hidden flex items-center justify-center bg-[rgba(255,255,255,0.03)] border border-[rgba(255,255,255,0.05)]">
+              <div className="flex flex-col mb-8 w-full">
+                <div className="flex items-center gap-2 text-[10px] text-zinc-400 mb-2 uppercase tracking-widest font-bold">
+                  <div className="w-4 h-4 rounded overflow-hidden flex items-center justify-center bg-[#18181b] border border-[#27272a]">
                     <img src="/img/logo.png" alt="avatar" className="w-full h-full object-cover" />
                   </div>
                   {activePersonaName}
                 </div>
                 <div className="flex justify-start">
-                  <div
-                    className="rounded-2xl rounded-tl-sm px-4 py-3"
-                    style={{
-                      background: "rgba(255,255,255,0.03)",
-                      backdropFilter: "blur(8px)",
-                      border: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    <div className="flex gap-1.5 items-center">
-                      <span className="w-2 h-2 bg-indigo-400 rounded-full typing-dot" />
-                      <span className="w-2 h-2 bg-indigo-400 rounded-full typing-dot" />
-                      <span className="w-2 h-2 bg-indigo-400 rounded-full typing-dot" />
+                  <div className="rounded-xl px-3.5 py-2.5 bg-[#121215] border border-[#27272a]">
+                    <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
+                      <span>Thinking...</span>
                     </div>
                   </div>
                 </div>
