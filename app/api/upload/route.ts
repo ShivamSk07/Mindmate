@@ -3,9 +3,8 @@ import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import Cerebras from "@cerebras/cerebras_cloud_sdk";
 
-const cerebras = new Cerebras({
-  apiKey: process.env.CEREBRAS_API_KEY || "csk-h6cfhy4jmjmy48vv3c8yhj8pjkkh9p3f8f6866nchc8kdwyt",
-});
+const cerebrasApiKey = process.env.CEREBRAS_API_KEY;
+const cerebras = cerebrasApiKey ? new Cerebras({ apiKey: cerebrasApiKey }) : null;
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +60,9 @@ export async function POST(request: NextRequest) {
       }
     } else if (fileType.startsWith("image/")) {
       try {
+        if (!cerebras) {
+          return NextResponse.json({ error: "CEREBRAS_API_KEY is not configured on server" }, { status: 500 });
+        }
         const base64Image = buffer.toString("base64");
         const response = await cerebras.chat.completions.create({
           model: "gemma-4-31b",

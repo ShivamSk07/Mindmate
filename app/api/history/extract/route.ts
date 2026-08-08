@@ -23,14 +23,6 @@ export async function POST(request: NextRequest) {
       data: {
         title: `Extracted: ${fallbackTitle}`,
         userId: user.userId,
-        messages: {
-          create: [
-            {
-              role: "user",
-              content: snippet,
-            }
-          ]
-        }
       }
     });
 

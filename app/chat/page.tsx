@@ -259,6 +259,8 @@ export default function ChatPage() {
       if (res.ok && data.newSessionId) {
         await fetchInitialData();
         await handleSelectSession(data.newSessionId);
+        // Automatically send/load extracted text as the user prompt in the new chat
+        handleSendMessage(selectedText);
       }
     } catch (e) {
       console.error("Failed to extract chat", e);
