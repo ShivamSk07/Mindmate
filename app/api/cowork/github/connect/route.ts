@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({
     connected: true,
     username: ghUsername,
-    displayName: user.name || ghUsername,
+    displayName: ghUsername,
     avatarUrl,
     profileUrl: `https://github.com/${ghUsername}`,
     message: "GitHub account connected successfully.",

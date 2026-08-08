@@ -17,7 +17,7 @@ export async function GET() {
   return NextResponse.json({
     connected: isConnected,
     username: isConnected ? (profile?.githubUsername || user.username) : null,
-    displayName: isConnected ? (user.name || user.username) : null,
+    displayName: isConnected ? (profile?.githubUsername || user.username) : null,
     avatarUrl: isConnected ? (profile?.githubAvatarUrl || `https://github.com/${profile?.githubUsername || user.username}.png`) : null,
     profileUrl: isConnected ? `https://github.com/${profile?.githubUsername || user.username}` : null,
   });
