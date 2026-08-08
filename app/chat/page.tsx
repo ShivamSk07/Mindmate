@@ -246,25 +246,18 @@ export default function ChatPage() {
     }
   };
 
-  // Conversation Extraction Handler
-  const handleExtractNewChat = async (selectedText: string) => {
-    try {
-      const res = await fetch("/api/history/extract", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ selectedText }),
-      });
+  // Conversation Extraction Handler - Instant Zero-Latency Flow
+  const handleExtractNewChat = (selectedText: string) => {
+    if (!selectedText || !selectedText.trim()) return;
+    
+    // 1. Instantly clear current chat view for new chat
+    clearChat();
 
-      const data = await res.json();
-      if (res.ok && data.newSessionId) {
-        await fetchInitialData();
-        await handleSelectSession(data.newSessionId);
-        // Automatically send/load extracted text as the user prompt in the new chat
-        handleSendMessage(selectedText);
-      }
-    } catch (e) {
-      console.error("Failed to extract chat", e);
-    }
+    // 2. Immediately start sending extracted text to stream without blocking network waterfalls
+    setTimeout(() => {
+      sendMessage(selectedText, activePersona?.id, activeFolder);
+      fetchInitialData();
+    }, 10);
   };
 
   // 3. Switch Persona logic
