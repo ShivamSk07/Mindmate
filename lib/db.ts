@@ -12,7 +12,24 @@ export const prisma =
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 
-// Background reminders interval worker (Production or explicit opt-in only to avoid connection pool exhaustion)
+let columnsEnsured = false;
+export async function ensureUserProfileColumns() {
+  if (columnsEnsured) return;
+  try {
+    await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "githubConnected" BOOLEAN DEFAULT false;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "githubToken" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "githubUsername" TEXT;`);
+    await prisma.$executeRawUnsafe(`ALTER TABLE "UserProfile" ADD COLUMN IF NOT EXISTS "githubAvatarUrl" TEXT;`);
+    columnsEnsured = true;
+  } catch (e) {
+    console.warn("ensureUserProfileColumns auto-migration notice:", e);
+  }
+}
+
+// Ensure columns on server start
+ensureUserProfileColumns().catch(() => {});
+
+// Background reminders interval worker
 const globalForReminders = globalThis as unknown as {
   reminderInterval: NodeJS.Timeout | undefined;
 };

@@ -8,17 +8,28 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const profile = await prisma.userProfile.findUnique({
-    where: { userId: user.userId },
-  });
+  let isConnected = false;
+  let ghUsername = null;
+  let avatarUrl = null;
 
-  const isConnected = Boolean(profile?.githubConnected);
+  try {
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
+    if (profile && (profile as any).githubConnected) {
+      isConnected = true;
+      ghUsername = (profile as any).githubUsername || user.username;
+      avatarUrl = (profile as any).githubAvatarUrl || `https://github.com/${ghUsername}.png`;
+    }
+  } catch (e) {
+    console.error("Error fetching user profile github status:", e);
+  }
 
   return NextResponse.json({
     connected: isConnected,
-    username: isConnected ? (profile?.githubUsername || user.username) : null,
-    displayName: isConnected ? (profile?.githubUsername || user.username) : null,
-    avatarUrl: isConnected ? (profile?.githubAvatarUrl || `https://github.com/${profile?.githubUsername || user.username}.png`) : null,
-    profileUrl: isConnected ? `https://github.com/${profile?.githubUsername || user.username}` : null,
+    username: isConnected ? ghUsername : null,
+    displayName: isConnected ? ghUsername : null,
+    avatarUrl: isConnected ? avatarUrl : null,
+    profileUrl: isConnected ? `https://github.com/${ghUsername}` : null,
   });
 }

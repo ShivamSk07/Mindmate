@@ -73,9 +73,14 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    const profile = await prisma.userProfile.findUnique({
-      where: { userId: user.userId }
-    });
+    let profile: any = null;
+    try {
+      profile = await prisma.userProfile.findUnique({
+        where: { userId: user.userId }
+      });
+    } catch (e) {
+      console.warn("[History profile query fallback]", e);
+    }
 
     const data = sessions.map(s => ({
       id: s.id,

@@ -157,9 +157,15 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    // 3. Fetch Profile & Message History in parallel
-    const [profile, historyMessages] = await Promise.all([
-      prisma.userProfile.findUnique({ where: { userId: user.userId } }),
+    // 3. Fetch Profile & Message History in parallel (with safe fallback)
+    let profile: any = null;
+    try {
+      profile = await prisma.userProfile.findUnique({ where: { userId: user.userId } });
+    } catch (e) {
+      console.warn("[Profile query fallback]", e);
+    }
+
+    const [historyMessages] = await Promise.all([
       prisma.message.findMany({
         where: { sessionId: conv.id },
         orderBy: { createdAt: "asc" },

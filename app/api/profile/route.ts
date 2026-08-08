@@ -9,9 +9,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const profile = await prisma.userProfile.findUnique({
-      where: { userId: user.userId }
-    });
+    let profile: any = null;
+    try {
+      profile = await prisma.userProfile.findUnique({
+        where: { userId: user.userId }
+      });
+    } catch (e) {
+      console.warn("[Profile GET query fallback]", e);
+    }
 
     return NextResponse.json({
       username: user.username,
