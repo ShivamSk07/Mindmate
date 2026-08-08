@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { github_list_repositories } from "@/lib/github";
 
 export async function GET() {
@@ -8,9 +9,22 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const profile = await prisma.userProfile.findUnique({
+    where: { userId: user.userId },
+  });
+
+  if (!profile || !profile.githubConnected) {
+    return NextResponse.json({
+      connected: false,
+      repos: [],
+      message: "GitHub account is not connected.",
+    });
+  }
+
   try {
-    const repos = await github_list_repositories("ShivamSk07");
-    return NextResponse.json({ repos });
+    const username = profile.githubUsername || user.username || "ShivamSk07";
+    const repos = await github_list_repositories(username);
+    return NextResponse.json({ connected: true, repos });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch repositories" }, { status: 500 });
   }

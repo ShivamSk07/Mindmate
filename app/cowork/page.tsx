@@ -739,8 +739,29 @@ export default function CoworkPage() {
                 </div>
               )}
 
+              {/* DISCONNECTED GITHUB SCREEN */}
+              {!isGitHubConnected && (
+                <div className="py-16 text-center space-y-4 max-w-md mx-auto animate-fade-in">
+                  <div className="w-14 h-14 rounded-2xl bg-[#1c1c1e] border border-[#2c2c2e] mx-auto flex items-center justify-center p-3 shadow-md">
+                    <Github size={28} className="text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-white tracking-tight">GitHub</h2>
+                    <p className="text-xs text-[#8e8e93] leading-relaxed mt-1">
+                      Connect your GitHub account to let Clarity work with your repositories.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleToggleGitHubConnect("connect")}
+                    className="px-6 py-2.5 rounded-full bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] active:scale-95 transition-all shadow-sm"
+                  >
+                    Connect GitHub
+                  </button>
+                </div>
+              )}
+
               {/* WELCOME / EMPTY STATE FOR CENTER COLUMN */}
-              {!currentTask && (
+              {isGitHubConnected && !currentTask && (
                 <div className="py-12 text-center space-y-3">
                   <div className="w-14 h-14 rounded-2xl bg-[#1c1c1e] border border-[#2c2c2e] mx-auto flex items-center justify-center p-3">
                     <Github size={28} className="text-white" />

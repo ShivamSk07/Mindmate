@@ -31,6 +31,10 @@ model UserProfile {
   fontSize        String   @default("15")
   language        String   @default("English")
   bubbleStyle     String   @default("modern")
+  githubConnected Boolean  @default(false)
+  githubToken     String?  @db.Text
+  githubUsername  String?
+  githubAvatarUrl String?
 }
 
 model Persona {
