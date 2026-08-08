@@ -79,18 +79,26 @@ export function extractSearchQuery(userQuery: string): string {
 
   // Smart query enhancement for common terms
   if (cleaned.includes("weather") || cleaned.includes("mausam")) {
-    if (cleaned === "weather" || cleaned === "mausam") {
-      return "current weather forecast today";
+    // Extract city name from query if present
+    const cityMatch = userQuery.match(/(?:weather|mausam)(?:\s+(?:in|of|at|for))?\s+([a-zA-Z ]+)/i);
+    const city = cityMatch ? cityMatch[1].trim() : "";
+    if (city && city.length > 2) {
+      return `${city} weather forecast today 2026`;
     }
-    return cleaned + " weather forecast today";
+    return "current weather today 2026";
   }
 
   if (cleaned.includes("captain") || cleaned.includes("kaptaan")) {
-    return cleaned + " current captain 2026";
+    return cleaned + " captain 2025 2026";
   }
 
   if (cleaned.includes("hustle") || cleaned.includes("show")) {
     return cleaned + " latest news release date";
+  }
+
+  // Append year for freshness on factual queries
+  if ((cleaned.includes("who is") || cleaned.includes("kaun hai") || cleaned.includes("kon hai")) && cleaned.length > 8) {
+    return cleaned + " 2025 2026";
   }
 
   return cleaned.length > 2 ? cleaned : userQuery.trim();

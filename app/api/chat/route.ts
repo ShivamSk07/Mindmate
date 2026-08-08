@@ -214,7 +214,19 @@ export async function POST(request: NextRequest) {
       console.log(`[Autonomous AI Search Triggered]: "${searchDecision.searchQuery}"`);
 
       // Execute DuckDuckGo Web Search
-      const results = await searchWeb(searchDecision.searchQuery, 5);
+      let results = await searchWeb(searchDecision.searchQuery, 5);
+
+      // If 0 results, retry with a shorter/simpler query (strip filler words)
+      if (results.length === 0) {
+        const simpleQuery = searchDecision.searchQuery
+          .replace(/forecast|today|2026|2025|current|latest/gi, "")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (simpleQuery.length > 3) {
+          console.log(`[Search Retry with simpler query]: "${simpleQuery}"`);
+          results = await searchWeb(simpleQuery, 5);
+        }
+      }
 
       if (results.length > 0) {
         searched = true;
@@ -228,6 +240,7 @@ export async function POST(request: NextRequest) {
           memoryVault
         );
       } else {
+        // No results even after retry — build a normal prompt but inject instruction to be honest
         queryMessages = buildNormalPrompt(
           userQuery,
           chatHistory,
