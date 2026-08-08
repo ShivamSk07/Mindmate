@@ -518,16 +518,15 @@ export default function ChatPage() {
 
           {/* Right: Tools (Desktop) */}
           <div className="flex items-center gap-2 text-[#94a3b8]">
-            {/* Clarity CoWork Button */}
-            <button
-              onClick={() => setShowCoworkModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#1c1c1e] hover:bg-[#2c2c2e] border border-[#2c2c2e] shadow-sm transition-all active:scale-95 group"
-              title="Clarity CoWork — Agentic Workspace"
+            {/* Clarity CoWork Page Link — Matte Monochrome Design */}
+            <Link
+              href="/cowork"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#1c1c1e] hover:bg-[#2c2c2e] border border-[#2c2c2e] transition-all active:scale-95"
+              title="Clarity CoWork — Dedicated Agentic Workspace"
             >
-              <Briefcase size={14} className="text-[#0a84ff] group-hover:scale-110 transition-transform" />
+              <Briefcase size={14} className="text-[#a1a1aa]" />
               <span className="hidden sm:inline font-sans">Clarity CoWork</span>
-              <span className="px-1.5 py-0.2 text-[9px] font-mono bg-[#007aff]/20 text-[#0a84ff] rounded-md font-bold uppercase">AGENT</span>
-            </button>
+            </Link>
 
             <button
               onClick={() => setShowMergeModal(true)}
