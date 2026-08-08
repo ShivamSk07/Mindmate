@@ -355,10 +355,10 @@ export default function ChatPage() {
   const botAvatar = activePersona?.avatarUrl || "/img/logo.png";
 
   return (
-    <div className="flex h-[100dvh] w-full bg-[var(--bg-main)] text-[var(--text-primary)] overflow-hidden relative p-0 md:p-3 gap-0 md:gap-3">
+    <div className="flex h-[100dvh] w-full bg-[#000000] text-[#f2f2f7] overflow-hidden relative p-0 gap-0">
       
       {/* Sidebar navigation */}
-      <div className={`${isDesktopCollapsed ? "hidden lg:hidden" : "block lg:block"}`}>
+      <div className={`${isDesktopCollapsed ? "hidden lg:hidden" : "block lg:block"} h-full`}>
         <Sidebar
           currentSessionId={sessionId}
           onSelectSession={(id) => {
@@ -383,19 +383,12 @@ export default function ChatPage() {
         />
       </div>
 
-      {/* Main chat area */}
-      <main className="flex-grow flex flex-col min-w-0 h-full relative glass-floating-panel rounded-none md:rounded-[24px] overflow-hidden border-0 md:border border-[rgba(255,255,255,0.06)]">
+      {/* Main chat area — Apple Workspace */}
+      <main className="flex-grow flex flex-col min-w-0 h-full relative bg-[#000000] border-l border-[#222226]">
         
-        {/* Chat Toolbar Header — glassmorphism */}
+        {/* Chat Toolbar Header — Apple macOS Style */}
         <header
-          className="px-3 md:px-5 py-2.5 md:py-3 flex items-center justify-between z-20 relative flex-shrink-0 gap-2"
-          style={{
-            background: "rgba(8,8,12,0.72)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            borderBottom: "1px solid rgba(255,255,255,0.05)",
-            boxShadow: "0 1px 0 rgba(255,255,255,0.03)",
-          }}
+          className="h-14 px-4 flex items-center justify-between z-20 relative flex-shrink-0 gap-2 bg-[#111113]/90 backdrop-blur-md border-b border-[#222226]"
         >
 
           {/* Left: Menu + Expand Desktop + Persona Selector */}

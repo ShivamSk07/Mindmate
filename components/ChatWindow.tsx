@@ -195,23 +195,23 @@ export function ChatWindow({
         <div className="w-full max-w-3xl flex flex-col">
           <div className="flex-1">
 
-            {/* Welcome Screen */}
+            {/* Welcome Screen — Apple Minimalist Design */}
             {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-200px)] md:min-h-[70vh] text-center animate-fade-in px-4 relative">
-                <div className="mb-6">
-                  <img src="/img/logo.png" alt="Clarity" className="w-12 h-12 object-cover opacity-90" />
+              <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-220px)] text-center px-4 relative">
+                <div className="w-16 h-16 rounded-[20px] bg-[#1c1c1e] border border-[#2c2c2e] shadow-xl flex items-center justify-center p-3 mb-5">
+                  <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain opacity-95" />
                 </div>
 
-                <h1 className="text-3xl md:text-5xl font-medium tracking-tight text-white/90 mb-3">
+                <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-[#f2f2f7] mb-2">
                   Hello, {firstName}
                 </h1>
 
-                <p className="text-base md:text-lg text-zinc-400 font-normal max-w-sm">
-                  What can I help you with today?
+                <p className="text-sm md:text-base text-[#8e8e93] font-normal max-w-sm">
+                  What would you like to explore today?
                 </p>
 
                 {activeFolder && (
-                  <div className="mt-6 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs text-zinc-400 font-medium">
+                  <div className="mt-6 px-3.5 py-1 rounded-full bg-[#1c1c1e] border border-[#2c2c2e] text-xs text-[#8e8e93] font-medium">
                     📁 {activeFolder}
                   </div>
                 )}

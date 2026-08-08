@@ -5,43 +5,33 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
 :root {
-  --bg-main: #030303;
-  --bg-panel: rgba(10, 10, 15, 0.45);
-  --bg-hover: rgba(255, 255, 255, 0.06);
-  --bg-card: rgba(18, 18, 24, 0.4);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-subtle: rgba(255, 255, 255, 0.04);
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #52525b;
-  --focus-ring: rgba(255, 255, 255, 0.15);
-  --user-bubble: rgba(255, 255, 255, 0.05);
-  --ai-bubble: transparent;
-  --accent: #ffffff;
-  --accent-hover: #e4e4e7;
-  --accent-subtle: rgba(255, 255, 255, 0.04);
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
+  --bg-main: #000000;
+  --bg-sidebar: #111113;
+  --bg-card: #1c1c1e;
+  --bg-hover: #2c2c2e;
+  --border-color: #2c2c2e;
+  --border-subtle: #222226;
+  --text-primary: #f2f2f7;
+  --text-secondary: #8e8e93;
+  --text-muted: #636366;
+  --apple-blue: #007aff;
+  --apple-blue-hover: #0a84ff;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
   --font-size-base: 14px;
 }
 
 .dark {
-  --bg-main: #030303;
-  --bg-panel: rgba(10, 10, 15, 0.45);
-  --bg-hover: rgba(255, 255, 255, 0.06);
-  --bg-card: rgba(18, 18, 24, 0.4);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-subtle: rgba(255, 255, 255, 0.04);
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --text-muted: #52525b;
-  --focus-ring: rgba(255, 255, 255, 0.15);
-  --user-bubble: rgba(255, 255, 255, 0.05);
-  --ai-bubble: transparent;
-  --accent: #ffffff;
-  --accent-hover: #e4e4e7;
-  --accent-subtle: rgba(255, 255, 255, 0.04);
+  --bg-main: #000000;
+  --bg-sidebar: #111113;
+  --bg-card: #1c1c1e;
+  --bg-hover: #2c2c2e;
+  --border-color: #2c2c2e;
+  --border-subtle: #222226;
+  --text-primary: #f2f2f7;
+  --text-secondary: #8e8e93;
+  --text-muted: #636366;
 }
 
 * {
@@ -56,18 +46,13 @@ html {
 }
 
 body {
-  background: radial-gradient(circle at 50% 50%, #0c0d12 0%, #030303 100%);
+  background: #000000;
   color: var(--text-primary);
-  font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Inter, sans-serif;
   height: 100dvh;
   overflow: hidden;
   font-size: var(--font-size-base);
-  letter-spacing: -0.01em;
-  /* iOS safe area support */
-  padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
-  padding-left: env(safe-area-inset-left);
-  padding-right: env(safe-area-inset-right);
+  letter-spacing: -0.011em;
 }
 
 /* Use dynamic viewport height for mobile */

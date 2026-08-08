@@ -199,10 +199,10 @@ export function Sidebar({
         />
       )}
 
-      {/* Sidebar Panel */}
+      {/* Sidebar Panel — Apple macOS Finder/Messages Style */}
       <aside
-        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[280px] glass-sidebar rounded-none lg:rounded-[24px] border-r lg:border border-[rgba(255,255,255,0.06)] flex flex-col transition-all duration-300 ease-out lg:h-full ${
-          isOpen ? "translate-x-0 shadow-[4px_0_40px_rgba(0,0,0,0.6)]" : "-translate-x-full lg:translate-x-0"
+        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[280px] bg-[#111113] border-r border-[#222226] flex flex-col transition-all duration-300 ease-out lg:h-full ${
+          isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Header Logo + Collapse button */}

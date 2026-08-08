@@ -219,19 +219,19 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
           </div>
         )}
 
-        {/* Input Box — Matte Obsidian Aesthetic */}
+        {/* Input Box — Apple Capsule Style */}
         <div
-          className="flex items-end gap-1.5 sm:gap-2 rounded-[20px] sm:rounded-[22px] px-3.5 sm:px-4 py-2.5 sm:py-3 bg-[#121215] border border-[#27272a] shadow-lg transition-all focus-within:border-zinc-500"
+          className="flex items-end gap-2 rounded-[24px] px-4 py-2.5 bg-[#1c1c1e] border border-[#2c2c2e] shadow-lg transition-all focus-within:border-[#3a3a3c]"
         >
           {/* File Attachment */}
           <button
             type="button"
             onClick={triggerFileInput}
             disabled={isUploading || !sessionId}
-            className="p-1.5 sm:p-2 rounded-xl text-[#94a3b8] hover:text-white hover:bg-[rgba(255,255,255,0.04)] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+            className="p-1.5 rounded-full text-[#8e8e93] hover:text-white hover:bg-[#2c2c2e] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed mb-0.5"
             title="Attach Document (PDF, DOCX, CSV, Image)"
           >
-            <Paperclip size={15} />
+            <Paperclip size={16} />
           </button>
           <input
             type="file"
@@ -240,7 +240,6 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
             accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
             className="hidden"
           />
-
 
           {/* Textarea */}
           <textarea
@@ -260,20 +259,20 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
             placeholder="Message Clarity..."
             disabled={disabled}
             rows={1}
-            className="flex-1 bg-transparent resize-none outline-none text-sm sm:text-sm text-[#f8fafc] placeholder-[#475569] max-h-[180px] min-h-[24px] py-1 leading-relaxed scrollbar-none"
+            className="flex-1 bg-transparent resize-none outline-none text-sm text-[#f2f2f7] placeholder-[#8e8e93] max-h-[180px] min-h-[24px] py-1 leading-relaxed scrollbar-none"
           />
 
           {/* Actions */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0 mb-0.5">
             {/* Search on Web button */}
             {!isLoading && (
               <button
                 onClick={() => handleSend(true)}
                 disabled={!input.trim() || disabled}
                 title="Search on Web"
-                className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-xl text-[11px] font-medium text-zinc-400 border border-white/[0.08] bg-white/[0.04] disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[#8e8e93] bg-[#2c2c2e]/60 border border-[#3a3a3c] hover:bg-[#2c2c2e] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
               >
-                <Globe size={13} className="text-zinc-400" />
+                <Globe size={13} className="text-[#8e8e93]" />
                 <span className="hidden sm:inline">Search Web</span>
               </button>
             )}
@@ -281,16 +280,16 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
             {isLoading ? (
               <button
                 onClick={onStop}
-                className="p-2 rounded-xl bg-white/[0.08] border border-white/[0.1] text-zinc-300"
+                className="w-8 h-8 rounded-full bg-[#2c2c2e] border border-[#3a3a3c] text-white flex items-center justify-center transition-all"
                 title="Stop generation"
               >
-                <Square size={13} />
+                <Square size={12} />
               </button>
             ) : (
               <button
                 onClick={() => handleSend(false)}
                 disabled={!input.trim() || disabled}
-                className="p-2 rounded-xl bg-white text-black disabled:bg-white/10 disabled:text-zinc-600 disabled:cursor-not-allowed active:scale-95 transition-all"
+                className="w-8 h-8 rounded-full bg-white text-black hover:bg-[#e5e5ea] disabled:bg-[#2c2c2e] disabled:text-[#6c6c70] disabled:cursor-not-allowed active:scale-95 flex items-center justify-center transition-all flex-shrink-0 shadow-sm"
                 title="Send message"
               >
                 <Send size={13} />
