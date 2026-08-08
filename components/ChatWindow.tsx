@@ -231,23 +231,19 @@ export function ChatWindow({
               ))}
             </div>
 
-            {/* Typing Indicator — Clean & Quiet (No Blinking Dots) */}
-            {isLoading && (
-              <div className="flex flex-col mb-8 w-full">
-                <div className="flex items-center gap-2 text-[10px] text-zinc-400 mb-2 uppercase tracking-widest font-bold">
-                  <div className="w-4 h-4 rounded overflow-hidden flex items-center justify-center bg-[#18181b] border border-[#27272a]">
-                    <img src="/img/logo.png" alt="avatar" className="w-full h-full object-cover" />
-                  </div>
-                  {activePersonaName}
+            {/* Loading Indicator — ONLY show when response has not started streaming yet */}
+            {isLoading && (!messages.length || messages[messages.length - 1]?.role === "user" || !messages[messages.length - 1]?.content) && (
+              <div className="flex items-center gap-2 py-2 mb-6 animate-fade-in text-[#8e8e93]">
+                <div className="w-4 h-4 rounded-full flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img
+                    src="/img/logo.png"
+                    alt="Clarity"
+                    className="w-full h-full object-contain animate-spin [animation-duration:3s]"
+                  />
                 </div>
-                <div className="flex justify-start">
-                  <div className="rounded-xl px-3.5 py-2.5 bg-[#121215] border border-[#27272a]">
-                    <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono">
-                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-                      <span>Thinking...</span>
-                    </div>
-                  </div>
-                </div>
+                <span className="text-xs font-medium font-sans text-[#a1a1aa] tracking-tight">
+                  Clarity is thinking...
+                </span>
               </div>
             )}
 
