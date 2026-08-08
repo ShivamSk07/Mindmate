@@ -263,12 +263,12 @@ export default function CoworkPage() {
     }
   };
 
-  // 5. Interactive OAuth Connection Handlers
+  // 5. Direct 1-Click Browser OAuth Redirect Handlers
   const handleOpenConnectModal = (id: string) => {
     if (id === "github") {
-      setShowGitHubAuthModal(true);
+      window.location.href = "/api/auth/github";
     } else if (["drive", "calendar", "gmail", "sheets"].includes(id)) {
-      setShowGoogleAuthModal(true);
+      window.location.href = "/api/auth/google";
     } else if (id === "mcp") {
       setShowAddMCPModal(true);
     }
