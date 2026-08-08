@@ -142,38 +142,37 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="h-[100dvh] w-full flex flex-col md:flex-row bg-[var(--bg-main)] text-[var(--text-primary)] relative overflow-hidden">
+    <div className="h-[100dvh] w-full flex flex-col md:flex-row bg-[#000000] text-[#f2f2f7] relative overflow-hidden">
 
-
-      {/* Settings Navigation Sidebar */}
-      <aside className="w-full md:w-60 border-b md:border-b-0 md:border-r border-[rgba(255,255,255,0.04)] p-6 flex flex-row md:flex-col gap-4 items-center md:items-start glass-sidebar relative z-10 flex-shrink-0">
+      {/* Settings Navigation Sidebar — Apple Style */}
+      <aside className="w-full md:w-64 border-b md:border-b-0 md:border-r border-[#222226] p-6 flex flex-row md:flex-col gap-4 items-center md:items-start bg-[#111113] relative z-10 flex-shrink-0">
         <Link
           href="/chat"
-          className="flex items-center justify-center w-8 h-8 rounded-lg bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.04)] text-[var(--text-primary)] md:hidden"
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-[#1c1c1e] border border-[#2c2c2e] text-[#f2f2f7] md:hidden"
         >
           <ArrowLeft size={16} />
         </Link>
         <Link href="/chat" className="flex items-center gap-2">
           <img src="/img/branding.png" alt="Clarity" className="h-5 object-contain" />
         </Link>
-        <div className="hidden md:flex flex-col gap-2 w-full mt-6">
+        <div className="hidden md:flex flex-col gap-1.5 w-full mt-6">
           <Link
             href="/chat"
-            className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#94a3b8] hover:text-white hover:bg-[rgba(255,255,255,0.04)] rounded-xl transition-all"
+            className="flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e] rounded-xl transition-all"
           >
-            <ArrowLeft size={13} /> Back to Chat
+            <ArrowLeft size={14} /> Back to Chat
           </Link>
-          <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.03)] rounded-xl">
-            <User size={13} className="text-indigo-400" /> Settings & Profile
+          <div className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-white bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl">
+            <User size={14} className="text-[#0a84ff]" /> Settings & Profile
           </div>
         </div>
       </aside>
 
       {/* Settings Options Scroll area */}
-      <main className="flex-1 h-full min-h-0 overflow-y-auto p-6 md:p-12 max-w-3xl relative z-10 scrollbar-thin">
+      <main className="flex-1 h-full min-h-0 overflow-y-auto p-6 md:p-12 max-w-3xl relative z-10 scrollbar-thin bg-[#000000]">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight text-white">Settings</h1>
-          <p className="text-xs text-[#94a3b8] mt-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Settings</h1>
+          <p className="text-xs text-[#8e8e93] mt-1">
             Manage your account preferences, theme, and personalization.
           </p>
         </div>
@@ -185,27 +184,27 @@ export default function ProfilePage() {
         )}
 
         {success && (
-          <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-3 rounded-xl text-xs mb-6">
+          <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 p-3 rounded-xl text-xs mb-6">
             Preferences saved successfully!
           </div>
         )}
 
         <form onSubmit={handleSaveSettings} className="space-y-6">
           {/* Section: Profile settings */}
-          <div className="glass-premium rounded-2xl p-5 md:p-6 space-y-4 shadow-[0_10px_32px_rgba(0,0,0,0.3)]">
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-violet-600 border border-[rgba(255,255,255,0.1)] rounded-full flex items-center justify-center text-sm font-bold text-white uppercase shadow-md shadow-indigo-500/10">
+          <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-2xl p-5 md:p-6 space-y-4 shadow-sm">
+            <div className="w-12 h-12 bg-[#2c2c2e] border border-[#3a3a3c] rounded-full flex items-center justify-center text-sm font-semibold text-white uppercase">
               {username ? username.slice(0, 2) : "CL"}
             </div>
 
             <div className="space-y-1">
-              <label className="block text-xs font-bold text-white uppercase tracking-wide">Username</label>
-              <p className="text-[10px] text-[#94a3b8]">Your display name inside the chat interface.</p>
+              <label className="block text-xs font-semibold text-white uppercase tracking-wide">Username</label>
+              <p className="text-[10px] text-[#8e8e93]">Your display name inside the chat interface.</p>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full mt-1.5 p-3 rounded-xl text-xs outline-none input-premium text-white transition-all"
+                className="w-full mt-1.5 p-3 rounded-xl text-xs outline-none bg-[#111113] border border-[#2c2c2e] focus:border-[#3a3a3c] text-white transition-all"
               />
             </div>
 
