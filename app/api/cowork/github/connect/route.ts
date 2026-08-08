@@ -36,21 +36,39 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const ghUsername = username || user.username || "ShivamSk07";
-    const avatarUrl = `https://github.com/${ghUsername}.png`;
+    let ghUsername = username || user.username || "ShivamSk07";
+    let avatarUrl = `https://github.com/${ghUsername}.png`;
+
+    if (token && token.trim()) {
+      try {
+        const ghRes = await fetch("https://api.github.com/user", {
+          headers: {
+            Authorization: `Bearer ${token.trim()}`,
+            "User-Agent": "Clarity-CoWork-Agent",
+          },
+        });
+        if (ghRes.ok) {
+          const ghUser = await ghRes.json();
+          ghUsername = ghUser.login || ghUsername;
+          avatarUrl = ghUser.avatar_url || avatarUrl;
+        }
+      } catch (e) {
+        console.warn("GitHub token verification notice:", e);
+      }
+    }
 
     await prisma.userProfile.upsert({
       where: { userId: user.userId },
       update: {
         githubConnected: true,
-        githubToken: token || null,
+        githubToken: token ? token.trim() : null,
         githubUsername: ghUsername,
         githubAvatarUrl: avatarUrl,
       },
       create: {
         userId: user.userId,
         githubConnected: true,
-        githubToken: token || null,
+        githubToken: token ? token.trim() : null,
         githubUsername: ghUsername,
         githubAvatarUrl: avatarUrl,
       },
@@ -62,13 +80,10 @@ export async function POST(request: NextRequest) {
       displayName: ghUsername,
       avatarUrl,
       profileUrl: `https://github.com/${ghUsername}`,
-      message: "GitHub account connected successfully.",
+      message: `GitHub account @${ghUsername} authorized successfully.`,
     });
   } catch (e: any) {
     console.error("Connect error:", e);
-    return NextResponse.json({
-      connected: false,
-      message: "Connection action registered",
-    });
+    return NextResponse.json({ error: "GitHub authorization failed" }, { status: 500 });
   }
 }

@@ -35,7 +35,10 @@ import {
   X,
   Compass,
   ArrowRight,
-  UserCheck
+  UserCheck,
+  Lock,
+  KeyRound,
+  ExternalLink
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -108,6 +111,18 @@ export default function CoworkPage() {
   const [activeToolsCount, setActiveToolsCount] = useState(1);
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
+
+  // Auth Dialog Modals State
+  const [showGitHubAuthModal, setShowGitHubAuthModal] = useState(false);
+  const [githubUsernameInput, setGithubUsernameInput] = useState("ShivamSk07");
+  const [githubTokenInput, setGithubTokenInput] = useState("");
+
+  const [showGoogleAuthModal, setShowGoogleAuthModal] = useState(false);
+  const [googleEmailInput, setGoogleEmailInput] = useState("");
+
+  const [showAddMCPModal, setShowAddMCPModal] = useState(false);
+  const [mcpServerName, setMcpServerName] = useState("");
+  const [mcpServerUrl, setMcpServerUrl] = useState("");
 
   // Left Sidebar State
   const [workspaceNav, setWorkspaceNav] = useState<"overview" | "tasks" | "artifacts">("overview");
@@ -185,7 +200,7 @@ export default function CoworkPage() {
     };
   }, [currentTask?.id, currentTask?.status, activeArtifact]);
 
-  // 3. Start Agentic Goal Task
+  // 3. Start Agentic Task
   const handleStartTask = async (customPrompt?: string) => {
     const promptToUse = customPrompt || promptInput;
     if (!promptToUse.trim() || isSubmitting) return;
@@ -248,26 +263,59 @@ export default function CoworkPage() {
     }
   };
 
-  // 5. Connect / Disconnect Handlers (Real Instant Updates)
-  const handleConnectIntegration = async (id: string) => {
-    setConnectingId(id);
+  // 5. Interactive OAuth Connection Handlers
+  const handleOpenConnectModal = (id: string) => {
+    if (id === "github") {
+      setShowGitHubAuthModal(true);
+    } else if (["drive", "calendar", "gmail", "sheets"].includes(id)) {
+      setShowGoogleAuthModal(true);
+    } else if (id === "mcp") {
+      setShowAddMCPModal(true);
+    }
+  };
+
+  const handleSubmitGitHubAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConnectingId("github");
     try {
-      if (id === "github") {
-        await fetch("/api/cowork/github/connect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "connect" }),
-        });
-      } else if (["drive", "calendar", "gmail", "sheets"].includes(id)) {
-        await fetch("/api/cowork/google/connect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "connect" }),
-        });
+      const res = await fetch("/api/cowork/github/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "connect",
+          username: githubUsernameInput.trim(),
+          token: githubTokenInput.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        setShowGitHubAuthModal(false);
+        fetchIntegrationsStatus();
       }
-      await fetchIntegrationsStatus();
     } catch (e) {
-      console.error("Connect error", e);
+      console.error("GitHub Auth Error", e);
+    } finally {
+      setConnectingId(null);
+    }
+  };
+
+  const handleSubmitGoogleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConnectingId("google");
+    try {
+      const res = await fetch("/api/cowork/google/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "connect",
+          email: googleEmailInput.trim() || "shivam@clarity.app",
+        }),
+      });
+      if (res.ok) {
+        setShowGoogleAuthModal(false);
+        fetchIntegrationsStatus();
+      }
+    } catch (e) {
+      console.error("Google Auth Error", e);
     } finally {
       setConnectingId(null);
     }
@@ -353,13 +401,12 @@ export default function CoworkPage() {
         </div>
       </header>
 
-      {/* ── 3-COLUMN PROFESSIONAL WORKSPACE LAYOUT ── */}
+      {/* ── 3-COLUMN WORKSPACE LAYOUT ── */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
 
         {/* ── COLUMN 1: LEFT SIDEBAR (WORKSPACE & INTEGRATIONS SUITE) ── */}
         <aside className="w-[280px] bg-[#111113] border-r border-[#222226] flex flex-col h-full flex-shrink-0">
           
-          {/* Workspace Nav Header */}
           <div className="p-4 border-b border-[#222226] space-y-2">
             <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
               <span>Workspace</span>
@@ -387,10 +434,9 @@ export default function CoworkPage() {
             </button>
           </div>
 
-          {/* Integrations Suite & Tasks List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
             
-            {/* INTEGRATIONS SUITE WITH REAL CONNECT BUTTONS */}
+            {/* CONNECTED TOOLS SUITE */}
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
@@ -423,13 +469,14 @@ export default function CoworkPage() {
                       <button
                         onClick={() => handleDisconnectIntegration(item.id)}
                         disabled={connectingId === item.id}
-                        className="text-[10px] font-mono text-red-400 hover:text-red-300 underline transition-colors"
+                        className="text-[10px] font-mono text-emerald-400 hover:text-red-400 transition-colors"
+                        title="Click to disconnect"
                       >
                         {connectingId === item.id ? "..." : "Connected ●"}
                       </button>
                     ) : (
                       <button
-                        onClick={() => handleConnectIntegration(item.id)}
+                        onClick={() => handleOpenConnectModal(item.id)}
                         disabled={connectingId === item.id}
                         className="px-2 py-0.5 rounded-md bg-white text-black text-[10px] font-semibold hover:bg-[#e5e5ea] transition-all"
                       >
@@ -496,7 +543,7 @@ export default function CoworkPage() {
 
           <div className="p-4 border-t border-[#222226] bg-[#111113] flex items-center justify-between text-xs text-[#8e8e93]">
             <span>Clarity Multi-Tool Engine</span>
-            <span className="text-[10px] font-mono text-emerald-400">v2.5 Live</span>
+            <span className="text-[10px] font-mono text-emerald-400">OAuth Security Active</span>
           </div>
         </aside>
 
@@ -778,7 +825,7 @@ export default function CoworkPage() {
 
       </div>
 
-      {/* ── MODAL: INTEGRATIONS HUB ── */}
+      {/* ── MODAL 1: INTEGRATIONS HUB ── */}
       {showIntegrationsModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
           <div className="w-full max-w-lg bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
@@ -824,7 +871,7 @@ export default function CoworkPage() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => handleConnectIntegration(item.id)}
+                      onClick={() => handleOpenConnectModal(item.id)}
                       disabled={connectingId === item.id}
                       className="px-3.5 py-1 rounded-full text-[10px] bg-white text-black font-semibold hover:bg-[#e5e5ea] transition-all"
                     >
@@ -844,6 +891,132 @@ export default function CoworkPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── MODAL 2: GITHUB OAUTH AUTHORIZATION DIALOG ── */}
+      {showGitHubAuthModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <form onSubmit={handleSubmitGitHubAuth} className="w-full max-w-md bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
+            <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
+              <div className="flex items-center gap-2">
+                <Github size={18} />
+                <h3 className="text-sm font-semibold text-white">Authorize GitHub Integration</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGitHubAuthModal(false)}
+                className="text-[#8e8e93] hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">GitHub Username</label>
+                <input
+                  type="text"
+                  value={githubUsernameInput}
+                  onChange={(e) => setGithubUsernameInput(e.target.value)}
+                  placeholder="e.g. ShivamSk07"
+                  required
+                  className="w-full bg-[#111113] border border-[#2c2c2e] rounded-xl px-3 py-2 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">GitHub OAuth Token / Personal Access Token (Optional)</label>
+                <input
+                  type="password"
+                  value={githubTokenInput}
+                  onChange={(e) => setGithubTokenInput(e.target.value)}
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                  className="w-full bg-[#111113] border border-[#2c2c2e] rounded-xl px-3 py-2 text-xs text-white outline-none font-mono"
+                />
+                <p className="text-[10px] text-[#8e8e93] mt-1">
+                  Scopes: repo, read:user, user:email. Token stays strictly on backend.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGitHubAuthModal(false)}
+                className="flex-1 py-2 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-medium text-white transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={connectingId === "github"}
+                className="flex-1 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] transition-all"
+              >
+                {connectingId === "github" ? "Authorizing..." : "Authorize GitHub OAuth"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── MODAL 3: GOOGLE OAUTH AUTHORIZATION DIALOG ── */}
+      {showGoogleAuthModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <form onSubmit={handleSubmitGoogleAuth} className="w-full max-w-md bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
+            <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
+              <div className="flex items-center gap-2">
+                <HardDrive size={18} />
+                <h3 className="text-sm font-semibold text-white">Authorize Google Workspace OAuth</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGoogleAuthModal(false)}
+                className="text-[#8e8e93] hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">Google Workspace Email Account</label>
+                <input
+                  type="email"
+                  value={googleEmailInput}
+                  onChange={(e) => setGoogleEmailInput(e.target.value)}
+                  placeholder="shivam@clarity.app"
+                  required
+                  className="w-full bg-[#111113] border border-[#2c2c2e] rounded-xl px-3 py-2 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div className="p-3 bg-[#111113] border border-[#2c2c2e] rounded-xl space-y-1.5 text-[11px] text-[#8e8e93]">
+                <div className="text-white font-medium mb-1">Requested Permissions:</div>
+                <div className="flex items-center gap-2">✓ Google Drive (read docs & PDFs)</div>
+                <div className="flex items-center gap-2">✓ Google Calendar (view & schedule slots)</div>
+                <div className="flex items-center gap-2">✓ Gmail (read emails & create drafts)</div>
+                <div className="flex items-center gap-2">✓ Google Sheets (read datasets & rows)</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGoogleAuthModal(false)}
+                className="flex-1 py-2 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-medium text-white transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={connectingId === "google"}
+                className="flex-1 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] transition-all"
+              >
+                {connectingId === "google" ? "Authorizing..." : "Authorize Google OAuth"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
