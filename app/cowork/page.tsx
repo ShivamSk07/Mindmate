@@ -9,6 +9,12 @@ import {
   ArrowLeft,
   Briefcase,
   Github,
+  HardDrive,
+  Calendar,
+  Mail,
+  FileSpreadsheet,
+  Plug,
+  Globe,
   GitBranch,
   GitPullRequest,
   AlertCircle,
@@ -24,34 +30,27 @@ import {
   ShieldCheck,
   Sparkles,
   ChevronRight,
-  ChevronDown,
   RefreshCw,
   Search,
   ExternalLink,
   Download,
-  Terminal,
-  UserCheck,
-  Lock,
   Plus,
-  Shield,
   Layers,
-  Code2
+  Code2,
+  Sliders,
+  UserCheck,
+  Send
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-interface RepoItem {
-  id: number;
+interface IntegrationItem {
+  id: string;
   name: string;
-  full_name: string;
-  description: string | null;
-  private: boolean;
-  html_url: string;
-  default_branch: string;
-  language: string | null;
-  stargazers_count: number;
-  open_issues_count: number;
-  updated_at: string;
+  icon: string;
+  connected: boolean;
+  username?: string | null;
+  details?: string;
 }
 
 interface PlanStep {
@@ -64,6 +63,7 @@ interface ActivityItem {
   id: string;
   timestamp: string;
   type: "connect" | "tool_call" | "reasoning" | "approval_request" | "success" | "error";
+  category?: "github" | "drive" | "calendar" | "gmail" | "sheets" | "mcp" | "browser" | "system";
   title: string;
   description: string;
   toolName?: string;
@@ -73,16 +73,17 @@ interface ActivityItem {
 
 interface PendingApproval {
   toolName: string;
+  category: "github" | "drive" | "calendar" | "gmail" | "sheets" | "mcp" | "browser";
   params: any;
   title: string;
   description: string;
-  repository: string;
+  targetResource: string;
 }
 
 interface Artifact {
   id: string;
   title: string;
-  type: "security" | "review" | "architecture" | "checklist" | "plan";
+  type: "report" | "plan" | "email" | "calendar" | "sheets" | "code_diff" | "review";
   content: string;
   createdAt: string;
 }
@@ -94,6 +95,7 @@ interface CoworkTask {
   repoName: string;
   branch: string;
   status: "running" | "waiting_approval" | "completed" | "failed" | "cancelled";
+  usedTools: string[];
   plan: PlanStep[];
   activityFeed: ActivityItem[];
   pendingApproval: PendingApproval | null;
@@ -106,13 +108,6 @@ interface CoworkTask {
     codeQuality: number;
     maintenance: number;
   } | null;
-  prReviewScore: {
-    overall: number;
-    critical: number;
-    high: number;
-    medium: number;
-    suggestions: number;
-  } | null;
   artifacts: Artifact[];
   createdAt: string;
   updatedAt: string;
@@ -121,26 +116,19 @@ interface CoworkTask {
 export default function CoworkPage() {
   const router = useRouter();
 
-  // GitHub Connection State
-  const [isGitHubConnected, setIsGitHubConnected] = useState(true);
-  const [githubUser, setGithubUser] = useState({
-    username: "ShivamSk07",
-    displayName: "Shivam Kothekar",
-    avatarUrl: "https://github.com/ShivamSk07.png",
-  });
-  const [showManageGitHubModal, setShowManageGitHubModal] = useState(false);
-
-  // Repositories List & Selection State
-  const [repos, setRepos] = useState<RepoItem[]>([]);
-  const [selectedRepo, setSelectedRepo] = useState<RepoItem | null>(null);
-  const [selectedBranch, setSelectedBranch] = useState("main");
-  const [showRepoModal, setShowRepoModal] = useState(false);
-  const [repoSearchQuery, setRepoSearchQuery] = useState("");
+  // Integrations State
+  const [integrations, setIntegrations] = useState<IntegrationItem[]>([]);
+  const [activeToolsCount, setActiveToolsCount] = useState(7);
+  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+  const [showAddMCPModal, setShowAddMCPModal] = useState(false);
+  const [mcpServerName, setMcpServerName] = useState("");
+  const [mcpServerUrl, setMcpServerUrl] = useState("");
 
   // Workspace Nav State (Left Sidebar)
-  const [workspaceNav, setWorkspaceNav] = useState<"overview" | "files" | "issues" | "prs" | "branches" | "artifacts">("overview");
+  const [workspaceNav, setWorkspaceNav] = useState<"overview" | "tasks" | "files" | "artifacts">("overview");
 
-  // Agent Task Execution State
+  // Task & Execution State
+  const [recentTasks, setRecentTasks] = useState<CoworkTask[]>([]);
   const [currentTask, setCurrentTask] = useState<CoworkTask | null>(null);
   const [promptInput, setPromptInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -148,54 +136,42 @@ export default function CoworkPage() {
 
   // Artifact State
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
-  const [copiedArtifact, setCopiedArtifact] = useState(false);
   const [copiedReport, setCopiedReport] = useState(false);
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // 1. Fetch GitHub Connection Status & Repositories
+  // 1. Initial Data Fetch
   useEffect(() => {
-    fetchGitHubStatus();
-    fetchRepositories();
+    fetchIntegrationsStatus();
+    fetchTaskHistory();
   }, []);
 
-  const fetchGitHubStatus = async () => {
+  const fetchIntegrationsStatus = async () => {
     try {
-      const res = await fetch("/api/cowork/github/status");
+      const res = await fetch("/api/cowork/status");
       if (res.ok) {
         const data = await res.json();
-        setIsGitHubConnected(data.connected);
-        if (data.username) {
-          setGithubUser({
-            username: data.username,
-            displayName: data.displayName || data.username,
-            avatarUrl: data.avatarUrl || "https://github.com/ShivamSk07.png",
-          });
-        }
+        setIntegrations(data.integrations || []);
+        setActiveToolsCount(data.activeToolsCount || 7);
       }
     } catch (e) {
-      console.error("Failed to fetch GitHub status", e);
+      console.error("Failed to fetch integrations status", e);
     }
   };
 
-  const fetchRepositories = async () => {
+  const fetchTaskHistory = async () => {
     try {
-      const res = await fetch("/api/cowork/github/repos");
+      const res = await fetch("/api/cowork/history");
       if (res.ok) {
         const data = await res.json();
-        const list = data.repos || [];
-        setRepos(list);
-        if (list.length > 0 && !selectedRepo) {
-          setSelectedRepo(list[0]);
-          setSelectedBranch(list[0].default_branch || "main");
-        }
+        setRecentTasks(data.tasks || []);
       }
     } catch (e) {
-      console.error("Failed to fetch repositories", e);
+      console.error("Failed to fetch task history", e);
     }
   };
 
-  // 2. Task Execution Polling Loop
+  // 2. Task Polling Effect
   useEffect(() => {
     if (currentTask && (currentTask.status === "running" || currentTask.status === "waiting_approval")) {
       pollIntervalRef.current = setInterval(async () => {
@@ -208,13 +184,14 @@ export default function CoworkPage() {
               if (data.task.artifacts?.length > 0 && !activeArtifact) {
                 setActiveArtifact(data.task.artifacts[0]);
               }
-              if (data.task.status === "completed" || data.task.status === "failed" || data.task.status === "cancelled") {
+              if (["completed", "failed", "cancelled"].includes(data.task.status)) {
                 if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                fetchTaskHistory();
               }
             }
           }
         } catch (e) {
-          console.error("Polling task failed", e);
+          console.error("Task polling error", e);
         }
       }, 1000);
     }
@@ -224,7 +201,7 @@ export default function CoworkPage() {
     };
   }, [currentTask?.id, currentTask?.status, activeArtifact]);
 
-  // 3. Start Agentic Task
+  // 3. Start Agentic Goal Task
   const handleStartTask = async (customPrompt?: string) => {
     const promptToUse = customPrompt || promptInput;
     if (!promptToUse.trim() || isSubmitting) return;
@@ -238,8 +215,8 @@ export default function CoworkPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: promptToUse,
-          repoName: selectedRepo ? selectedRepo.full_name : "ShivamSk07/Mindmate",
-          branch: selectedBranch,
+          repoName: "ShivamSk07/Mindmate",
+          branch: "main",
         }),
       });
 
@@ -256,7 +233,7 @@ export default function CoworkPage() {
     }
   };
 
-  // 4. Human Approval Handlers
+  // 4. Universal Approval Handlers
   const handleApproveAction = async () => {
     if (!currentTask) return;
     try {
@@ -268,7 +245,7 @@ export default function CoworkPage() {
         setCurrentTask(data.task);
       }
     } catch (e) {
-      console.error("Approve action failed", e);
+      console.error("Approval error", e);
     }
   };
 
@@ -283,38 +260,51 @@ export default function CoworkPage() {
         setCurrentTask(data.task);
       }
     } catch (e) {
-      console.error("Cancel action failed", e);
+      console.error("Cancellation error", e);
     }
   };
 
-  const handleToggleGitHubConnect = async (action: "connect" | "disconnect") => {
+  const handleAddMCPServer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!mcpServerName.trim() || !mcpServerUrl.trim()) return;
+
     try {
-      const res = await fetch("/api/cowork/github/connect", {
+      const res = await fetch("/api/cowork/mcp/servers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ name: mcpServerName, url: mcpServerUrl }),
       });
-      const data = await res.json();
-      setIsGitHubConnected(data.connected);
-      setShowManageGitHubModal(false);
+      if (res.ok) {
+        setMcpServerName("");
+        setMcpServerUrl("");
+        setShowAddMCPModal(false);
+        fetchIntegrationsStatus();
+      }
     } catch (e) {
-      console.error(e);
+      console.error("MCP registration error", e);
     }
   };
 
-  const filteredRepos = repos.filter((r) =>
-    r.name.toLowerCase().includes(repoSearchQuery.toLowerCase()) ||
-    (r.description && r.description.toLowerCase().includes(repoSearchQuery.toLowerCase()))
-  );
-
-  const SUGGESTED_PROMPTS = [
-    "Audit my repository",
-    "Review my latest PR",
-    "Find security issues",
-    "Explain this codebase",
-    "Find technical debt",
-    "Prepare my project for launch",
+  const MULTI_TOOL_PROMPTS = [
+    "Compare Drive proposal with Mindmate GitHub code",
+    "Audit my GitHub codebase for launch",
+    "Check tomorrow's calendar & draft email reply",
+    "Analyze sales dataset in Google Sheets",
+    "Search web documentation via Browser Agent",
   ];
+
+  const getCategoryIcon = (cat?: string) => {
+    switch (cat) {
+      case "github": return <Github size={14} className="text-white flex-shrink-0" />;
+      case "drive": return <HardDrive size={14} className="text-white flex-shrink-0" />;
+      case "calendar": return <Calendar size={14} className="text-white flex-shrink-0" />;
+      case "gmail": return <Mail size={14} className="text-white flex-shrink-0" />;
+      case "sheets": return <FileSpreadsheet size={14} className="text-white flex-shrink-0" />;
+      case "mcp": return <Plug size={14} className="text-white flex-shrink-0" />;
+      case "browser": return <Globe size={14} className="text-white flex-shrink-0" />;
+      default: return <Sparkles size={14} className="text-white flex-shrink-0" />;
+    }
+  };
 
   return (
     <div className="h-[100dvh] w-full bg-[#000000] text-[#f2f2f7] flex flex-col overflow-hidden font-sans">
@@ -329,32 +319,19 @@ export default function CoworkPage() {
             <span className="text-sm font-semibold text-white tracking-tight">Clarity CoWork</span>
           </Link>
           <span className="text-xs text-[#636366]">/</span>
-          <span className="text-xs font-mono text-[#8e8e93]">GPT-OSS 120B Agent</span>
+          <span className="text-xs font-mono text-[#8e8e93]">Unified Agentic Workspace</span>
         </div>
 
-        {/* GitHub Connection Badge */}
+        {/* Tools Available Status Badge */}
         <div className="flex items-center gap-3">
-          {isGitHubConnected ? (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1c1c1e] border border-[#2c2c2e] text-xs">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-white font-medium">GitHub ● Connected</span>
-              <span className="text-[#8e8e93] font-mono text-[11px]">({githubUser.username})</span>
-              <button
-                onClick={() => setShowManageGitHubModal(true)}
-                className="ml-1 text-[11px] text-[#a1a1aa] hover:text-white underline underline-offset-2 transition-colors"
-              >
-                Manage
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => handleToggleGitHubConnect("connect")}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-black text-xs font-semibold hover:bg-[#e5e5ea] transition-all"
-            >
-              <Github size={14} />
-              <span>Connect GitHub</span>
-            </button>
-          )}
+          <button
+            onClick={() => setShowIntegrationsModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1c1c1e] border border-[#2c2c2e] hover:bg-[#2c2c2e] text-xs transition-all"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-white font-medium">● {activeToolsCount} Tools Available</span>
+            <span className="text-[#8e8e93] text-[11px] font-mono underline ml-1">Manage</span>
+          </button>
 
           <Link
             href="/chat"
@@ -368,173 +345,113 @@ export default function CoworkPage() {
       {/* ── 3-COLUMN WORKSPACE CONTAINER ── */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
 
-        {/* ── COLUMN 1: LEFT SIDEBAR (PROJECT CONTEXT) ── */}
+        {/* ── COLUMN 1: LEFT SIDEBAR (WORKSPACE & INTEGRATIONS) ── */}
         <aside className="w-[280px] bg-[#111113] border-r border-[#222226] flex flex-col h-full flex-shrink-0">
           
-          {/* Active Repository Card */}
-          <div className="p-4 border-b border-[#222226] space-y-3">
-            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
-              <span>Project</span>
-              <button
-                onClick={() => setShowRepoModal(true)}
-                className="text-[10px] text-[#a1a1aa] hover:text-white transition-colors"
-              >
-                Switch Repo
-              </button>
-            </div>
+          {/* Workspace Sections */}
+          <div className="p-4 border-b border-[#222226] space-y-1">
+            <span className="block px-2 text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93] mb-1">
+              Workspace
+            </span>
 
-            {selectedRepo ? (
-              <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl p-3 space-y-2 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Github size={15} className="text-white flex-shrink-0" />
-                    <span className="text-xs font-semibold text-white truncate">{selectedRepo.name}</span>
-                  </div>
-                  <span className="px-1.5 py-0.2 text-[9px] font-mono bg-[#2c2c2e] text-[#a1a1aa] rounded">
-                    {selectedRepo.default_branch}
-                  </span>
-                </div>
-                <p className="text-[11px] text-[#8e8e93] line-clamp-2 leading-relaxed">
-                  {selectedRepo.description || "No description provided."}
-                </p>
-                <div className="flex items-center justify-between pt-1 text-[10px] text-[#636366] font-mono">
-                  <span>{selectedRepo.language || "TypeScript"}</span>
-                  <span>★ {selectedRepo.stargazers_count}</span>
-                </div>
-              </div>
-            ) : (
-              <button
-                onClick={() => setShowRepoModal(true)}
-                className="w-full bg-[#1c1c1e] border border-dashed border-[#2c2c2e] hover:border-[#3a3a3c] rounded-xl p-3 text-center text-xs text-[#8e8e93] hover:text-white transition-all"
-              >
-                Select a GitHub repository...
-              </button>
-            )}
+            <button
+              onClick={() => setWorkspaceNav("overview")}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                workspaceNav === "overview"
+                  ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
+                  : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
+              }`}
+            >
+              <Briefcase size={14} />
+              <span>Overview</span>
+            </button>
+
+            <button
+              onClick={() => setWorkspaceNav("tasks")}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                workspaceNav === "tasks"
+                  ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
+                  : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
+              }`}
+            >
+              <CheckCircle2 size={14} />
+              <span>Recent Tasks ({recentTasks.length})</span>
+            </button>
+
+            <button
+              onClick={() => setWorkspaceNav("artifacts")}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                workspaceNav === "artifacts"
+                  ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
+                  : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
+              }`}
+            >
+              <FileText size={14} />
+              <span>Artifacts ({currentTask?.artifacts?.length || 0})</span>
+            </button>
           </div>
 
-          {/* Workspace Sections */}
+          {/* Connected Integrations List */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-            <div className="space-y-1">
-              <span className="block px-2 text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93] mb-1">
-                Workspace
+            <div className="flex items-center justify-between px-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
+                Connected Tools
               </span>
-
               <button
-                onClick={() => setWorkspaceNav("overview")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  workspaceNav === "overview"
-                    ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
-                    : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
-                }`}
+                onClick={() => setShowIntegrationsModal(true)}
+                className="text-[10px] text-[#a1a1aa] hover:text-white underline transition-colors"
               >
-                <Briefcase size={14} />
-                <span>Overview</span>
-              </button>
-
-              <button
-                onClick={() => setWorkspaceNav("files")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  workspaceNav === "files"
-                    ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
-                    : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
-                }`}
-              >
-                <FolderTree size={14} />
-                <span>Files</span>
-              </button>
-
-              <button
-                onClick={() => setWorkspaceNav("issues")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  workspaceNav === "issues"
-                    ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
-                    : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
-                }`}
-              >
-                <AlertCircle size={14} />
-                <span>Issues</span>
-                {selectedRepo?.open_issues_count ? (
-                  <span className="ml-auto px-1.5 py-0.2 text-[9px] font-mono bg-[#2c2c2e] text-[#a1a1aa] rounded-full">
-                    {selectedRepo.open_issues_count}
-                  </span>
-                ) : null}
-              </button>
-
-              <button
-                onClick={() => setWorkspaceNav("prs")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  workspaceNav === "prs"
-                    ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
-                    : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
-                }`}
-              >
-                <GitPullRequest size={14} />
-                <span>Pull Requests</span>
-              </button>
-
-              <button
-                onClick={() => setWorkspaceNav("branches")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  workspaceNav === "branches"
-                    ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
-                    : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
-                }`}
-              >
-                <GitBranch size={14} />
-                <span>Branches</span>
-              </button>
-
-              <button
-                onClick={() => setWorkspaceNav("artifacts")}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                  workspaceNav === "artifacts"
-                    ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
-                    : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
-                }`}
-              >
-                <FileText size={14} />
-                <span>Artifacts</span>
-                {currentTask?.artifacts?.length ? (
-                  <span className="ml-auto px-1.5 py-0.2 text-[9px] font-mono bg-[#2c2c2e] text-white rounded-full">
-                    {currentTask.artifacts.length}
-                  </span>
-                ) : null}
+                Integrations Hub
               </button>
             </div>
 
-            {/* Generated Artifacts List */}
-            {currentTask?.artifacts && currentTask.artifacts.length > 0 && (
-              <div className="pt-2 border-t border-[#222226] space-y-2">
+            <div className="space-y-1.5">
+              {integrations.map((item) => (
+                <div
+                  key={item.id}
+                  onClick={() => setShowIntegrationsModal(true)}
+                  className="flex items-center justify-between p-2.5 rounded-xl bg-[#1c1c1e] border border-[#2c2c2e] hover:border-[#3a3a3c] text-xs cursor-pointer transition-all"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    {getCategoryIcon(item.id)}
+                    <span className="text-xs font-medium text-white truncate">{item.name}</span>
+                  </div>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${item.connected ? "bg-emerald-400" : "bg-zinc-600"}`} />
+                </div>
+              ))}
+            </div>
+
+            {/* Recent Tasks List */}
+            {recentTasks.length > 0 && (
+              <div className="pt-3 border-t border-[#222226] space-y-2">
                 <span className="block px-2 text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
-                  Project Artifacts
+                  Recent Tasks
                 </span>
-                {currentTask.artifacts.map((art) => (
+                {recentTasks.slice(0, 5).map((t) => (
                   <div
-                    key={art.id}
-                    onClick={() => setActiveArtifact(art)}
+                    key={t.id}
+                    onClick={() => {
+                      setCurrentTask(t);
+                      if (t.artifacts?.length > 0) setActiveArtifact(t.artifacts[0]);
+                    }}
                     className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
-                      activeArtifact?.id === art.id
+                      currentTask?.id === t.id
                         ? "bg-[#1c1c1e] border-white text-white shadow-sm"
                         : "bg-[#111113] border-[#222226] text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]"
                     }`}
                   >
-                    <div className="flex items-center gap-2 truncate font-medium">
-                      <FileText size={13} className="text-[#a1a1aa] flex-shrink-0" />
-                      <span className="truncate">{art.title}</span>
-                    </div>
+                    <div className="text-xs font-semibold text-white truncate">{t.userQuery}</div>
+                    <div className="text-[10px] text-[#636366] font-mono mt-0.5 capitalize">{t.status}</div>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* GitHub Account Footer */}
+          {/* Sidebar Footer */}
           <div className="p-4 border-t border-[#222226] bg-[#111113] flex items-center justify-between text-xs text-[#8e8e93]">
-            <div className="flex items-center gap-2">
-              <img src={githubUser.avatarUrl} alt="github avatar" className="w-5 h-5 rounded-full object-cover" />
-              <span className="text-white font-medium font-mono text-[11px]">@{githubUser.username}</span>
-            </div>
-            <span className="text-[10px] text-emerald-400 font-mono">OAuth Active</span>
+            <span>Clarity CoWork Agent Core</span>
+            <span className="text-[10px] font-mono text-emerald-400">Ready</span>
           </div>
         </aside>
 
@@ -545,22 +462,13 @@ export default function CoworkPage() {
           <div className="h-12 px-6 bg-[#111113]/60 border-b border-[#222226] flex items-center justify-between flex-shrink-0 text-xs text-[#8e8e93]">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-white">
-                {selectedRepo ? selectedRepo.full_name : "ShivamSk07/Mindmate"}
+                {currentTask ? currentTask.userQuery : "Clarity CoWork Multi-Tool Workspace"}
               </span>
-              <span>/</span>
-              <select
-                value={selectedBranch}
-                onChange={(e) => setSelectedBranch(e.target.value)}
-                className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-md px-2 py-0.5 text-xs text-white outline-none cursor-pointer"
-              >
-                <option value="main">main</option>
-                <option value="feature/cowork-v2">feature/cowork-v2</option>
-              </select>
             </div>
 
             {currentTask && (
               <div className="flex items-center gap-2">
-                <span className="text-[11px]">Task Status:</span>
+                <span className="text-[11px]">Status:</span>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase ${
                   currentTask.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
                   currentTask.status === "running" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
@@ -577,7 +485,7 @@ export default function CoworkPage() {
           <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
             <div className="max-w-3xl mx-auto space-y-6">
 
-              {/* 1. DYNAMIC AGENT EXECUTION PLAN */}
+              {/* 1. DYNAMIC MULTI-STEP PLAN STEPPER */}
               {currentTask && (
                 <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-2xl p-5 shadow-sm space-y-3">
                   <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-2.5">
@@ -599,7 +507,7 @@ export default function CoworkPage() {
                         {step.status === "failed" && <XCircle size={15} className="text-red-400 flex-shrink-0" />}
 
                         <span className={`font-medium ${
-                          step.status === "completed" ? "text-white line-through opacity-80" :
+                          step.status === "completed" ? "text-white opacity-80" :
                           step.status === "running" ? "text-white font-semibold" :
                           step.status === "approval_required" ? "text-amber-400 font-semibold" :
                           "text-[#8e8e93]"
@@ -612,89 +520,14 @@ export default function CoworkPage() {
                 </div>
               )}
 
-              {/* 2. REPOSITORY HEALTH SCORES WIDGET */}
-              {currentTask?.scores && (
-                <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-2xl p-5 space-y-3 shadow-sm">
-                  <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white">Repository Health Score</h3>
-                    <span className="text-sm font-bold font-mono text-white bg-[#2c2c2e] px-2.5 py-0.5 rounded-lg border border-[#3a3a3c]">
-                      {currentTask.scores.overall} / 100
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-                    <div className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-2.5 text-center">
-                      <div className="text-[10px] text-[#8e8e93]">Security</div>
-                      <div className="text-sm font-bold text-emerald-400 font-mono mt-0.5">{currentTask.scores.security}/100</div>
-                    </div>
-                    <div className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-2.5 text-center">
-                      <div className="text-[10px] text-[#8e8e93]">Architecture</div>
-                      <div className="text-sm font-bold text-white font-mono mt-0.5">{currentTask.scores.architecture}/100</div>
-                    </div>
-                    <div className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-2.5 text-center">
-                      <div className="text-[10px] text-[#8e8e93]">Code Quality</div>
-                      <div className="text-sm font-bold text-white font-mono mt-0.5">{currentTask.scores.codeQuality}/100</div>
-                    </div>
-                    <div className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-2.5 text-center">
-                      <div className="text-[10px] text-[#8e8e93]">Maintenance</div>
-                      <div className="text-sm font-bold text-white font-mono mt-0.5">{currentTask.scores.maintenance}/100</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 3. CODE REVIEW SCORE CARD (IF PR REVIEW TASK) */}
-              {currentTask?.prReviewScore && (
-                <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-2xl p-5 space-y-3 shadow-sm">
-                  <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-2">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-white">Pull Request Review Score</h3>
-                    <span className="text-sm font-bold font-mono text-white bg-[#2c2c2e] px-2.5 py-0.5 rounded-lg border border-[#3a3a3c]">
-                      {currentTask.prReviewScore.overall} / 10
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 pt-1">
-                    <div className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-2 text-center">
-                      <div className="text-[10px] text-[#8e8e93]">Critical</div>
-                      <div className="text-xs font-bold text-emerald-400 font-mono mt-0.5">{currentTask.prReviewScore.critical}</div>
-                    </div>
-                    <div className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-2 text-center">
-                      <div className="text-[10px] text-[#8e8e93]">High</div>
-                      <div className="text-xs font-bold text-amber-400 font-mono mt-0.5">{currentTask.prReviewScore.high}</div>
-                    </div>
-                    <div className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-2 text-center">
-                      <div className="text-[10px] text-[#8e8e93]">Medium</div>
-                      <div className="text-xs font-bold text-white font-mono mt-0.5">{currentTask.prReviewScore.medium}</div>
-                    </div>
-                    <div className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-2 text-center">
-                      <div className="text-[10px] text-[#8e8e93]">Suggestions</div>
-                      <div className="text-xs font-bold text-white font-mono mt-0.5">{currentTask.prReviewScore.suggestions}</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* 4. CODE DIFF VIEWER */}
-              {currentTask?.codeDiff && (
-                <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-2xl p-4 space-y-2 shadow-sm">
-                  <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-2">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-white flex items-center gap-2">
-                      <Code2 size={14} /> Proposed Code Diff
-                    </span>
-                    <span className="text-[10px] font-mono text-[#8e8e93]">git diff</span>
-                  </div>
-                  <pre className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-3.5 font-mono text-xs text-[#f2f2f7] overflow-x-auto leading-relaxed">
-                    {currentTask.codeDiff}
-                  </pre>
-                </div>
-              )}
-
-              {/* 5. MAIN AI REPORT / ARTIFACT DISPLAY */}
+              {/* 2. MAIN AI REPORT / ARTIFACT DISPLAY */}
               {(currentTask?.report || activeArtifact) && (
                 <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-2xl p-6 shadow-xl space-y-4 animate-fade-in">
                   <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
                     <div className="flex items-center gap-2">
                       <ShieldCheck size={16} className="text-white" />
                       <h3 className="text-sm font-semibold text-white">
-                        {activeArtifact ? activeArtifact.title : "Agent Analysis & Recommendations"}
+                        {activeArtifact ? activeArtifact.title : "Agent Goal Execution Outcome"}
                       </h3>
                     </div>
                     <button
@@ -739,50 +572,31 @@ export default function CoworkPage() {
                 </div>
               )}
 
-              {/* DISCONNECTED GITHUB SCREEN */}
-              {!isGitHubConnected && (
-                <div className="py-16 text-center space-y-4 max-w-md mx-auto animate-fade-in">
+              {/* WELCOME STATE FOR CENTER COLUMN */}
+              {!currentTask && (
+                <div className="py-16 text-center space-y-4 max-w-md mx-auto">
                   <div className="w-14 h-14 rounded-2xl bg-[#1c1c1e] border border-[#2c2c2e] mx-auto flex items-center justify-center p-3 shadow-md">
-                    <Github size={28} className="text-white" />
+                    <Briefcase size={28} className="text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-white tracking-tight">GitHub</h2>
+                    <h2 className="text-xl font-semibold text-white tracking-tight">Clarity CoWork Agent Workspace</h2>
                     <p className="text-xs text-[#8e8e93] leading-relaxed mt-1">
-                      Connect your GitHub account to let Clarity work with your repositories.
+                      Give Clarity a goal across GitHub, Drive, Calendar, Gmail, Sheets, MCP, and Browser Agent.
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleToggleGitHubConnect("connect")}
-                    className="px-6 py-2.5 rounded-full bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] active:scale-95 transition-all shadow-sm"
-                  >
-                    Connect GitHub
-                  </button>
-                </div>
-              )}
-
-              {/* WELCOME / EMPTY STATE FOR CENTER COLUMN */}
-              {isGitHubConnected && !currentTask && (
-                <div className="py-12 text-center space-y-3">
-                  <div className="w-14 h-14 rounded-2xl bg-[#1c1c1e] border border-[#2c2c2e] mx-auto flex items-center justify-center p-3">
-                    <Github size={28} className="text-white" />
-                  </div>
-                  <h2 className="text-xl font-semibold text-white tracking-tight">Clarity GitHub Agent Workspace</h2>
-                  <p className="text-xs text-[#8e8e93] max-w-sm mx-auto">
-                    Give Clarity a high-level goal to inspect, audit, or review your GitHub repositories.
-                  </p>
                 </div>
               )}
 
             </div>
           </div>
 
-          {/* ── MAIN COMPOSER (BOTTOM INPUT) ── */}
+          {/* ── MAIN COMPOSER (BOTTOM INPUT BAR) ── */}
           <div className="p-4 bg-[#111113] border-t border-[#222226] flex-shrink-0 z-10">
             <div className="max-w-3xl mx-auto space-y-3">
               
               {/* Suggestion Pills */}
               <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
-                {SUGGESTED_PROMPTS.map((sug, idx) => (
+                {MULTI_TOOL_PROMPTS.map((sug, idx) => (
                   <button
                     key={idx}
                     onClick={() => {
@@ -798,7 +612,7 @@ export default function CoworkPage() {
 
               {/* Main Input Capsule */}
               <div className="flex items-center gap-2 bg-[#1c1c1e] border border-[#2c2c2e] focus-within:border-[#3a3a3c] rounded-[24px] px-4 py-2.5 shadow-lg transition-all">
-                <Github size={16} className="text-[#8e8e93] flex-shrink-0" />
+                <Sparkles size={16} className="text-[#8e8e93] flex-shrink-0" />
                 <input
                   type="text"
                   value={promptInput}
@@ -809,7 +623,7 @@ export default function CoworkPage() {
                       handleStartTask();
                     }
                   }}
-                  placeholder="What do you want Clarity to work on?"
+                  placeholder="Ask Clarity to work on something..."
                   disabled={isSubmitting}
                   className="flex-1 bg-transparent border-0 outline-none text-sm text-[#f2f2f7] placeholder-[#8e8e93]"
                 />
@@ -833,7 +647,7 @@ export default function CoworkPage() {
 
         </main>
 
-        {/* ── COLUMN 3: RIGHT SIDEBAR (ACTIVITY FEED & HUMAN APPROVAL) ── */}
+        {/* ── COLUMN 3: RIGHT SIDEBAR (ACTIVITY STREAM & HUMAN APPROVAL) ── */}
         <aside className="w-[300px] bg-[#111113] border-l border-[#222226] flex flex-col h-full flex-shrink-0">
           
           <div className="px-4 h-14 border-b border-[#222226] flex items-center justify-between flex-shrink-0">
@@ -847,7 +661,7 @@ export default function CoworkPage() {
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
             
-            {/* HUMAN APPROVAL CARD (SHOWN PROMINENTLY WHEN WRITE ACTION REQUIRES APPROVAL) */}
+            {/* HUMAN APPROVAL CARD (UNIVERSAL SIDE-EFFECT APPROVAL) */}
             {currentTask?.pendingApproval && (
               <div className="bg-[#1c1c1e] border-2 border-amber-500/50 rounded-2xl p-4 space-y-3 shadow-xl animate-fade-in">
                 <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs border-b border-[#2c2c2e] pb-2">
@@ -857,8 +671,8 @@ export default function CoworkPage() {
 
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-white">{currentTask.pendingApproval.title}</div>
-                  <div className="text-[10px] text-[#8e8e93] font-mono">
-                    Repository: {currentTask.pendingApproval.repository}
+                  <div className="text-[10px] text-[#8e8e93] font-mono capitalize">
+                    Tool: {currentTask.pendingApproval.toolName} ({currentTask.pendingApproval.category})
                   </div>
                   <p className="text-[11px] text-[#d1d1d6] leading-relaxed pt-1">
                     {currentTask.pendingApproval.description}
@@ -882,7 +696,7 @@ export default function CoworkPage() {
               </div>
             )}
 
-            {/* STRUCTURED GITHUB ACTIVITY FEED */}
+            {/* MULTI-TOOL ACTIVITY STREAM */}
             {currentTask?.activityFeed && currentTask.activityFeed.length > 0 ? (
               <div className="space-y-3">
                 {currentTask.activityFeed.map((act) => {
@@ -895,13 +709,7 @@ export default function CoworkPage() {
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-2 min-w-0">
-                          {act.type === "connect" && <UserCheck size={14} className="text-emerald-400 flex-shrink-0" />}
-                          {act.type === "tool_call" && <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0" />}
-                          {act.type === "reasoning" && <Sparkles size={14} className="text-blue-400 flex-shrink-0" />}
-                          {act.type === "approval_request" && <AlertCircle size={14} className="text-amber-400 flex-shrink-0" />}
-                          {act.type === "success" && <CheckCircle2 size={14} className="text-emerald-400 flex-shrink-0" />}
-                          {act.type === "error" && <XCircle size={14} className="text-red-400 flex-shrink-0" />}
-
+                          {getCategoryIcon(act.category)}
                           <span className="text-xs font-medium text-white truncate">{act.title}</span>
                         </div>
                         <span className="text-[9px] font-mono text-[#636366] flex-shrink-0">{act.timestamp}</span>
@@ -911,16 +719,10 @@ export default function CoworkPage() {
                         {act.description}
                       </p>
 
-                      {/* Expanded Tool Call Details */}
                       {isExpanded && act.toolName && (
                         <div className="mt-2 pt-2 border-t border-[#2c2c2e] font-mono text-[10px] text-[#a1a1aa] space-y-1 bg-[#111113] p-2 rounded-lg">
                           <div>Tool: <strong className="text-white">{act.toolName}</strong></div>
                           {act.query && <div>Query: "{act.query}"</div>}
-                          {act.details && (
-                            <pre className="text-[9px] overflow-x-auto text-[#8e8e93] pt-1">
-                              {JSON.stringify(act.details, null, 2)}
-                            </pre>
-                          )}
                         </div>
                       )}
                     </div>
@@ -929,114 +731,139 @@ export default function CoworkPage() {
               </div>
             ) : (
               <div className="py-16 text-center text-[11px] text-[#636366]">
-                No GitHub activity events recorded yet. Start a task to view real-time tool calls.
+                No tool activity events recorded yet. Ask Clarity a goal to start execution.
               </div>
             )}
 
           </div>
 
           <div className="p-4 border-t border-[#222226] bg-[#111113] text-[10px] text-[#636366] font-mono text-center">
-            GitHub REST API v3 • Token Encrypted
+            Multi-Tool Agent Engine • All Connections Secured
           </div>
         </aside>
 
       </div>
 
-      {/* ── MODAL 1: REPOSITORY SELECTOR BROWSER ── */}
-      {showRepoModal && (
+      {/* ── MODAL 1: INTEGRATIONS HUB ── */}
+      {showIntegrationsModal && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-lg bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
+          <div className="w-full max-w-xl bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
             <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
               <div className="flex items-center gap-2">
-                <Github size={18} />
-                <h3 className="text-sm font-semibold text-white">Select GitHub Repository</h3>
+                <Briefcase size={18} />
+                <h3 className="text-sm font-semibold text-white">Integrations Hub</h3>
               </div>
               <button
-                onClick={() => setShowRepoModal(false)}
+                onClick={() => setShowIntegrationsModal(false)}
                 className="text-[#8e8e93] hover:text-white transition-colors"
               >
                 ✕
               </button>
             </div>
 
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8e8e93]" />
-              <input
-                type="text"
-                value={repoSearchQuery}
-                onChange={(e) => setRepoSearchQuery(e.target.value)}
-                placeholder="Search repositories..."
-                className="w-full pl-9 pr-3 py-2 bg-[#111113] border border-[#2c2c2e] focus:border-[#3a3a3c] rounded-xl text-xs text-white outline-none"
-              />
-            </div>
-
-            <div className="max-h-64 overflow-y-auto space-y-2 scrollbar-thin">
-              {filteredRepos.map((r) => (
-                <div
-                  key={r.id}
-                  onClick={() => {
-                    setSelectedRepo(r);
-                    setSelectedBranch(r.default_branch || "main");
-                    setShowRepoModal(false);
-                  }}
-                  className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
-                    selectedRepo?.id === r.id
-                      ? "bg-[#2c2c2e] border-white text-white shadow-sm"
-                      : "bg-[#111113] border-[#222226] text-[#8e8e93] hover:text-white hover:bg-[#2c2c2e]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-white">{r.name}</span>
-                    <span className="text-[10px] font-mono text-[#8e8e93]">{r.default_branch}</span>
+            <div className="space-y-2 max-h-72 overflow-y-auto scrollbar-thin">
+              {integrations.map((item) => (
+                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-[#111113] border border-[#2c2c2e]">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-[#1c1c1e] text-white">
+                      {getCategoryIcon(item.id)}
+                    </div>
+                    <div>
+                      <div className="text-xs font-semibold text-white">{item.name}</div>
+                      <div className="text-[11px] text-[#8e8e93]">
+                        {item.connected ? `Connected (${item.username || item.details || "Active"})` : "Disconnected"}
+                      </div>
+                    </div>
                   </div>
-                  {r.description && <p className="text-[11px] text-[#8e8e93] truncate mt-1">{r.description}</p>}
+
+                  {item.id === "mcp" ? (
+                    <button
+                      onClick={() => setShowAddMCPModal(true)}
+                      className="px-3 py-1.5 rounded-lg bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-medium text-white transition-all"
+                    >
+                      + Add MCP Server
+                    </button>
+                  ) : (
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Connected
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* ── MODAL 2: MANAGE GITHUB CONNECTION ── */}
-      {showManageGitHubModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-sm bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
-            <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
-              <div className="flex items-center gap-2">
-                <Github size={18} />
-                <h3 className="text-sm font-semibold text-white">GitHub Settings</h3>
-              </div>
+            <div className="pt-2 flex justify-end">
               <button
-                onClick={() => setShowManageGitHubModal(false)}
-                className="text-[#8e8e93] hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="flex items-center gap-3 p-3 bg-[#111113] border border-[#2c2c2e] rounded-xl">
-              <img src={githubUser.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
-              <div>
-                <div className="text-xs font-semibold text-white">{githubUser.displayName}</div>
-                <div className="text-[11px] text-[#8e8e93] font-mono">@{githubUser.username}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                onClick={() => handleToggleGitHubConnect("disconnect")}
-                className="flex-1 py-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-medium transition-all"
-              >
-                Disconnect GitHub
-              </button>
-              <button
-                onClick={() => setShowManageGitHubModal(false)}
-                className="flex-1 py-2 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-semibold text-white transition-all"
+                onClick={() => setShowIntegrationsModal(false)}
+                className="px-5 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] transition-all"
               >
                 Done
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── MODAL 2: ADD MCP SERVER ── */}
+      {showAddMCPModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
+          <form onSubmit={handleAddMCPServer} className="w-full max-w-sm bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
+            <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
+              <div className="flex items-center gap-2">
+                <Plug size={18} />
+                <h3 className="text-sm font-semibold text-white">Add MCP Server</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddMCPModal(false)}
+                className="text-[#8e8e93] hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">Server Name</label>
+                <input
+                  type="text"
+                  value={mcpServerName}
+                  onChange={(e) => setMcpServerName(e.target.value)}
+                  placeholder="e.g. Custom Dev Tools MCP"
+                  required
+                  className="w-full bg-[#111113] border border-[#2c2c2e] rounded-xl px-3 py-2 text-xs text-white outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">Server Endpoint URL</label>
+                <input
+                  type="text"
+                  value={mcpServerUrl}
+                  onChange={(e) => setMcpServerUrl(e.target.value)}
+                  placeholder="https://mcp.domain.com/tools"
+                  required
+                  className="w-full bg-[#111113] border border-[#2c2c2e] rounded-xl px-3 py-2 text-xs text-white outline-none font-mono"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowAddMCPModal(false)}
+                className="flex-1 py-2 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-medium text-white transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="flex-1 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] transition-all"
+              >
+                Register Server
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
