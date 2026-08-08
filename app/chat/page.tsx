@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Sidebar, type SidebarSession } from "@/components/Sidebar";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useChat } from "@/hooks/useChat";
-import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, PanelLeftOpen, Lock, GitMerge } from "lucide-react";
+import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, PanelLeftOpen, Lock, GitMerge, Briefcase } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Message } from "@/types";
@@ -14,6 +14,7 @@ import { PersonaModal } from "@/components/PersonaModal";
 import { KanbanBoard } from "@/components/KanbanBoard";
 import { ChatLockModal } from "@/components/ChatLockModal";
 import { MergeChatsModal } from "@/components/MergeChatsModal";
+import { CoworkModal } from "@/components/CoworkModal";
 
 interface Persona {
   id: string;
@@ -63,6 +64,7 @@ export default function ChatPage() {
   const [lockModalMode, setLockModalMode] = useState<"lock" | "auth" | "remove">("auth");
   const [lockErrorMessage, setLockErrorMessage] = useState<string | null>(null);
   const [showMergeModal, setShowMergeModal] = useState(false);
+  const [showCoworkModal, setShowCoworkModal] = useState(false);
 
   const router = useRouter();
 
@@ -515,10 +517,21 @@ export default function ChatPage() {
           </div>
 
           {/* Right: Tools (Desktop) */}
-          <div className="hidden sm:flex items-center gap-2 text-[#94a3b8]">
+          <div className="flex items-center gap-2 text-[#94a3b8]">
+            {/* Clarity CoWork Button */}
+            <button
+              onClick={() => setShowCoworkModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#1c1c1e] hover:bg-[#2c2c2e] border border-[#2c2c2e] shadow-sm transition-all active:scale-95 group"
+              title="Clarity CoWork — Agentic Workspace"
+            >
+              <Briefcase size={14} className="text-[#0a84ff] group-hover:scale-110 transition-transform" />
+              <span className="hidden sm:inline font-sans">Clarity CoWork</span>
+              <span className="px-1.5 py-0.2 text-[9px] font-mono bg-[#007aff]/20 text-[#0a84ff] rounded-md font-bold uppercase">AGENT</span>
+            </button>
+
             <button
               onClick={() => setShowMergeModal(true)}
-              className="p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-indigo-400 border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all flex items-center justify-center"
+              className="hidden sm:flex p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-indigo-400 border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all items-center justify-center"
               title="Merge Duplicate Chats"
             >
               <GitMerge size={14} />
@@ -783,6 +796,12 @@ export default function ChatPage() {
           await fetchInitialData();
           handleSelectSession(newId);
         }}
+      />
+
+      {/* Clarity CoWork Agentic Workspace Modal */}
+      <CoworkModal
+        isOpen={showCoworkModal}
+        onClose={() => setShowCoworkModal(false)}
       />
     </div>
   );
