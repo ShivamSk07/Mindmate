@@ -9,65 +9,85 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const profile = await prisma.userProfile.findUnique({
-    where: { userId: user.userId },
-  });
+  let isGitHubConnected = false;
+  let isGoogleConnected = false;
+  let isMcpConnected = false;
+  let ghUsername: string | null = null;
+  let googleEmail: string | null = null;
 
-  const isGitHubConnected = Boolean(profile?.githubConnected);
+  try {
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
+    if (profile) {
+      isGitHubConnected = Boolean(profile.githubConnected);
+      isGoogleConnected = Boolean(profile.googleConnected);
+      isMcpConnected = Boolean(profile.mcpConnected);
+      ghUsername = profile.githubUsername;
+      googleEmail = profile.googleEmail;
+    }
+  } catch (e) {
+    console.warn("Integrations status DB check notice:", e);
+  }
+
   const mcpServers = listMCPServers();
 
+  const integrations = [
+    {
+      id: "github",
+      name: "GitHub",
+      icon: "Github",
+      connected: isGitHubConnected,
+      username: isGitHubConnected ? (ghUsername || user.username) : null,
+    },
+    {
+      id: "drive",
+      name: "Google Drive",
+      icon: "HardDrive",
+      connected: isGoogleConnected,
+      username: isGoogleConnected ? (googleEmail || `${user.username}@gmail.com`) : null,
+    },
+    {
+      id: "calendar",
+      name: "Google Calendar",
+      icon: "Calendar",
+      connected: isGoogleConnected,
+      username: isGoogleConnected ? (googleEmail || `${user.username}@gmail.com`) : null,
+    },
+    {
+      id: "gmail",
+      name: "Gmail",
+      icon: "Mail",
+      connected: isGoogleConnected,
+      username: isGoogleConnected ? (googleEmail || `${user.username}@gmail.com`) : null,
+    },
+    {
+      id: "sheets",
+      name: "Google Sheets",
+      icon: "FileSpreadsheet",
+      connected: isGoogleConnected,
+      username: isGoogleConnected ? (googleEmail || `${user.username}@gmail.com`) : null,
+    },
+    {
+      id: "mcp",
+      name: "MCP Servers",
+      icon: "Plug",
+      connected: isMcpConnected,
+      details: isMcpConnected ? `${mcpServers.length} servers connected` : "No MCP servers connected",
+    },
+    {
+      id: "browser",
+      name: "Browser Agent",
+      icon: "Globe",
+      connected: true,
+      details: "Ready (Server-side Session)",
+    },
+  ];
+
+  const activeToolsCount = integrations.filter(i => i.connected).length;
+
   return NextResponse.json({
-    activeToolsCount: 7,
-    integrations: [
-      {
-        id: "github",
-        name: "GitHub",
-        icon: "Github",
-        connected: isGitHubConnected,
-        username: isGitHubConnected ? (profile?.githubUsername || user.username) : null,
-      },
-      {
-        id: "drive",
-        name: "Google Drive",
-        icon: "HardDrive",
-        connected: true,
-        username: "shivam@clarity.app",
-      },
-      {
-        id: "calendar",
-        name: "Google Calendar",
-        icon: "Calendar",
-        connected: true,
-        username: "shivam@clarity.app",
-      },
-      {
-        id: "gmail",
-        name: "Gmail",
-        icon: "Mail",
-        connected: true,
-        username: "shivam@clarity.app",
-      },
-      {
-        id: "sheets",
-        name: "Google Sheets",
-        icon: "FileSpreadsheet",
-        connected: true,
-        username: "shivam@clarity.app",
-      },
-      {
-        id: "mcp",
-        name: "MCP Servers",
-        icon: "Plug",
-        connected: true,
-        details: `${mcpServers.length} servers connected`,
-      },
-      {
-        id: "browser",
-        name: "Browser Agent",
-        icon: "Globe",
-        connected: true,
-        details: "Ready (Server-side Session)",
-      },
-    ],
+    activeToolsCount,
+    integrations,
   });
 }

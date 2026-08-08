@@ -233,6 +233,40 @@ export default function CoworkPage() {
     }
   };
 
+  const handleConnectIntegration = async (id: string) => {
+    if (id === "github") {
+      await fetch("/api/cowork/github/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "connect" }),
+      });
+    } else if (["drive", "calendar", "gmail", "sheets"].includes(id)) {
+      await fetch("/api/cowork/google/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "connect" }),
+      });
+    }
+    fetchIntegrationsStatus();
+  };
+
+  const handleDisconnectIntegration = async (id: string) => {
+    if (id === "github") {
+      await fetch("/api/cowork/github/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "disconnect" }),
+      });
+    } else if (["drive", "calendar", "gmail", "sheets"].includes(id)) {
+      await fetch("/api/cowork/google/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "disconnect" }),
+      });
+    }
+    fetchIntegrationsStatus();
+  };
+
   // 4. Universal Approval Handlers
   const handleApproveAction = async () => {
     if (!currentTask) return;
@@ -783,10 +817,24 @@ export default function CoworkPage() {
                     >
                       + Add MCP Server
                     </button>
-                  ) : (
+                  ) : item.id === "browser" ? (
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      Connected
+                      Ready
                     </span>
+                  ) : item.connected ? (
+                    <button
+                      onClick={() => handleDisconnectIntegration(item.id)}
+                      className="px-3 py-1 rounded-full text-[10px] bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-medium transition-all"
+                    >
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleConnectIntegration(item.id)}
+                      className="px-3.5 py-1 rounded-full text-[10px] bg-white text-black font-semibold hover:bg-[#e5e5ea] transition-all"
+                    >
+                      Connect
+                    </button>
                   )}
                 </div>
               ))}

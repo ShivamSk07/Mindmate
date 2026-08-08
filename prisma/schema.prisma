@@ -35,6 +35,9 @@ model UserProfile {
   githubToken     String?  @db.Text
   githubUsername  String?
   githubAvatarUrl String?
+  googleConnected Boolean  @default(false)
+  googleEmail     String?
+  mcpConnected    Boolean  @default(false)
 }
 
 model Persona {
