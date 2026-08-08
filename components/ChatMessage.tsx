@@ -268,6 +268,12 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                     >
                       <ExternalLink size={10} className="flex-shrink-0 opacity-70" />
                       <span className="truncate text-[11px] font-medium">{source.title}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Chat -> CoWork Integration Banner */}
             {(cleanContent.toLowerCase().includes("github") || cleanContent.toLowerCase().includes("repository") || cleanContent.toLowerCase().includes("codebase")) && (
               <div className="mt-3 p-3 rounded-xl bg-[#1c1c1e] border border-[#2c2c2e] flex items-center justify-between gap-3 text-xs text-[#8e8e93]">
