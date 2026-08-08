@@ -2,7 +2,8 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Volume2, VolumeX } from "lucide-react";
+import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Volume2, VolumeX, Github, ArrowRight } from "lucide-react";
+import Link from "next/link";
 import type { Message } from "@/types";
 import { useState, useEffect } from "react";
 
@@ -267,9 +268,20 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                     >
                       <ExternalLink size={10} className="flex-shrink-0 opacity-70" />
                       <span className="truncate text-[11px] font-medium">{source.title}</span>
-                    </a>
-                  ))}
+            {/* Chat -> CoWork Integration Banner */}
+            {(cleanContent.toLowerCase().includes("github") || cleanContent.toLowerCase().includes("repository") || cleanContent.toLowerCase().includes("codebase")) && (
+              <div className="mt-3 p-3 rounded-xl bg-[#1c1c1e] border border-[#2c2c2e] flex items-center justify-between gap-3 text-xs text-[#8e8e93]">
+                <div className="flex items-center gap-2">
+                  <Github size={15} className="text-white flex-shrink-0" />
+                  <span>I can perform a deeper repository analysis in CoWork.</span>
                 </div>
+                <Link
+                  href="/cowork"
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white text-black hover:bg-[#e5e5ea] font-semibold text-xs transition-all flex-shrink-0"
+                >
+                  <span>Open in CoWork</span>
+                  <ArrowRight size={13} />
+                </Link>
               </div>
             )}
 
