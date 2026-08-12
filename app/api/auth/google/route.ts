@@ -38,7 +38,9 @@ export async function GET(request: NextRequest) {
   }
 
   const redirectUri = encodeURIComponent(`${appUrl}/api/auth/google/callback`);
-  const scopes = encodeURIComponent("openid email profile");
+  const scopes = encodeURIComponent(
+    "openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/spreadsheets.readonly"
+  );
 
   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scopes}&access_type=offline&prompt=consent`;
 
