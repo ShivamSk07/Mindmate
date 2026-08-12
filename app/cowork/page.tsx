@@ -365,135 +365,85 @@ export default function CoworkPage() {
   ];
 
   return (
-    <div className="h-[100dvh] w-full bg-[#09090b] text-zinc-200 flex flex-col overflow-hidden font-sans">
+    <div className="h-[100dvh] w-full bg-[#09090b] text-zinc-100 flex flex-col overflow-hidden font-sans">
       
-      {/* ── TOP HEADER BAR ── */}
-      <header className="h-14 px-5 bg-[#0f0f12] border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 z-20">
+      {/* ── TOP HEADER BAR WITH INTEGRATION NODES ── */}
+      <header className="h-16 px-6 bg-[#0f0f12]/90 backdrop-blur border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 z-20">
         <div className="flex items-center gap-3">
           <Link href="/chat" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <div className="w-7 h-7 rounded-lg bg-[#18181c] border border-[#27272a] flex items-center justify-center p-1">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center p-1.5 shadow-sm">
               <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
             </div>
-            <span className="text-sm font-semibold text-zinc-100 tracking-tight">Clarity CoWork</span>
+            <div>
+              <span className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                Clarity CoWork <span className="text-[10px] font-mono font-normal px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">Agentic v2</span>
+              </span>
+            </div>
           </Link>
-          <span className="text-xs text-zinc-600">/</span>
-          <span className="text-xs font-mono text-zinc-400">Enterprise Workspace</span>
         </div>
 
-        {/* Tools Status Badge */}
+        {/* Floating Top Integration Nodes Bar */}
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#141417] border border-[#232328]">
+          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mr-1">Nodes:</span>
+          {integrations.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => handleOpenConnectModal(item.id)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                item.connected || item.id === "browser"
+                  ? "bg-zinc-800/80 text-white border border-zinc-700 hover:border-zinc-500"
+                  : "bg-transparent text-zinc-400 hover:text-zinc-200"
+              }`}
+              title={item.connected ? `${item.name} Connected` : `Connect ${item.name}`}
+            >
+              {getCategoryIcon(item.id)}
+              <span className="text-[11px]">{item.name}</span>
+              <span className={`w-1.5 h-1.5 rounded-full ${item.connected || item.id === "browser" ? "bg-emerald-400" : "bg-zinc-600"}`} />
+            </button>
+          ))}
+        </div>
+
+        {/* Back & Actions */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowIntegrationsModal(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#18181c] border border-[#27272a] hover:bg-[#232328] text-xs transition-colors"
+            className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181c] border border-[#27272a] text-xs text-zinc-300"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-zinc-200 font-medium">{activeToolsCount} Active Tools</span>
-            <span className="text-zinc-400 text-[11px] font-mono ml-1">Integrations Hub</span>
+            <Plug size={13} /> {activeToolsCount} Tools
           </button>
 
           <Link
             href="/chat"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#18181c] border border-[#27272a] hover:bg-[#232328] text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#18181c] border border-[#27272a] hover:bg-[#232328] text-xs font-medium text-zinc-300 hover:text-white transition-colors"
           >
             <ArrowLeft size={13} /> Back to Chat
           </Link>
         </div>
       </header>
 
-      {/* ── 3-COLUMN WORKSPACE LAYOUT ── */}
+      {/* ── MAIN WORKSPACE CANVAS ── */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
 
-        {/* ── COLUMN 1: LEFT SIDEBAR (WORKSPACE & INTEGRATIONS SUITE) ── */}
-        <aside className="w-[280px] bg-[#0f0f12] border-r border-[#1f1f23] flex flex-col h-full flex-shrink-0">
-          
-          <div className="p-4 border-b border-[#1f1f23] space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-              <span>Workspace</span>
-              <button
-                onClick={() => {
-                  setCurrentTask(null);
-                  setActiveArtifact(null);
-                }}
-                className="text-[10px] text-zinc-300 hover:text-white transition-colors"
-              >
-                + New Goal
-              </button>
-            </div>
-
+        {/* ── LEFT DRAWER (TASKS & ARTIFACTS HISTORY) ── */}
+        <aside className="w-[260px] bg-[#0c0c0e] border-r border-[#1f1f23] flex flex-col h-full flex-shrink-0">
+          <div className="p-4 border-b border-[#1f1f23] flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">History & Artifacts</span>
             <button
-              onClick={() => setWorkspaceNav("overview")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
-                workspaceNav === "overview"
-                  ? "bg-[#18181c] text-white border border-[#27272a]"
-                  : "text-zinc-400 hover:text-white hover:bg-[#18181c]/60"
-              }`}
+              onClick={() => {
+                setCurrentTask(null);
+                setActiveArtifact(null);
+              }}
+              className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors"
             >
-              <Briefcase size={14} />
-              <span>Agent Stage</span>
+              + New Task
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-            
-            {/* CONNECTED TOOLS SUITE */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                  Connected Tools
-                </span>
-                <button
-                  onClick={() => setShowIntegrationsModal(true)}
-                  className="text-[10px] text-zinc-400 hover:text-white transition-colors"
-                >
-                  Manage All
-                </button>
-              </div>
-
-              <div className="space-y-1.5">
-                {integrations.map((item) => (
-                  <div
-                    key={item.id}
-                    className="flex items-center justify-between p-2.5 rounded-lg bg-[#141417] border border-[#232328] text-xs transition-colors"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {getCategoryIcon(item.id)}
-                      <span className="text-xs font-medium text-zinc-200 truncate">{item.name}</span>
-                    </div>
-
-                    {item.id === "browser" ? (
-                      <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                        Ready
-                      </span>
-                    ) : item.connected ? (
-                      <button
-                        onClick={() => handleDisconnectIntegration(item.id)}
-                        disabled={connectingId === item.id}
-                        className="text-[10px] font-mono text-emerald-400 hover:text-rose-400 transition-colors"
-                        title="Click to disconnect"
-                      >
-                        {connectingId === item.id ? "..." : "Connected"}
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleOpenConnectModal(item.id)}
-                        disabled={connectingId === item.id}
-                        className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-900 text-[10px] font-semibold hover:bg-white transition-colors"
-                      >
-                        {connectingId === item.id ? "..." : "Connect"}
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Recent Tasks List */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin">
             {recentTasks.length > 0 && (
-              <div className="pt-3 border-t border-[#1f1f23] space-y-2">
-                <span className="block px-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                  Recent Tasks ({recentTasks.length})
-                </span>
-                {recentTasks.slice(0, 6).map((t) => (
+              <div className="space-y-1.5">
+                <span className="block px-1 text-[10px] font-mono text-zinc-400">RECENT AGENT GOALS</span>
+                {recentTasks.slice(0, 8).map((t) => (
                   <div
                     key={t.id}
                     onClick={() => {
@@ -502,31 +452,28 @@ export default function CoworkPage() {
                     }}
                     className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
                       currentTask?.id === t.id
-                        ? "bg-[#18181c] border-zinc-500 text-white"
-                        : "bg-[#141417] border-[#232328] text-zinc-400 hover:text-white hover:bg-[#18181c]"
+                        ? "bg-[#18181c] border-zinc-600 text-white"
+                        : "bg-[#121215] border-[#232328] text-zinc-400 hover:text-zinc-200 hover:bg-[#18181c]"
                     }`}
                   >
-                    <div className="text-xs font-medium text-zinc-200 truncate">{t.userQuery}</div>
-                    <div className="text-[10px] text-zinc-500 font-mono mt-0.5 capitalize">{t.status}</div>
+                    <div className="text-xs font-medium truncate">{t.userQuery}</div>
+                    <div className="text-[10px] text-zinc-400 font-mono mt-0.5 capitalize">{t.status}</div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Artifacts List */}
             {currentTask?.artifacts && currentTask.artifacts.length > 0 && (
-              <div className="pt-3 border-t border-[#1f1f23] space-y-2">
-                <span className="block px-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-                  Generated Artifacts
-                </span>
+              <div className="pt-3 border-t border-[#1f1f23] space-y-1.5">
+                <span className="block px-1 text-[10px] font-mono text-zinc-400">GENERATED ARTIFACTS</span>
                 {currentTask.artifacts.map((art) => (
                   <div
                     key={art.id}
                     onClick={() => setActiveArtifact(art)}
                     className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
                       activeArtifact?.id === art.id
-                        ? "bg-[#18181c] border-zinc-500 text-white"
-                        : "bg-[#141417] border-[#232328] text-zinc-400 hover:text-white hover:bg-[#18181c]"
+                        ? "bg-[#18181c] border-zinc-600 text-white"
+                        : "bg-[#121215] border-[#232328] text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate font-medium">
@@ -537,173 +484,186 @@ export default function CoworkPage() {
                 ))}
               </div>
             )}
-
-          </div>
-
-          <div className="p-3 border-t border-[#1f1f23] bg-[#0f0f12] flex items-center justify-between text-xs text-zinc-500">
-            <span>Clarity Agent Engine</span>
-            <span className="text-[10px] font-mono text-emerald-400">OAuth Active</span>
           </div>
         </aside>
 
-        {/* ── COLUMN 2: CENTER COLUMN (AGENT STAGE & RESULTS) ── */}
+        {/* ── CENTER STAGE: GEMINI / MANUS STYLE CONVERSATION & EXECUTION CANVAS ── */}
         <main className="flex-1 flex flex-col h-full min-w-0 bg-[#09090b] relative">
           
-          {/* Subheader Toolbar */}
-          <div className="h-12 px-6 bg-[#0f0f12]/80 border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 text-xs text-zinc-400">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-zinc-200">
-                {currentTask ? currentTask.userQuery : "Agent Execution Stage"}
-              </span>
-            </div>
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-thin">
+            <div className="max-w-4xl mx-auto space-y-8 pb-32">
 
-            {currentTask && (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px]">Status:</span>
-                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase ${
-                  currentTask.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                  currentTask.status === "running" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
-                  currentTask.status === "waiting_approval" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                  "bg-zinc-800 text-zinc-400"
-                }`}>
-                  {currentTask.status}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Scrollable Center Content Area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-            <div className="max-w-3xl mx-auto space-y-6">
-
-              {/* 1. DYNAMIC EXECUTION PLAN TIMELINE STEPPER */}
-              {currentTask && (
-                <div className="bg-[#141417] border border-[#232328] rounded-xl p-5 space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#232328] pb-2.5">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-                      <Layers size={14} className="text-zinc-400" /> Execution Plan
-                    </span>
-                    <span className="text-[10px] font-mono text-zinc-500">
-                      Goal: "{currentTask.userQuery}"
-                    </span>
+              {/* WELCOME CANVAS WHEN NO TASK ACTIVE */}
+              {!currentTask && (
+                <div className="py-16 text-center space-y-6">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 mx-auto flex items-center justify-center p-3 shadow-xl">
+                    <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
                   </div>
 
-                  <div className="space-y-2">
-                    {currentTask.plan.map((step) => (
-                      <div key={step.id} className="flex items-center gap-3 text-xs">
-                        {step.status === "completed" && <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />}
-                        {step.status === "running" && <RefreshCw size={15} className="text-blue-400 animate-spin flex-shrink-0" />}
-                        {step.status === "waiting" && <Clock size={15} className="text-zinc-600 flex-shrink-0" />}
-                        {step.status === "approval_required" && <AlertCircle size={15} className="text-amber-400 flex-shrink-0" />}
-                        {step.status === "failed" && <XCircle size={15} className="text-rose-400 flex-shrink-0" />}
+                  <div className="space-y-2 max-w-xl mx-auto">
+                    <h2 className="text-2xl font-bold text-white tracking-tight">What would you like Clarity CoWork to do?</h2>
+                    <p className="text-sm text-zinc-400 leading-relaxed">
+                      Connect your tools and run autonomous multi-tool agent workflows across GitHub, Google Drive, Gmail, Calendar, Sheets, MCP, and Web search.
+                    </p>
+                  </div>
 
-                        <span className={`font-medium ${
-                          step.status === "completed" ? "text-zinc-300" :
-                          step.status === "running" ? "text-white font-semibold" :
-                          step.status === "approval_required" ? "text-amber-400 font-semibold" :
-                          "text-zinc-500"
-                        }`}>
-                          {step.title}
-                        </span>
-                      </div>
+                  {/* Integration Nodes Pill Grid */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl mx-auto pt-2">
+                    {integrations.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => handleOpenConnectModal(item.id)}
+                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition-all ${
+                          item.connected || item.id === "browser"
+                            ? "bg-[#141417] border-zinc-700 text-white hover:border-zinc-500"
+                            : "bg-[#0f0f12] border-[#232328] text-zinc-400 hover:text-white"
+                        }`}
+                      >
+                        {getCategoryIcon(item.id)}
+                        <span>{item.name}</span>
+                        <span className={`w-2 h-2 rounded-full ${item.connected || item.id === "browser" ? "bg-emerald-400" : "bg-zinc-600"}`} />
+                      </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* 2. MAIN AI REPORT / ARTIFACT DISPLAY */}
-              {(currentTask?.report || activeArtifact) && (
-                <div className="bg-[#141417] border border-[#232328] rounded-xl p-6 space-y-4">
-                  <div className="flex items-center justify-between border-b border-[#232328] pb-3">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-zinc-400" />
-                      <h3 className="text-sm font-semibold text-white">
-                        {activeArtifact ? activeArtifact.title : "Agent Response"}
-                      </h3>
+              {/* ACTIVE AGENT TASK CANVAS */}
+              {currentTask && (
+                <div className="space-y-6">
+                  
+                  {/* User Query Banner */}
+                  <div className="flex items-start gap-4 p-5 rounded-2xl bg-[#121215] border border-[#232328]">
+                    <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-300 font-bold text-xs flex-shrink-0">
+                      You
                     </div>
-                    <button
-                      onClick={() => {
-                        const contentToCopy = activeArtifact ? activeArtifact.content : currentTask?.report || "";
-                        navigator.clipboard.writeText(contentToCopy);
-                        setCopiedReport(true);
-                        setTimeout(() => setCopiedReport(false), 2000);
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs font-medium text-zinc-300 hover:text-white transition-colors border border-[#27272a]"
-                    >
-                      {copiedReport ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                      <span>{copiedReport ? "Copied" : "Copy Content"}</span>
-                    </button>
+                    <div className="flex-1 space-y-1">
+                      <div className="text-xs font-mono text-zinc-500">AGENT GOAL REQUEST</div>
+                      <div className="text-base font-semibold text-white">{currentTask.userQuery}</div>
+                    </div>
                   </div>
 
-                  <div className="text-xs leading-relaxed text-zinc-200 font-sans overflow-x-auto">
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        h1: ({ children }) => <h1 className="text-base font-bold my-3 text-white">{children}</h1>,
-                        h2: ({ children }) => <h2 className="text-sm font-semibold my-2.5 text-white border-b border-[#232328] pb-1">{children}</h2>,
-                        h3: ({ children }) => <h3 className="text-xs font-semibold my-2 text-white">{children}</h3>,
-                        p: ({ children }) => <p className="mb-2 leading-relaxed text-zinc-300">{children}</p>,
-                        ul: ({ children }) => <ul className="list-disc pl-5 mb-2.5 space-y-1 text-zinc-300">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 space-y-1 text-zinc-300">{children}</ol>,
-                        code: ({ children, ...props }) => (
-                          <code className="bg-[#0f0f12] border border-[#232328] rounded px-1.5 py-0.5 text-xs font-mono text-zinc-200" {...props}>
-                            {children}
-                          </code>
-                        ),
-                        pre: ({ children }) => (
-                          <pre className="bg-[#0f0f12] border border-[#232328] rounded-lg p-4 overflow-x-auto text-xs my-3 font-mono text-zinc-200">
-                            {children}
-                          </pre>
-                        ),
-                      }}
-                    >
-                      {activeArtifact ? activeArtifact.content : currentTask?.report || ""}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-              )}
+                  {/* EXECUTION PLAN TIMELINE NODE STEPPER */}
+                  <div className="p-6 rounded-2xl bg-[#121215] border border-[#232328] space-y-4">
+                    <div className="flex items-center justify-between border-b border-[#232328] pb-3">
+                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
+                        <Layers size={15} className="text-violet-400" /> Execution Node Workflow
+                      </span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase ${
+                        currentTask.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                        currentTask.status === "running" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
+                        "bg-zinc-800 text-zinc-400"
+                      }`}>
+                        {currentTask.status}
+                      </span>
+                    </div>
 
-              {/* WELCOME / EMPTY STATE FOR CENTER COLUMN */}
-              {!currentTask && (
-                <div className="py-16 text-center space-y-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#141417] border border-[#232328] mx-auto flex items-center justify-center p-2.5">
-                    <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
+                    <div className="space-y-3">
+                      {currentTask.plan.map((step) => (
+                        <div key={step.id} className="flex items-center gap-3.5 text-xs">
+                          {step.status === "completed" && <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />}
+                          {step.status === "running" && <RefreshCw size={16} className="text-blue-400 animate-spin flex-shrink-0" />}
+                          {step.status === "waiting" && <Clock size={16} className="text-zinc-600 flex-shrink-0" />}
+                          {step.status === "approval_required" && <AlertCircle size={16} className="text-amber-400 flex-shrink-0" />}
+                          {step.status === "failed" && <XCircle size={16} className="text-rose-400 flex-shrink-0" />}
+
+                          <span className={`font-medium ${
+                            step.status === "completed" ? "text-zinc-300" :
+                            step.status === "running" ? "text-white font-semibold" :
+                            step.status === "approval_required" ? "text-amber-400 font-semibold" :
+                            "text-zinc-500"
+                          }`}>
+                            {step.title}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <h2 className="text-lg font-semibold text-white tracking-tight">Clarity CoWork Workspace</h2>
-                    <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed mt-1">
-                      Execute goal-driven tasks across GitHub, Drive, Calendar, Gmail, Sheets, MCP, and Web tools.
-                    </p>
-                  </div>
+
+                  {/* MAIN AI RESPONSE & ARTIFACT CARD */}
+                  {(currentTask.report || activeArtifact) && (
+                    <div className="p-6 md:p-8 rounded-2xl bg-[#121215] border border-[#232328] space-y-4 shadow-xl">
+                      <div className="flex items-center justify-between border-b border-[#232328] pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <ShieldCheck size={18} className="text-violet-400" />
+                          <h3 className="text-sm font-bold text-white">
+                            {activeArtifact ? activeArtifact.title : "Agent Response & Workspace Findings"}
+                          </h3>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const contentToCopy = activeArtifact ? activeArtifact.content : currentTask?.report || "";
+                            navigator.clipboard.writeText(contentToCopy);
+                            setCopiedReport(true);
+                            setTimeout(() => setCopiedReport(false), 2000);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c1c20] hover:bg-[#25252a] text-xs font-medium text-zinc-300 hover:text-white transition-colors border border-[#2e2e34]"
+                        >
+                          {copiedReport ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                          <span>{copiedReport ? "Copied" : "Copy Output"}</span>
+                        </button>
+                      </div>
+
+                      <div className="text-xs md:text-sm leading-relaxed text-zinc-200 font-sans overflow-x-auto">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          components={{
+                            h1: ({ children }) => <h1 className="text-base md:text-lg font-bold my-3 text-white">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-sm md:text-base font-semibold my-2.5 text-white border-b border-[#232328] pb-1">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-xs md:text-sm font-semibold my-2 text-white">{children}</h3>,
+                            p: ({ children }) => <p className="mb-2.5 leading-relaxed text-zinc-300">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-zinc-300">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-zinc-300">{children}</ol>,
+                            code: ({ children, ...props }) => (
+                              <code className="bg-[#09090b] border border-[#232328] rounded px-1.5 py-0.5 text-xs font-mono text-zinc-200" {...props}>
+                                {children}
+                              </code>
+                            ),
+                            pre: ({ children }) => (
+                              <pre className="bg-[#09090b] border border-[#232328] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono text-zinc-200">
+                                {children}
+                              </pre>
+                            ),
+                          }}
+                        >
+                          {activeArtifact ? activeArtifact.content : currentTask.report || ""}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               )}
 
             </div>
           </div>
 
-          {/* ── MAIN COMPOSER (BOTTOM INPUT BAR) ── */}
-          <div className="p-4 bg-[#0f0f12] border-t border-[#1f1f23] flex-shrink-0 z-10">
-            <div className="max-w-3xl mx-auto space-y-3">
+          {/* ── FLOATING GEMINI / MANUS STYLE COMPOSER DOCK ── */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-20">
+            <div className="bg-[#121215]/95 backdrop-blur-xl border border-[#27272a] rounded-2xl p-3 shadow-2xl space-y-2.5">
               
-              {/* Suggestion Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1">
-                {MULTI_TOOL_PROMPTS.map((sug, idx) => (
+              {/* Top Quick Tools Selector Chips */}
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 text-xs">
+                <span className="text-[10px] font-mono uppercase text-zinc-500 flex-shrink-0">Connected Tools:</span>
+                {integrations.map((item) => (
                   <button
-                    key={idx}
-                    onClick={() => {
-                      setPromptInput(sug);
-                      handleStartTask(sug);
-                    }}
-                    className="flex-shrink-0 px-3 py-1 rounded-md bg-[#141417] hover:bg-[#1f1f23] border border-[#232328] text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+                    key={item.id}
+                    onClick={() => handleOpenConnectModal(item.id)}
+                    className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
+                      item.connected || item.id === "browser"
+                        ? "bg-[#1a1a1e] border-zinc-700 text-zinc-200 hover:border-zinc-500"
+                        : "bg-transparent border-[#232328] text-zinc-500 hover:text-zinc-300"
+                    }`}
                   >
-                    {sug}
+                    {getCategoryIcon(item.id)}
+                    <span>{item.name}</span>
                   </button>
                 ))}
               </div>
 
-              {/* Main Input Capsule */}
-              <div className="flex items-center gap-2 bg-[#141417] border border-[#232328] focus-within:border-zinc-500 rounded-xl px-4 py-2.5 transition-colors">
-                <Briefcase size={16} className="text-zinc-500 flex-shrink-0" />
+              {/* Main Input Field */}
+              <div className="flex items-center gap-3 bg-[#09090b] border border-[#27272a] focus-within:border-violet-500/60 rounded-xl px-4 py-3 transition-all">
+                <Sparkles size={18} className="text-violet-400 flex-shrink-0" />
                 <input
                   type="text"
                   value={promptInput}
@@ -714,7 +674,7 @@ export default function CoworkPage() {
                       handleStartTask();
                     }
                   }}
-                  placeholder="Describe your goal for Clarity CoWork..."
+                  placeholder="Ask Clarity CoWork to inspect repos, read Drive, search Gmail, check Calendar..."
                   disabled={isSubmitting}
                   className="flex-1 bg-transparent border-0 outline-none text-sm text-zinc-100 placeholder-zinc-500"
                 />
@@ -722,15 +682,33 @@ export default function CoworkPage() {
                 <button
                   onClick={() => handleStartTask()}
                   disabled={!promptInput.trim() || isSubmitting}
-                  className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-900 hover:bg-white disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed flex items-center justify-center transition-colors flex-shrink-0"
-                  title="Run Agent Workflow"
+                  className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white disabled:bg-zinc-800 disabled:text-zinc-600 font-semibold text-xs transition-colors flex items-center gap-1.5 flex-shrink-0 shadow-md"
                 >
                   {isSubmitting ? (
-                    <RefreshCw size={13} className="animate-spin text-zinc-900" />
+                    <RefreshCw size={13} className="animate-spin" />
                   ) : (
-                    <Play size={13} fill="currentColor" />
+                    <>
+                      <span>Run</span>
+                      <Play size={12} fill="currentColor" />
+                    </>
                   )}
                 </button>
+              </div>
+
+              {/* Suggestion Prompt Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-1">
+                {MULTI_TOOL_PROMPTS.map((sug, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => {
+                      setPromptInput(sug);
+                      handleStartTask(sug);
+                    }}
+                    className="flex-shrink-0 px-2.5 py-1 rounded-md bg-[#18181c] hover:bg-[#232328] border border-[#232328] text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
+                  >
+                    {sug}
+                  </button>
+                ))}
               </div>
 
             </div>
@@ -738,11 +716,10 @@ export default function CoworkPage() {
 
         </main>
 
-        {/* ── COLUMN 3: RIGHT SIDEBAR (REAL-TIME ACTIVITY FEED & HUMAN APPROVAL) ── */}
-        <aside className="w-[300px] bg-[#0f0f12] border-l border-[#1f1f23] flex flex-col h-full flex-shrink-0">
-          
+        {/* ── RIGHT DRAWER: LIVE ACTIVITY LOG STREAM ── */}
+        <aside className="w-[280px] bg-[#0c0c0e] border-l border-[#1f1f23] flex flex-col h-full flex-shrink-0">
           <div className="px-4 h-14 border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">Activity Stream</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">Live Activity Feed</span>
             {currentTask?.activityFeed?.length ? (
               <span className="text-[10px] font-mono text-zinc-500">
                 {currentTask.activityFeed.length} events
@@ -750,51 +727,30 @@ export default function CoworkPage() {
             ) : null}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
-            
-            {/* HUMAN APPROVAL CARD (SHOWN PROMINENTLY FOR WRITE ACTIONS) */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+            {/* HUMAN APPROVAL CARD */}
             {currentTask?.pendingApproval && (
               <div className="bg-[#141417] border border-amber-500/40 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs border-b border-[#232328] pb-2">
+                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs border-b border-[#232328] pb-2">
                   <AlertCircle size={15} />
-                  <span>Human Authorization Required</span>
+                  <span>Human Approval Required</span>
                 </div>
-
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-white">{currentTask.pendingApproval.title}</div>
-                  <div className="text-[10px] text-zinc-400 font-mono">
-                    Target: {currentTask.pendingApproval.targetResource}
-                  </div>
-                  <p className="text-[11px] text-zinc-300 leading-relaxed pt-1">
-                    {currentTask.pendingApproval.description}
-                  </p>
+                <div className="space-y-1 text-xs">
+                  <div className="font-semibold text-white">{currentTask.pendingApproval.title}</div>
+                  <div className="text-[10px] text-zinc-400 font-mono">Resource: {currentTask.pendingApproval.targetResource}</div>
+                  <p className="text-[11px] text-zinc-300 leading-relaxed pt-1">{currentTask.pendingApproval.description}</p>
                 </div>
-
                 <div className="flex items-center gap-2 pt-2">
-                  <button
-                    onClick={handleCancelAction}
-                    className="flex-1 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs font-medium text-zinc-400 hover:text-white transition-colors text-center border border-[#27272a]"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleApproveAction}
-                    className="flex-1 py-1.5 rounded-lg bg-zinc-100 text-zinc-900 hover:bg-white text-xs font-semibold transition-colors text-center"
-                  >
-                    Approve
-                  </button>
+                  <button onClick={handleCancelAction} className="flex-1 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs text-zinc-400 hover:text-white transition-colors">Cancel</button>
+                  <button onClick={handleApproveAction} className="flex-1 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-colors">Approve</button>
                 </div>
               </div>
             )}
 
-            {/* REAL-TIME MULTI-TOOL ACTIVITY STREAM */}
             {currentTask?.activityFeed && currentTask.activityFeed.length > 0 ? (
               <div className="space-y-2.5">
                 {currentTask.activityFeed.map((act) => (
-                  <div
-                    key={act.id}
-                    className="bg-[#141417] border border-[#232328] rounded-lg p-3 space-y-1 hover:border-[#2e2e34] transition-colors"
-                  >
+                  <div key={act.id} className="bg-[#121215] border border-[#232328] rounded-xl p-3 space-y-1 hover:border-[#2e2e34] transition-colors">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2 min-w-0">
                         {getCategoryIcon(act.category)}
@@ -802,23 +758,15 @@ export default function CoworkPage() {
                       </div>
                       <span className="text-[9px] font-mono text-zinc-500 flex-shrink-0">{act.timestamp}</span>
                     </div>
-
-                    <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
-                      {act.description}
-                    </p>
+                    <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">{act.description}</p>
                   </div>
                 ))}
               </div>
             ) : (
               <div className="py-16 text-center text-[11px] text-zinc-500">
-                No tool activity recorded yet. Run a goal to inspect live execution.
+                No tool activity recorded yet. Run a goal task to view live execution logs.
               </div>
             )}
-
-          </div>
-
-          <div className="p-3 border-t border-[#1f1f23] bg-[#0f0f12] text-[10px] text-zinc-500 font-mono text-center">
-            Clarity CoWork • Verified Workspace Engine
           </div>
         </aside>
 
