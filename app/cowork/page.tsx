@@ -375,62 +375,40 @@ export default function CoworkPage() {
   return (
     <div className="h-[100dvh] w-full bg-[#09090b] text-zinc-100 flex flex-col overflow-hidden font-sans">
       
-      {/* ── TOP HEADER BAR WITH INTEGRATION NODES ── */}
-      <header className="h-16 px-6 bg-[#0f0f12]/90 backdrop-blur border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 z-20">
+      {/* ── TOP HEADER BAR ── */}
+      <header className="h-14 px-5 bg-[#0f0f12] border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 z-20">
         <div className="flex items-center gap-3">
           <Link href="/chat" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 flex items-center justify-center p-1.5 shadow-sm">
+            <div className="w-7 h-7 rounded-lg bg-[#18181c] border border-[#27272a] flex items-center justify-center p-1">
               <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
             </div>
-            <div>
-              <span className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
-                Clarity CoWork <span className="text-[10px] font-mono font-normal px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20">Agentic v2</span>
-              </span>
-            </div>
+            <span className="text-sm font-semibold text-zinc-100 tracking-tight">Clarity CoWork</span>
           </Link>
+          <span className="text-xs text-zinc-600">/</span>
+          <span className="text-xs font-mono text-zinc-400">Agentic Workspace</span>
         </div>
 
-        {/* Floating Top Integration Nodes Bar */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#141417] border border-[#232328]">
-          <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mr-1">Nodes:</span>
-          {integrations.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => handleOpenConnectModal(item.id)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
-                item.connected || item.id === "browser"
-                  ? "bg-zinc-800/80 text-white border border-zinc-700 hover:border-zinc-500"
-                  : "bg-transparent text-zinc-400 hover:text-zinc-200"
-              }`}
-              title={item.connected ? `${item.name} Connected` : `Connect ${item.name}`}
-            >
-              {getCategoryIcon(item.id)}
-              <span className="text-[11px]">{item.name}</span>
-              <span className={`w-1.5 h-1.5 rounded-full ${item.connected || item.id === "browser" ? "bg-emerald-400" : "bg-zinc-600"}`} />
-            </button>
-          ))}
+        {/* Action Controls */}
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={() => setShowIntegrationsModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#18181c] border border-[#232328] hover:bg-[#232328] text-xs font-medium text-zinc-300 transition-colors"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>{activeToolsCount} Connected Tools</span>
+          </button>
 
           <button
             onClick={() => setShowMCPDashboardModal(true)}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-600/20 text-violet-300 border border-violet-500/30 hover:bg-violet-600/30 transition-all ml-1"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181c] border border-[#232328] hover:bg-[#232328] text-xs font-medium text-zinc-300 transition-colors"
           >
-            <Plug size={12} />
-            <span>MCP Registry Dashboard</span>
-          </button>
-        </div>
-
-        {/* Back & Actions */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setShowIntegrationsModal(true)}
-            className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181c] border border-[#27272a] text-xs text-zinc-300"
-          >
-            <Plug size={13} /> {activeToolsCount} Tools
+            <Plug size={13} />
+            <span>MCP Settings</span>
           </button>
 
           <Link
             href="/chat"
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#18181c] border border-[#27272a] hover:bg-[#232328] text-xs font-medium text-zinc-300 hover:text-white transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181c] border border-[#232328] hover:bg-[#232328] text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
           >
             <ArrowLeft size={13} /> Back to Chat
           </Link>

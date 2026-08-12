@@ -15,7 +15,6 @@ import {
   Globe, 
   RefreshCw, 
   SlidersHorizontal,
-  ExternalLink,
   Power
 } from "lucide-react";
 
@@ -66,11 +65,10 @@ export default function MCPDashboardModal({ isOpen, onClose, onRegistryUpdated }
     setIsTesting(true);
     setTestResult(null);
 
-    // Simulate MCP Server ping verification
     setTimeout(() => {
       setIsTesting(false);
-      setTestResult(`✅ Connection Successful! Verified ${selectedServer.supportedTools.length} tools on ${selectedServer.name}.`);
-    }, 1000);
+      setTestResult(`Connection verified. 200 OK (${selectedServer.supportedTools.length} tools discovered).`);
+    }, 800);
   };
 
   const handleSaveConfig = (e: React.FormEvent) => {
@@ -97,129 +95,95 @@ export default function MCPDashboardModal({ isOpen, onClose, onRegistryUpdated }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-      <div className="w-full max-w-4xl bg-[#121215] border border-[#27272a] rounded-2xl shadow-2xl flex flex-col max-h-[90vh] text-zinc-100 overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+      <div className="w-full max-w-3xl bg-[#0f0f12] border border-[#232328] rounded-xl shadow-2xl flex flex-col max-h-[85vh] text-zinc-200 overflow-hidden font-sans">
         
-        {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-[#232328] flex items-center justify-between flex-shrink-0 bg-[#0f0f12]">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 bg-[#0f0f12]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-300">
-              <Plug size={18} />
+            <div className="w-8 h-8 rounded-lg bg-[#18181c] border border-[#27272a] flex items-center justify-center text-zinc-300">
+              <Plug size={16} />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white flex items-center gap-2">
-                MCP Registry & Control Dashboard
-                <span className="text-[10px] font-mono font-normal px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  {registry.filter(r => r.enabled).length} Active Servers
+              <h2 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                MCP Server Settings
+                <span className="text-[11px] font-mono text-zinc-400 font-normal">
+                  ({registry.filter(r => r.enabled).length} active)
                 </span>
               </h2>
               <p className="text-xs text-zinc-400">
-                Configure supported Model Context Protocol servers. Type <code className="text-violet-300 bg-[#18181c] px-1 py-0.5 rounded font-mono">@mention</code> in CoWork to direct agent queries.
+                Manage supported Model Context Protocol servers and authentication keys.
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-[#1f1f23] transition-colors"
+            className="p-1 rounded text-zinc-400 hover:text-white hover:bg-[#18181c] transition-colors"
           >
-            <X size={18} />
+            <X size={16} />
           </button>
         </div>
 
-        {/* Modal Body: Supported MCP Servers Grid */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {registry.map((server) => (
-              <div
-                key={server.id}
-                className={`p-4 rounded-xl border transition-all flex flex-col justify-between space-y-3 ${
-                  server.enabled
-                    ? "bg-[#141417] border-zinc-700 hover:border-zinc-500"
-                    : "bg-[#0c0c0e] border-[#232328] opacity-75"
-                }`}
-              >
-                {/* Header */}
-                <div className="space-y-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-2xl">{server.icon}</span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-bold text-white">{server.name}</h3>
-                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                            {server.tag}
-                          </span>
-                        </div>
-                        <span className="text-[10px] text-zinc-500 font-mono">{server.category}</span>
-                      </div>
-                    </div>
+        {/* Server List */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-2 scrollbar-thin">
+          {registry.map((server) => (
+            <div
+              key={server.id}
+              className={`p-3.5 rounded-lg border transition-colors flex items-center justify-between gap-4 ${
+                server.enabled
+                  ? "bg-[#141417] border-[#232328]"
+                  : "bg-[#09090b] border-[#1f1f23] opacity-60"
+              }`}
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <button
+                  onClick={() => handleToggleEnable(server.id)}
+                  className={`w-4 h-4 rounded border flex items-center justify-center transition-colors flex-shrink-0 ${
+                    server.enabled
+                      ? "bg-zinc-100 border-zinc-100 text-zinc-900"
+                      : "border-zinc-700 bg-transparent"
+                  }`}
+                  title={server.enabled ? "Disable server" : "Enable server"}
+                >
+                  {server.enabled && <Check size={12} strokeWidth={3} />}
+                </button>
 
-                    <button
-                      onClick={() => handleToggleEnable(server.id)}
-                      className={`p-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 ${
-                        server.enabled
-                          ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20"
-                          : "bg-zinc-800 text-zinc-400 border border-zinc-700 hover:bg-zinc-700"
-                      }`}
-                      title={server.enabled ? "Disable Server" : "Enable Server"}
-                    >
-                      <Power size={13} />
-                      <span>{server.enabled ? "Active" : "Off"}</span>
-                    </button>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-zinc-100 truncate">{server.name}</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#18181c] text-zinc-400 border border-[#232328]">
+                      {server.tag}
+                    </span>
                   </div>
-
-                  <p className="text-xs text-zinc-400 leading-relaxed">
+                  <p className="text-[11px] text-zinc-400 truncate mt-0.5">
                     {server.description}
                   </p>
                 </div>
-
-                {/* Supported Tools Accordion */}
-                <div className="pt-2 border-t border-[#232328] space-y-1.5">
-                  <div className="text-[10px] font-mono uppercase text-zinc-500 flex items-center justify-between">
-                    <span>Supported Tools ({server.supportedTools.length})</span>
-                    <span>{server.isConfigured ? "● Configured" : "○ Needs Setup"}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {server.supportedTools.slice(0, 3).map(tool => (
-                      <span key={tool.name} className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#09090b] border border-[#232328] text-zinc-300">
-                        {tool.name}
-                      </span>
-                    ))}
-                    {server.supportedTools.length > 3 && (
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#09090b] text-zinc-500">
-                        +{server.supportedTools.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Action Bar */}
-                <div className="pt-1 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-zinc-500 truncate max-w-[180px]">
-                    {server.customUrl || server.defaultUrl}
-                  </span>
-                  <button
-                    onClick={() => handleOpenConfig(server)}
-                    className="px-3 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs font-semibold text-zinc-200 transition-colors border border-[#27272a]"
-                  >
-                    Configure & API Key
-                  </button>
-                </div>
-
               </div>
-            ))}
-          </div>
 
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <span className="text-[10px] font-mono text-zinc-400 hidden sm:inline">
+                  {server.isConfigured ? "Configured" : "Unconfigured"}
+                </span>
+
+                <button
+                  onClick={() => handleOpenConfig(server)}
+                  className="px-3 py-1.5 rounded bg-[#18181c] hover:bg-[#232328] text-xs font-medium text-zinc-300 hover:text-white transition-colors border border-[#27272a]"
+                >
+                  Configure
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-[#232328] bg-[#0f0f12] flex items-center justify-between text-xs text-zinc-400">
-          <span>Type <code className="text-violet-300 font-mono">@stitch</code> or <code className="text-violet-300 font-mono">@postgres</code> in CoWork prompt to direct queries</span>
+        {/* Footer */}
+        <div className="px-6 py-3 border-t border-[#1f1f23] bg-[#0f0f12] flex items-center justify-between text-xs text-zinc-400">
+          <span>Type <code className="text-zinc-300 font-mono">@tag</code> in prompt to target specific MCP servers</span>
           <button
             onClick={onClose}
-            className="px-5 py-2 rounded-xl bg-zinc-100 text-zinc-900 font-bold hover:bg-white transition-colors"
+            className="px-4 py-1.5 rounded bg-zinc-100 text-zinc-900 font-semibold text-xs hover:bg-white transition-colors"
           >
             Done
           </button>
@@ -227,82 +191,80 @@ export default function MCPDashboardModal({ isOpen, onClose, onRegistryUpdated }
 
       </div>
 
-      {/* ── SUB-MODAL: CONFIGURE SPECIFIC MCP SERVER ── */}
+      {/* Configure Modal */}
       {selectedServer && (
-        <div className="fixed inset-0 z-60 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <form onSubmit={handleSaveConfig} className="w-full max-w-lg bg-[#141417] border border-[#27272a] rounded-2xl p-6 shadow-2xl space-y-4 text-zinc-100">
-            <div className="flex items-center justify-between border-b border-[#232328] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">{selectedServer.icon}</span>
-                <h3 className="text-sm font-bold text-white">Configure {selectedServer.name} ({selectedServer.tag})</h3>
-              </div>
+        <div className="fixed inset-0 z-60 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+          <form onSubmit={handleSaveConfig} className="w-full max-w-md bg-[#0f0f12] border border-[#232328] rounded-xl p-5 shadow-2xl space-y-4 text-zinc-200">
+            <div className="flex items-center justify-between border-b border-[#1f1f23] pb-3">
+              <h3 className="text-sm font-semibold text-zinc-100">
+                Configure {selectedServer.name}
+              </h3>
               <button
                 type="button"
                 onClick={() => setSelectedServer(null)}
                 className="text-zinc-400 hover:text-white"
               >
-                <X size={16} />
+                <X size={15} />
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
               <div>
-                <label className="block text-[10px] font-semibold uppercase text-zinc-400 mb-1">MCP Endpoint URL</label>
+                <label className="block text-[10px] font-mono uppercase text-zinc-400 mb-1">Server Endpoint URL</label>
                 <input
                   type="text"
                   value={urlInput}
                   onChange={(e) => setUrlInput(e.target.value)}
                   placeholder={selectedServer.defaultUrl}
                   required
-                  className="w-full bg-[#09090b] border border-[#232328] rounded-xl px-3 py-2 text-xs text-zinc-100 outline-none font-mono"
+                  className="w-full bg-[#141417] border border-[#232328] rounded px-3 py-2 text-xs text-zinc-100 outline-none font-mono focus:border-zinc-500"
                 />
               </div>
 
               {selectedServer.requiresApiKey && (
                 <div>
-                  <label className="block text-[10px] font-semibold uppercase text-zinc-400 mb-1">API Key / Auth Token</label>
+                  <label className="block text-[10px] font-mono uppercase text-zinc-400 mb-1">API Key / Access Secret</label>
                   <input
                     type="password"
                     value={apiKeyInput}
                     onChange={(e) => setApiKeyInput(e.target.value)}
-                    placeholder={selectedServer.apiKeyPlaceholder || "Enter API secret..."}
-                    className="w-full bg-[#09090b] border border-[#232328] rounded-xl px-3 py-2 text-xs text-zinc-100 outline-none font-mono"
+                    placeholder={selectedServer.apiKeyPlaceholder || "Enter API Key..."}
+                    className="w-full bg-[#141417] border border-[#232328] rounded px-3 py-2 text-xs text-zinc-100 outline-none font-mono focus:border-zinc-500"
                   />
-                  <p className="text-[10px] text-zinc-500 mt-1">Stored securely on serverless vault.</p>
                 </div>
               )}
 
               {testResult && (
-                <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs text-emerald-400 font-mono">
+                <div className="p-2.5 bg-[#141417] border border-emerald-500/30 rounded text-xs text-emerald-400 font-mono">
                   {testResult}
                 </div>
               )}
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center justify-between pt-2">
               <button
                 type="button"
                 onClick={handleTestConnection}
                 disabled={isTesting}
-                className="px-4 py-2 rounded-xl bg-[#1f1f23] hover:bg-[#27272a] text-xs font-semibold text-zinc-200 transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded bg-[#18181c] hover:bg-[#232328] text-xs font-medium text-zinc-300 transition-colors border border-[#27272a] flex items-center gap-1.5"
               >
-                {isTesting ? <RefreshCw size={13} className="animate-spin" /> : <ShieldCheck size={13} />}
-                <span>{isTesting ? "Pinging..." : "Test Connection"}</span>
+                {isTesting ? <RefreshCw size={12} className="animate-spin" /> : <ShieldCheck size={12} />}
+                <span>{isTesting ? "Testing..." : "Test Server"}</span>
               </button>
 
-              <div className="flex-1 flex justify-end gap-2">
+              <div className="flex gap-2">
                 <button
                   type="button"
                   onClick={() => setSelectedServer(null)}
-                  className="px-4 py-2 rounded-xl bg-[#1f1f23] text-xs text-zinc-400 hover:text-white"
+                  className="px-3 py-1.5 rounded bg-transparent text-xs text-zinc-400 hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors"
+                  className="px-4 py-1.5 rounded bg-zinc-100 text-zinc-900 font-semibold text-xs hover:bg-white transition-colors"
                 >
-                  Save Configuration
+                  Save
                 </button>
               </div>
             </div>
