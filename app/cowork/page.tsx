@@ -366,35 +366,35 @@ export default function CoworkPage() {
   ];
 
   return (
-    <div className="h-[100dvh] w-full bg-[#000000] text-[#f2f2f7] flex flex-col overflow-hidden font-sans">
+    <div className="h-[100dvh] w-full bg-[#09090b] text-zinc-200 flex flex-col overflow-hidden font-sans">
       
       {/* ── TOP HEADER BAR ── */}
-      <header className="h-14 px-5 bg-[#111113] border-b border-[#222226] flex items-center justify-between flex-shrink-0 z-20">
+      <header className="h-14 px-5 bg-[#0f0f12] border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 z-20">
         <div className="flex items-center gap-3">
           <Link href="/chat" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <div className="w-7 h-7 rounded-xl bg-[#1c1c1e] border border-[#2c2c2e] flex items-center justify-center p-1 shadow-sm">
+            <div className="w-7 h-7 rounded-lg bg-[#18181c] border border-[#27272a] flex items-center justify-center p-1">
               <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
             </div>
-            <span className="text-sm font-semibold text-white tracking-tight">Clarity CoWork</span>
+            <span className="text-sm font-semibold text-zinc-100 tracking-tight">Clarity CoWork</span>
           </Link>
-          <span className="text-xs text-[#636366]">/</span>
-          <span className="text-xs font-mono text-[#8e8e93]">Agentic Workspace</span>
+          <span className="text-xs text-zinc-600">/</span>
+          <span className="text-xs font-mono text-zinc-400">Enterprise Workspace</span>
         </div>
 
         {/* Tools Status Badge */}
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowIntegrationsModal(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1c1c1e] border border-[#2c2c2e] hover:bg-[#2c2c2e] text-xs transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#18181c] border border-[#27272a] hover:bg-[#232328] text-xs transition-colors"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-white font-medium">● {activeToolsCount} Tools Active</span>
-            <span className="text-[#8e8e93] text-[11px] font-mono underline ml-1">Integrations Hub</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="text-zinc-200 font-medium">{activeToolsCount} Active Tools</span>
+            <span className="text-zinc-400 text-[11px] font-mono ml-1">Integrations Hub</span>
           </button>
 
           <Link
             href="/chat"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#1c1c1e] border border-[#2c2c2e] hover:bg-[#2c2c2e] text-xs font-medium text-[#8e8e93] hover:text-white transition-all"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#18181c] border border-[#27272a] hover:bg-[#232328] text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
           >
             <ArrowLeft size={13} /> Back to Chat
           </Link>
@@ -405,17 +405,17 @@ export default function CoworkPage() {
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
 
         {/* ── COLUMN 1: LEFT SIDEBAR (WORKSPACE & INTEGRATIONS SUITE) ── */}
-        <aside className="w-[280px] bg-[#111113] border-r border-[#222226] flex flex-col h-full flex-shrink-0">
+        <aside className="w-[280px] bg-[#0f0f12] border-r border-[#1f1f23] flex flex-col h-full flex-shrink-0">
           
-          <div className="p-4 border-b border-[#222226] space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
+          <div className="p-4 border-b border-[#1f1f23] space-y-2">
+            <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
               <span>Workspace</span>
               <button
                 onClick={() => {
                   setCurrentTask(null);
                   setActiveArtifact(null);
                 }}
-                className="text-[10px] text-white hover:underline transition-colors"
+                className="text-[10px] text-zinc-300 hover:text-white transition-colors"
               >
                 + New Goal
               </button>
@@ -423,10 +423,10 @@ export default function CoworkPage() {
 
             <button
               onClick={() => setWorkspaceNav("overview")}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                 workspaceNav === "overview"
-                  ? "bg-[#1c1c1e] text-white border border-[#2c2c2e]"
-                  : "text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]/50"
+                  ? "bg-[#18181c] text-white border border-[#27272a]"
+                  : "text-zinc-400 hover:text-white hover:bg-[#18181c]/60"
               }`}
             >
               <Briefcase size={14} />
@@ -439,12 +439,12 @@ export default function CoworkPage() {
             {/* CONNECTED TOOLS SUITE */}
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                   Connected Tools
                 </span>
                 <button
                   onClick={() => setShowIntegrationsModal(true)}
-                  className="text-[10px] text-[#a1a1aa] hover:text-white underline transition-colors"
+                  className="text-[10px] text-zinc-400 hover:text-white transition-colors"
                 >
                   Manage All
                 </button>
@@ -454,31 +454,31 @@ export default function CoworkPage() {
                 {integrations.map((item) => (
                   <div
                     key={item.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-[#1c1c1e] border border-[#2c2c2e] text-xs transition-all"
+                    className="flex items-center justify-between p-2.5 rounded-lg bg-[#141417] border border-[#232328] text-xs transition-colors"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       {getCategoryIcon(item.id)}
-                      <span className="text-xs font-medium text-white truncate">{item.name}</span>
+                      <span className="text-xs font-medium text-zinc-200 truncate">{item.name}</span>
                     </div>
 
                     {item.id === "browser" ? (
-                      <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                         Ready
                       </span>
                     ) : item.connected ? (
                       <button
                         onClick={() => handleDisconnectIntegration(item.id)}
                         disabled={connectingId === item.id}
-                        className="text-[10px] font-mono text-emerald-400 hover:text-red-400 transition-colors"
+                        className="text-[10px] font-mono text-emerald-400 hover:text-rose-400 transition-colors"
                         title="Click to disconnect"
                       >
-                        {connectingId === item.id ? "..." : "Connected ●"}
+                        {connectingId === item.id ? "..." : "Connected"}
                       </button>
                     ) : (
                       <button
                         onClick={() => handleOpenConnectModal(item.id)}
                         disabled={connectingId === item.id}
-                        className="px-2 py-0.5 rounded-md bg-white text-black text-[10px] font-semibold hover:bg-[#e5e5ea] transition-all"
+                        className="px-2 py-0.5 rounded bg-zinc-100 text-zinc-900 text-[10px] font-semibold hover:bg-white transition-colors"
                       >
                         {connectingId === item.id ? "..." : "Connect"}
                       </button>
@@ -490,8 +490,8 @@ export default function CoworkPage() {
 
             {/* Recent Tasks List */}
             {recentTasks.length > 0 && (
-              <div className="pt-3 border-t border-[#222226] space-y-2">
-                <span className="block px-1 text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
+              <div className="pt-3 border-t border-[#1f1f23] space-y-2">
+                <span className="block px-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                   Recent Tasks ({recentTasks.length})
                 </span>
                 {recentTasks.slice(0, 6).map((t) => (
@@ -501,14 +501,14 @@ export default function CoworkPage() {
                       setCurrentTask(t);
                       if (t.artifacts?.length > 0) setActiveArtifact(t.artifacts[0]);
                     }}
-                    className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                    className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
                       currentTask?.id === t.id
-                        ? "bg-[#1c1c1e] border-white text-white shadow-sm"
-                        : "bg-[#111113] border-[#222226] text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]"
+                        ? "bg-[#18181c] border-zinc-500 text-white"
+                        : "bg-[#141417] border-[#232328] text-zinc-400 hover:text-white hover:bg-[#18181c]"
                     }`}
                   >
-                    <div className="text-xs font-medium text-white truncate">{t.userQuery}</div>
-                    <div className="text-[10px] text-[#636366] font-mono mt-0.5 capitalize">{t.status}</div>
+                    <div className="text-xs font-medium text-zinc-200 truncate">{t.userQuery}</div>
+                    <div className="text-[10px] text-zinc-500 font-mono mt-0.5 capitalize">{t.status}</div>
                   </div>
                 ))}
               </div>
@@ -516,22 +516,22 @@ export default function CoworkPage() {
 
             {/* Artifacts List */}
             {currentTask?.artifacts && currentTask.artifacts.length > 0 && (
-              <div className="pt-3 border-t border-[#222226] space-y-2">
-                <span className="block px-1 text-[10px] font-semibold uppercase tracking-wider text-[#8e8e93]">
+              <div className="pt-3 border-t border-[#1f1f23] space-y-2">
+                <span className="block px-1 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
                   Generated Artifacts
                 </span>
                 {currentTask.artifacts.map((art) => (
                   <div
                     key={art.id}
                     onClick={() => setActiveArtifact(art)}
-                    className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                    className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
                       activeArtifact?.id === art.id
-                        ? "bg-[#1c1c1e] border-white text-white shadow-sm"
-                        : "bg-[#111113] border-[#222226] text-[#8e8e93] hover:text-white hover:bg-[#1c1c1e]"
+                        ? "bg-[#18181c] border-zinc-500 text-white"
+                        : "bg-[#141417] border-[#232328] text-zinc-400 hover:text-white hover:bg-[#18181c]"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate font-medium">
-                      <FileText size={13} className="text-[#a1a1aa] flex-shrink-0" />
+                      <FileText size={13} className="text-zinc-400 flex-shrink-0" />
                       <span className="truncate">{art.title}</span>
                     </div>
                   </div>
@@ -541,27 +541,27 @@ export default function CoworkPage() {
 
           </div>
 
-          <div className="p-4 border-t border-[#222226] bg-[#111113] flex items-center justify-between text-xs text-[#8e8e93]">
-            <span>Clarity Multi-Tool Engine</span>
-            <span className="text-[10px] font-mono text-emerald-400">OAuth Security Active</span>
+          <div className="p-3 border-t border-[#1f1f23] bg-[#0f0f12] flex items-center justify-between text-xs text-zinc-500">
+            <span>Clarity Agent Engine</span>
+            <span className="text-[10px] font-mono text-emerald-400">OAuth Active</span>
           </div>
         </aside>
 
         {/* ── COLUMN 2: CENTER COLUMN (AGENT STAGE & RESULTS) ── */}
-        <main className="flex-1 flex flex-col h-full min-w-0 bg-[#000000] relative">
+        <main className="flex-1 flex flex-col h-full min-w-0 bg-[#09090b] relative">
           
           {/* Subheader Toolbar */}
-          <div className="h-12 px-6 bg-[#111113]/60 border-b border-[#222226] flex items-center justify-between flex-shrink-0 text-xs text-[#8e8e93]">
+          <div className="h-12 px-6 bg-[#0f0f12]/80 border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 text-xs text-zinc-400">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-white">
-                {currentTask ? currentTask.userQuery : "Clarity CoWork Agent Stage"}
+              <span className="font-semibold text-zinc-200">
+                {currentTask ? currentTask.userQuery : "Agent Execution Stage"}
               </span>
             </div>
 
             {currentTask && (
               <div className="flex items-center gap-2">
-                <span className="text-[11px]">Task Status:</span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase ${
+                <span className="text-[11px]">Status:</span>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-semibold uppercase ${
                   currentTask.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
                   currentTask.status === "running" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
                   currentTask.status === "waiting_approval" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
@@ -579,12 +579,12 @@ export default function CoworkPage() {
 
               {/* 1. DYNAMIC EXECUTION PLAN TIMELINE STEPPER */}
               {currentTask && (
-                <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-2xl p-5 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-2.5">
-                    <span className="text-xs font-semibold uppercase tracking-wider text-white flex items-center gap-2">
-                      <Sparkles size={14} className="text-white" /> Execution Plan Timeline
+                <div className="bg-[#141417] border border-[#232328] rounded-xl p-5 space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#232328] pb-2.5">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
+                      <Layers size={14} className="text-zinc-400" /> Execution Plan
                     </span>
-                    <span className="text-[10px] font-mono text-[#8e8e93]">
+                    <span className="text-[10px] font-mono text-zinc-500">
                       Goal: "{currentTask.userQuery}"
                     </span>
                   </div>
@@ -594,15 +594,15 @@ export default function CoworkPage() {
                       <div key={step.id} className="flex items-center gap-3 text-xs">
                         {step.status === "completed" && <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />}
                         {step.status === "running" && <RefreshCw size={15} className="text-blue-400 animate-spin flex-shrink-0" />}
-                        {step.status === "waiting" && <Clock size={15} className="text-[#636366] flex-shrink-0" />}
+                        {step.status === "waiting" && <Clock size={15} className="text-zinc-600 flex-shrink-0" />}
                         {step.status === "approval_required" && <AlertCircle size={15} className="text-amber-400 flex-shrink-0" />}
-                        {step.status === "failed" && <XCircle size={15} className="text-red-400 flex-shrink-0" />}
+                        {step.status === "failed" && <XCircle size={15} className="text-rose-400 flex-shrink-0" />}
 
                         <span className={`font-medium ${
-                          step.status === "completed" ? "text-white opacity-80" :
+                          step.status === "completed" ? "text-zinc-300" :
                           step.status === "running" ? "text-white font-semibold" :
                           step.status === "approval_required" ? "text-amber-400 font-semibold" :
-                          "text-[#8e8e93]"
+                          "text-zinc-500"
                         }`}>
                           {step.title}
                         </span>
@@ -614,12 +614,12 @@ export default function CoworkPage() {
 
               {/* 2. MAIN AI REPORT / ARTIFACT DISPLAY */}
               {(currentTask?.report || activeArtifact) && (
-                <div className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-2xl p-6 shadow-xl space-y-4 animate-fade-in">
-                  <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
+                <div className="bg-[#141417] border border-[#232328] rounded-xl p-6 space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#232328] pb-3">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck size={16} className="text-white" />
+                      <ShieldCheck size={16} className="text-zinc-400" />
                       <h3 className="text-sm font-semibold text-white">
-                        {activeArtifact ? activeArtifact.title : "Agent Goal Analysis & Recommendations"}
+                        {activeArtifact ? activeArtifact.title : "Agent Response"}
                       </h3>
                     </div>
                     <button
@@ -629,30 +629,30 @@ export default function CoworkPage() {
                         setCopiedReport(true);
                         setTimeout(() => setCopiedReport(false), 2000);
                       }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-medium text-white transition-all"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs font-medium text-zinc-300 hover:text-white transition-colors border border-[#27272a]"
                     >
                       {copiedReport ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                      <span>{copiedReport ? "Copied" : "Copy Report"}</span>
+                      <span>{copiedReport ? "Copied" : "Copy Content"}</span>
                     </button>
                   </div>
 
-                  <div className="text-xs leading-relaxed text-[#f2f2f7] font-sans overflow-x-auto">
+                  <div className="text-xs leading-relaxed text-zinc-200 font-sans overflow-x-auto">
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
                         h1: ({ children }) => <h1 className="text-base font-bold my-3 text-white">{children}</h1>,
-                        h2: ({ children }) => <h2 className="text-sm font-semibold my-2.5 text-white border-b border-[#2c2c2e] pb-1">{children}</h2>,
+                        h2: ({ children }) => <h2 className="text-sm font-semibold my-2.5 text-white border-b border-[#232328] pb-1">{children}</h2>,
                         h3: ({ children }) => <h3 className="text-xs font-semibold my-2 text-white">{children}</h3>,
-                        p: ({ children }) => <p className="mb-2 leading-relaxed text-[#d1d1d6]">{children}</p>,
-                        ul: ({ children }) => <ul className="list-disc pl-5 mb-2.5 space-y-1 text-[#d1d1d6]">{children}</ul>,
-                        ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 space-y-1 text-[#d1d1d6]">{children}</ol>,
+                        p: ({ children }) => <p className="mb-2 leading-relaxed text-zinc-300">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc pl-5 mb-2.5 space-y-1 text-zinc-300">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 space-y-1 text-zinc-300">{children}</ol>,
                         code: ({ children, ...props }) => (
-                          <code className="bg-[#111113] border border-[#2c2c2e] rounded px-1.5 py-0.5 text-xs font-mono text-white" {...props}>
+                          <code className="bg-[#0f0f12] border border-[#232328] rounded px-1.5 py-0.5 text-xs font-mono text-zinc-200" {...props}>
                             {children}
                           </code>
                         ),
                         pre: ({ children }) => (
-                          <pre className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono text-[#f2f2f7]">
+                          <pre className="bg-[#0f0f12] border border-[#232328] rounded-lg p-4 overflow-x-auto text-xs my-3 font-mono text-zinc-200">
                             {children}
                           </pre>
                         ),
@@ -666,14 +666,14 @@ export default function CoworkPage() {
 
               {/* WELCOME / EMPTY STATE FOR CENTER COLUMN */}
               {!currentTask && (
-                <div className="py-12 text-center space-y-4">
-                  <div className="w-14 h-14 rounded-2xl bg-[#1c1c1e] border border-[#2c2c2e] mx-auto flex items-center justify-center p-3">
+                <div className="py-16 text-center space-y-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#141417] border border-[#232328] mx-auto flex items-center justify-center p-2.5">
                     <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-white tracking-tight">Clarity CoWork Workspace</h2>
-                    <p className="text-xs text-[#8e8e93] max-w-sm mx-auto leading-relaxed mt-1">
-                      Give Clarity a goal across GitHub, Drive, Calendar, Gmail, Sheets, MCP, and Web tools.
+                    <h2 className="text-lg font-semibold text-white tracking-tight">Clarity CoWork Workspace</h2>
+                    <p className="text-xs text-zinc-400 max-w-sm mx-auto leading-relaxed mt-1">
+                      Execute goal-driven tasks across GitHub, Drive, Calendar, Gmail, Sheets, MCP, and Web tools.
                     </p>
                   </div>
                 </div>
@@ -683,7 +683,7 @@ export default function CoworkPage() {
           </div>
 
           {/* ── MAIN COMPOSER (BOTTOM INPUT BAR) ── */}
-          <div className="p-4 bg-[#111113] border-t border-[#222226] flex-shrink-0 z-10">
+          <div className="p-4 bg-[#0f0f12] border-t border-[#1f1f23] flex-shrink-0 z-10">
             <div className="max-w-3xl mx-auto space-y-3">
               
               {/* Suggestion Pills */}
@@ -695,7 +695,7 @@ export default function CoworkPage() {
                       setPromptInput(sug);
                       handleStartTask(sug);
                     }}
-                    className="flex-shrink-0 px-3 py-1.5 rounded-full bg-[#1c1c1e] hover:bg-[#2c2c2e] border border-[#2c2c2e] text-xs text-[#8e8e93] hover:text-white transition-all shadow-sm"
+                    className="flex-shrink-0 px-3 py-1 rounded-md bg-[#141417] hover:bg-[#1f1f23] border border-[#232328] text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
                   >
                     {sug}
                   </button>
@@ -703,8 +703,8 @@ export default function CoworkPage() {
               </div>
 
               {/* Main Input Capsule */}
-              <div className="flex items-center gap-2 bg-[#1c1c1e] border border-[#2c2c2e] focus-within:border-[#3a3a3c] rounded-[24px] px-4 py-2.5 shadow-lg transition-all">
-                <Sparkles size={16} className="text-[#8e8e93] flex-shrink-0" />
+              <div className="flex items-center gap-2 bg-[#141417] border border-[#232328] focus-within:border-zinc-500 rounded-xl px-4 py-2.5 transition-colors">
+                <Briefcase size={16} className="text-zinc-500 flex-shrink-0" />
                 <input
                   type="text"
                   value={promptInput}
@@ -715,19 +715,19 @@ export default function CoworkPage() {
                       handleStartTask();
                     }
                   }}
-                  placeholder="Ask Clarity to work on something..."
+                  placeholder="Describe your goal for Clarity CoWork..."
                   disabled={isSubmitting}
-                  className="flex-1 bg-transparent border-0 outline-none text-sm text-[#f2f2f7] placeholder-[#8e8e93]"
+                  className="flex-1 bg-transparent border-0 outline-none text-sm text-zinc-100 placeholder-zinc-500"
                 />
 
                 <button
                   onClick={() => handleStartTask()}
                   disabled={!promptInput.trim() || isSubmitting}
-                  className="w-8 h-8 rounded-full bg-white text-black hover:bg-[#e5e5ea] disabled:bg-[#2c2c2e] disabled:text-[#6c6c70] disabled:cursor-not-allowed active:scale-95 flex items-center justify-center transition-all flex-shrink-0 shadow-sm"
+                  className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-900 hover:bg-white disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed flex items-center justify-center transition-colors flex-shrink-0"
                   title="Run Agent Workflow"
                 >
                   {isSubmitting ? (
-                    <RefreshCw size={13} className="animate-spin" />
+                    <RefreshCw size={13} className="animate-spin text-zinc-900" />
                   ) : (
                     <Play size={13} fill="currentColor" />
                   )}
@@ -740,12 +740,12 @@ export default function CoworkPage() {
         </main>
 
         {/* ── COLUMN 3: RIGHT SIDEBAR (REAL-TIME ACTIVITY FEED & HUMAN APPROVAL) ── */}
-        <aside className="w-[300px] bg-[#111113] border-l border-[#222226] flex flex-col h-full flex-shrink-0">
+        <aside className="w-[300px] bg-[#0f0f12] border-l border-[#1f1f23] flex flex-col h-full flex-shrink-0">
           
-          <div className="px-4 h-14 border-b border-[#222226] flex items-center justify-between flex-shrink-0">
-            <span className="text-xs font-semibold uppercase tracking-wider text-white">Activity Stream</span>
+          <div className="px-4 h-14 border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0">
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">Activity Stream</span>
             {currentTask?.activityFeed?.length ? (
-              <span className="text-[10px] font-mono text-[#8e8e93]">
+              <span className="text-[10px] font-mono text-zinc-500">
                 {currentTask.activityFeed.length} events
               </span>
             ) : null}
@@ -755,18 +755,18 @@ export default function CoworkPage() {
             
             {/* HUMAN APPROVAL CARD (SHOWN PROMINENTLY FOR WRITE ACTIONS) */}
             {currentTask?.pendingApproval && (
-              <div className="bg-[#1c1c1e] border-2 border-amber-500/50 rounded-2xl p-4 space-y-3 shadow-xl animate-fade-in">
-                <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs border-b border-[#2c2c2e] pb-2">
+              <div className="bg-[#141417] border border-amber-500/40 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2 text-amber-400 font-semibold text-xs border-b border-[#232328] pb-2">
                   <AlertCircle size={15} />
-                  <span>Approval Required</span>
+                  <span>Human Authorization Required</span>
                 </div>
 
                 <div className="space-y-1">
                   <div className="text-xs font-bold text-white">{currentTask.pendingApproval.title}</div>
-                  <div className="text-[10px] text-[#8e8e93] font-mono">
-                    Resource: {currentTask.pendingApproval.targetResource}
+                  <div className="text-[10px] text-zinc-400 font-mono">
+                    Target: {currentTask.pendingApproval.targetResource}
                   </div>
-                  <p className="text-[11px] text-[#d1d1d6] leading-relaxed pt-1">
+                  <p className="text-[11px] text-zinc-300 leading-relaxed pt-1">
                     {currentTask.pendingApproval.description}
                   </p>
                 </div>
@@ -774,15 +774,15 @@ export default function CoworkPage() {
                 <div className="flex items-center gap-2 pt-2">
                   <button
                     onClick={handleCancelAction}
-                    className="flex-1 py-1.5 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-medium text-[#8e8e93] hover:text-white transition-all text-center"
+                    className="flex-1 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs font-medium text-zinc-400 hover:text-white transition-colors text-center border border-[#27272a]"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleApproveAction}
-                    className="flex-1 py-1.5 rounded-xl bg-white text-black hover:bg-[#e5e5ea] text-xs font-semibold transition-all text-center shadow-sm"
+                    className="flex-1 py-1.5 rounded-lg bg-zinc-100 text-zinc-900 hover:bg-white text-xs font-semibold transition-colors text-center"
                   >
-                    Approve & Run
+                    Approve
                   </button>
                 </div>
               </div>
@@ -790,36 +790,36 @@ export default function CoworkPage() {
 
             {/* REAL-TIME MULTI-TOOL ACTIVITY STREAM */}
             {currentTask?.activityFeed && currentTask.activityFeed.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2.5">
                 {currentTask.activityFeed.map((act) => (
                   <div
                     key={act.id}
-                    className="bg-[#1c1c1e] border border-[#2c2c2e] rounded-xl p-3 space-y-1 hover:border-[#3a3a3c] transition-all shadow-sm"
+                    className="bg-[#141417] border border-[#232328] rounded-lg p-3 space-y-1 hover:border-[#2e2e34] transition-colors"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2 min-w-0">
                         {getCategoryIcon(act.category)}
-                        <span className="text-xs font-medium text-white truncate">{act.title}</span>
+                        <span className="text-xs font-medium text-zinc-200 truncate">{act.title}</span>
                       </div>
-                      <span className="text-[9px] font-mono text-[#636366] flex-shrink-0">{act.timestamp}</span>
+                      <span className="text-[9px] font-mono text-zinc-500 flex-shrink-0">{act.timestamp}</span>
                     </div>
 
-                    <p className="text-[11px] text-[#8e8e93] line-clamp-2 leading-relaxed">
+                    <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
                       {act.description}
                     </p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="py-16 text-center text-[11px] text-[#636366]">
-                No tool activity events recorded yet. Start a goal task to view live execution logs.
+              <div className="py-16 text-center text-[11px] text-zinc-500">
+                No tool activity recorded yet. Run a goal to inspect live execution.
               </div>
             )}
 
           </div>
 
-          <div className="p-4 border-t border-[#222226] bg-[#111113] text-[10px] text-[#636366] font-mono text-center">
-            Multi-Tool Agent Engine • All Connections Secured
+          <div className="p-3 border-t border-[#1f1f23] bg-[#0f0f12] text-[10px] text-zinc-500 font-mono text-center">
+            Clarity CoWork • Verified Workspace Engine
           </div>
         </aside>
 
