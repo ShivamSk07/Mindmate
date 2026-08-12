@@ -4,10 +4,13 @@ import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const user = await getSessionUser();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+  const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 
   if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", appUrl));
   }
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
