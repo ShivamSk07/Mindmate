@@ -5,8 +5,11 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Clarity — AI Companion",
-  description: "Premium AI companion with real-time web search, custom personas and memory vault powered by Llama 3.3 70B",
+  title: "Clarity — Autonomous AI Agentic Workspace",
+  description: "Clarity is an autonomous AI agentic workspace that connects your GitHub, Google Drive, Gmail, Calendar, and Sheets to execute multi-tool workflows and automate enterprise tasks.",
+  verification: {
+    google: "sMFtcOD5RvVte1dLz-ytiWWiXVekEhGEdke6Sx1jP10",
+  },
 };
 
 export default function RootLayout({
