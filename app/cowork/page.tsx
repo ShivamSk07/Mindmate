@@ -673,9 +673,8 @@ export default function CoworkPage() {
                       className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#1f1f23] text-left transition-colors"
                     >
                       <div className="flex items-center gap-2">
-                        <span>{item.icon}</span>
                         <div>
-                          <span className="font-bold text-white mr-1.5">{item.tag}</span>
+                          <span className="font-semibold text-white mr-1.5">{item.tag}</span>
                           <span className="text-zinc-400 text-[11px]">{item.name}</span>
                         </div>
                       </div>
