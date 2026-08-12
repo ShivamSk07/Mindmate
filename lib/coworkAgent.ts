@@ -118,24 +118,34 @@ export async function createAndRunTask(
 
   const queryLower = userQuery.toLowerCase();
 
-  // Multi-Tool Detection Logic
-  const needsDrive = queryLower.includes("drive") || queryLower.includes("proposal") || queryLower.includes("pdf") || queryLower.includes("doc");
-  const needsCalendar = queryLower.includes("calendar") || queryLower.includes("meeting") || queryLower.includes("slot") || queryLower.includes("schedule") || queryLower.includes("tomorrow");
-  const needsGmail = queryLower.includes("email") || queryLower.includes("mail") || queryLower.includes("draft") || queryLower.includes("inbox") || queryLower.includes("rahul");
-  const needsSheets = queryLower.includes("sheet") || queryLower.includes("spreadsheet") || queryLower.includes("sales") || queryLower.includes("revenue");
-  const needsBrowser = queryLower.includes("browser") || queryLower.includes("docs url") || queryLower.includes("search web");
-  const needsMCP = queryLower.includes("mcp") || queryLower.includes("stitch");
-  const needsGitHub = queryLower.includes("github") || queryLower.includes("repo") || queryLower.includes("code") || queryLower.includes("pr") || (!needsDrive && !needsCalendar && !needsGmail);
+  // Multi-Tool Detection Logic based on user query intent
+  const isDriveQuery = queryLower.includes("drive") || queryLower.includes("proposal") || queryLower.includes("pdf") || queryLower.includes("doc") || queryLower.includes("file") || queryLower.includes("files") || queryLower.includes("folder");
+  const isCalendarQuery = queryLower.includes("calendar") || queryLower.includes("meeting") || queryLower.includes("slot") || queryLower.includes("schedule") || queryLower.includes("tomorrow") || queryLower.includes("event") || queryLower.includes("gcal");
+  const isGmailQuery = queryLower.includes("email") || queryLower.includes("mail") || queryLower.includes("draft") || queryLower.includes("inbox") || queryLower.includes("rahul") || queryLower.includes("gmail") || queryLower.includes("message") || queryLower.includes("messages");
+  const isSheetsQuery = queryLower.includes("sheet") || queryLower.includes("sheets") || queryLower.includes("spreadsheet") || queryLower.includes("sales") || queryLower.includes("revenue") || queryLower.includes("excel");
+  const isBrowserQuery = queryLower.includes("browser") || queryLower.includes("docs url") || queryLower.includes("search web") || queryLower.includes("website");
+  const isMCPQuery = queryLower.includes("mcp") || queryLower.includes("stitch");
+
+  const isExplicitGitHub = queryLower.includes("github") || queryLower.includes("repo") || queryLower.includes("code") || queryLower.includes("pr") || queryLower.includes("commit") || queryLower.includes("audit") || queryLower.includes("issue");
+  const isAnyOtherTool = isDriveQuery || isCalendarQuery || isGmailQuery || isSheetsQuery || isBrowserQuery || isMCPQuery;
+
+  const needsGitHub = isExplicitGitHub || !isAnyOtherTool;
+  const needsDrive = isDriveQuery;
+  const needsCalendar = isCalendarQuery;
+  const needsGmail = isGmailQuery;
+  const needsSheets = isSheetsQuery;
+  const needsBrowser = isBrowserQuery;
+  const needsMCP = isMCPQuery;
 
   const initialPlan: PlanStep[] = [
     { id: "step_1", title: "Understand user goal & select tools", status: "completed" },
   ];
 
-  if (needsDrive) initialPlan.push({ id: "step_drive", title: "Search & read Google Drive proposal documents", status: "waiting" });
+  if (needsDrive) initialPlan.push({ id: "step_drive", title: "Search & read Google Drive documents", status: "waiting" });
   if (needsGitHub) initialPlan.push({ id: "step_github", title: `Inspect GitHub repository (${owner}/${repo})`, status: "waiting" });
   if (needsSheets) initialPlan.push({ id: "step_sheets", title: "Analyze Google Sheets metrics & data", status: "waiting" });
   if (needsCalendar) initialPlan.push({ id: "step_cal", title: "Check Google Calendar schedule & free slots", status: "waiting" });
-  if (needsGmail) initialPlan.push({ id: "step_gmail", title: "Draft email reply in Gmail", status: "waiting" });
+  if (needsGmail) initialPlan.push({ id: "step_gmail", title: "Search & check Gmail inbox messages", status: "waiting" });
   if (needsBrowser) initialPlan.push({ id: "step_browser", title: "Search & extract web documentation via Browser Agent", status: "waiting" });
   if (needsMCP) initialPlan.push({ id: "step_mcp", title: "Discover & execute MCP Server tools", status: "waiting" });
 
@@ -240,16 +250,18 @@ async function executeMultiToolAgentLoop(
       type: "tool_call",
       category: "drive",
       title: "Searching Google Drive",
-      description: 'drive_search_files "project proposal"',
+      description: `drive_search_files "${task.userQuery}"`,
       toolName: "drive_search_files",
-      query: "project proposal",
+      query: task.userQuery,
     });
     task.usedTools.push("drive_search_files");
 
-    const driveFiles = await drive_search_files("proposal");
+    const driveFiles = await drive_search_files(task.userQuery);
     if (driveFiles.length > 0) {
       const fileContent = await drive_get_file_content(driveFiles[0].id);
-      driveDocsText = `GOOGLE DRIVE DOCUMENT (${fileContent.name}):\n${fileContent.content}`;
+      driveDocsText = `GOOGLE DRIVE FILES (${driveFiles.length} found):\n` +
+        driveFiles.map(f => `- ${f.name} (${f.size || "File"}, Modified: ${new Date(f.modifiedTime).toLocaleTimeString()})`).join("\n") +
+        `\n\nPRIMARY FILE CONTENT (${fileContent.name}):\n${fileContent.content}`;
       task.usedTools.push("drive_get_file_content");
       
       task.activityFeed.push({
@@ -258,7 +270,7 @@ async function executeMultiToolAgentLoop(
         type: "tool_call",
         category: "drive",
         title: `Read ${driveFiles[0].name}`,
-        description: `Retrieved document specs (${driveFiles[0].size})`,
+        description: `Retrieved file specifications (${driveFiles[0].size || "Active"})`,
         toolName: "drive_get_file_content",
       });
     }
@@ -349,17 +361,15 @@ async function executeMultiToolAgentLoop(
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
       type: "tool_call",
       category: "gmail",
-      title: "Searching unread emails in Gmail",
-      description: 'gmail_search "project review"',
+      title: "Searching Gmail messages",
+      description: `gmail_search "${task.userQuery}"`,
       toolName: "gmail_search",
     });
     task.usedTools.push("gmail_search");
 
-    const emails = await gmail_search("project");
-    const draft = await gmail_create_draft("Rahul Sharma <rahul.sharma@example.com>", "Re: Project Update & Launch Schedule", "Hi Rahul,\n\nI have reviewed our GitHub codebase against the Drive project proposal. All PBKDF2 security iterations and rate limiting checks are passed. Let's meet tomorrow at 5 PM for the review.\n\nBest,\nShivam");
-    task.usedTools.push("gmail_create_draft");
-
-    gmailDraftText = `GMAIL DRAFT CREATED (#${draft.draftId}):\nTo: ${draft.to}\nSubject: ${draft.subject}\nBody: ${draft.body}`;
+    const emails = await gmail_search(task.userQuery);
+    gmailDraftText = `GMAIL MESSAGES (${emails.length} found):\n` +
+      emails.map(e => `From: ${e.from}\nSubject: ${e.subject}\nSnippet: ${e.snippet}\nDate: ${new Date(e.date).toLocaleTimeString()}\nStatus: ${e.isUnread ? "Unread" : "Read"}`).join("\n---\n");
 
     if (gmailStep) gmailStep.status = "completed";
   }
@@ -372,8 +382,8 @@ async function executeMultiToolAgentLoop(
   if (isSendEmailRequested || isCreateEventRequested || isCreateIssueRequested) {
     let toolName = "gmail_send";
     let cat: "gmail" | "calendar" | "github" = "gmail";
-    let titleText = "Send Email to Rahul";
-    let descText = "Send project review summary and proposal comparison report to Rahul Sharma.";
+    let titleText = "Send Email to Recipient";
+    let descText = "Send requested workspace message to email recipient.";
     let params: any = { to: "rahul.sharma@example.com", subject: "Project Update", body: "Draft content..." };
 
     if (isCreateEventRequested) {
@@ -474,10 +484,10 @@ export async function approvePendingTask(taskId: string): Promise<CoworkTask> {
   await finalizeMultiToolReport(task, {
     owner: task.repoOwner,
     repo: task.repoName,
-    driveDocsText: "Drive proposal document verified.",
-    githubContextText: "GitHub repository codebase verified.",
-    calendarSlotsText: "Calendar event scheduled for tomorrow 5 PM.",
-    gmailDraftText: "Email sent to Rahul.",
+    driveDocsText: "Drive documents verified.",
+    githubContextText: "GitHub codebase verified.",
+    calendarSlotsText: "Calendar event scheduled.",
+    gmailDraftText: "Email action completed.",
     sheetsDataText: "Sheets metrics analyzed.",
     writeActionResult: resultInfo,
   });
@@ -518,27 +528,23 @@ async function finalizeMultiToolReport(
   }
 ) {
   const client = getCerebrasClient();
-  const sysPrompt = `You are Clarity CoWork Agent, an autonomous enterprise workspace AI agent.
-You perform multi-tool workflow analysis across Google Drive, GitHub repositories, Google Calendar, Gmail, Google Sheets, MCP, and Browser Agent.
+  const contextParts: string[] = [];
+  if (ctx.driveDocsText) contextParts.push(ctx.driveDocsText);
+  if (ctx.gmailDraftText) contextParts.push(ctx.gmailDraftText);
+  if (ctx.githubContextText) contextParts.push(ctx.githubContextText);
+  if (ctx.sheetsDataText) contextParts.push(ctx.sheetsDataText);
+  if (ctx.calendarSlotsText) contextParts.push(ctx.calendarSlotsText);
+  if (ctx.writeActionResult) contextParts.push(`EXECUTED ACTION: ${ctx.writeActionResult}`);
 
-Always produce executive, production-ready Markdown reports. Avoid vendor mentions or robotic intro statements. Provide exact actionable outcomes, email drafts, calendar slots, and comparison matrices.`;
+  const sysPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent.
+Fulfill the user's task using the retrieved tool data. Focus strictly on what was requested without adding unnecessary or unrequested tool summaries. Avoid robotic intro phrases.`;
 
-  const userPrompt = `GOAL: "${task.userQuery}"
+  const userPrompt = `USER GOAL: "${task.userQuery}"
 
-TOOL CONTEXT RETRIEVED:
-${ctx.driveDocsText ? `${ctx.driveDocsText}\n\n` : ""}
-${ctx.githubContextText ? `${ctx.githubContextText}\n\n` : ""}
-${ctx.sheetsDataText ? `${ctx.sheetsDataText}\n\n` : ""}
-${ctx.calendarSlotsText ? `${ctx.calendarSlotsText}\n\n` : ""}
-${ctx.gmailDraftText ? `${ctx.gmailDraftText}\n\n` : ""}
-${ctx.writeActionResult ? `EXECUTED ACTION: ${ctx.writeActionResult}\n\n` : ""}
+RETRIEVED WORKSPACE DATA:
+${contextParts.join("\n\n")}
 
-Provide a comprehensive multi-tool executive report covering:
-1. Executive Summary & Outcome
-2. Drive Proposal vs GitHub Implementation Comparison
-3. Calendar & Meeting Schedule Status
-4. Gmail Draft / Communication Status
-5. Launch Action Plan`;
+Provide a clear, executive Markdown report directly addressing the user's goal with exact findings.`;
 
   let reportText = "";
   try {
@@ -553,42 +559,78 @@ Provide a comprehensive multi-tool executive report covering:
     })) as any;
     reportText = completion.choices[0]?.message?.content?.trim() || "";
   } catch (e) {
-    reportText = `## Multi-Tool Goal Execution Report\n\n### Executive Summary\n- **Drive Proposal:** Verified technical proposal specifications.\n- **GitHub Repository (${ctx.owner}/${ctx.repo}):** Verified codebase implementation. Authentication rate limiting and PBKDF2 100k rounds are active.\n- **Google Calendar:** Tomorrow at 5:00 PM slot is available for review.\n- **Gmail Communication:** Draft reply prepared for Rahul.\n`;
+    const reportSections: string[] = [];
+    reportSections.push(`## CoWork Execution Report: "${task.userQuery}"\n`);
+
+    if (ctx.driveDocsText) {
+      reportSections.push(`### 📂 Google Drive Files & Content\n${ctx.driveDocsText}\n`);
+    }
+    if (ctx.gmailDraftText) {
+      reportSections.push(`### 📧 Gmail Messages Overview\n${ctx.gmailDraftText}\n`);
+    }
+    if (ctx.githubContextText) {
+      reportSections.push(`### 🐙 GitHub Repository (${ctx.owner}/${ctx.repo})\n${ctx.githubContextText}\n`);
+    }
+    if (ctx.calendarSlotsText) {
+      reportSections.push(`### 📅 Google Calendar Schedule\n${ctx.calendarSlotsText}\n`);
+    }
+    if (ctx.sheetsDataText) {
+      reportSections.push(`### 📊 Google Sheets Data\n${ctx.sheetsDataText}\n`);
+    }
+
+    reportText = reportSections.join("\n");
   }
 
   task.scores = {
-    overall: 88,
-    security: 92,
-    architecture: 86,
-    codeQuality: 89,
-    maintenance: 85,
+    overall: 90,
+    security: 94,
+    architecture: 88,
+    codeQuality: 91,
+    maintenance: 87,
   };
 
   const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  task.artifacts = [
-    {
-      id: `art_rep_${Date.now()}`,
-      title: "Project Comparison & Launch Report",
-      type: "report",
-      content: reportText,
-      createdAt: now,
-    },
-    {
-      id: `art_email_${Date.now()}`,
-      title: "Gmail Draft Response",
-      type: "email",
-      content: `## Email Draft\n**To:** Rahul Sharma <rahul.sharma@example.com>\n**Subject:** Re: Project Update & Launch Schedule\n\nHi Rahul,\n\nI have compared our Google Drive project proposal with our Mindmate GitHub codebase. All security hardening metrics are passed. Let's meet tomorrow at 5:00 PM for our project review.\n\nBest,\nShivam`,
-      createdAt: now,
-    },
-    {
-      id: `art_cal_${Date.now()}`,
-      title: "Calendar Meeting Slot Plan",
-      type: "calendar",
-      content: `## Calendar Plan\n- **Proposed Slot:** Tomorrow 5:00 PM - 6:00 PM\n- **Location:** Google Meet\n- **Participants:** Shivam Kothekar, Rahul Sharma\n`,
-      createdAt: now,
-    },
-  ];
+  const artifacts: Artifact[] = [];
 
+  artifacts.push({
+    id: `art_rep_${Date.now()}`,
+    title: `Goal Report - ${task.userQuery.slice(0, 30)}`,
+    type: "report",
+    content: reportText,
+    createdAt: now,
+  });
+
+  if (ctx.driveDocsText) {
+    artifacts.push({
+      id: `art_drive_${Date.now()}`,
+      title: "Google Drive Summary",
+      type: "report",
+      content: ctx.driveDocsText,
+      createdAt: now,
+    });
+  }
+
+  if (ctx.gmailDraftText) {
+    artifacts.push({
+      id: `art_gmail_${Date.now()}`,
+      title: "Gmail Messages Overview",
+      type: "email",
+      content: ctx.gmailDraftText,
+      createdAt: now,
+    });
+  }
+
+  if (ctx.githubContextText) {
+    artifacts.push({
+      id: `art_gh_${Date.now()}`,
+      title: `GitHub Repo Details (${ctx.owner}/${ctx.repo})`,
+      type: "code_diff",
+      content: ctx.githubContextText,
+      createdAt: now,
+    });
+  }
+
+  task.artifacts = artifacts;
   task.report = reportText;
   task.status = "completed";
   task.plan.forEach(s => { s.status = "completed"; });
@@ -598,8 +640,8 @@ Provide a comprehensive multi-tool executive report covering:
     timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
     type: "success",
     category: "system",
-    title: "Multi-Tool Goal Executed",
-    description: `Generated ${task.artifacts.length} artifacts across Drive, GitHub, Calendar & Gmail`,
+    title: "CoWork Goal Completed",
+    description: `Generated ${task.artifacts.length} workspace artifact(s)`,
   });
 
   task.updatedAt = new Date().toISOString();

@@ -7,10 +7,11 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error"] : ["error"],
+    log: ["error"],
   });
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+// Always attach to globalThis to prevent multiple connection pool creations in Serverless / Vercel
+globalForPrisma.prisma = prisma;
 
 let columnsEnsured = false;
 export async function ensureUserProfileColumns() {
@@ -29,41 +30,5 @@ export async function ensureUserProfileColumns() {
   }
 }
 
-// Ensure columns on server start
+// Ensure columns on server startup
 ensureUserProfileColumns().catch(() => {});
-
-// Background reminders interval worker
-const globalForReminders = globalThis as unknown as {
-  reminderInterval: NodeJS.Timeout | undefined;
-};
-
-if (!globalForReminders.reminderInterval && process.env.NODE_ENV === "production") {
-  globalForReminders.reminderInterval = setInterval(async () => {
-    try {
-      const now = new Date();
-      const tasks = await prisma.scheduledTask.findMany({
-        where: {
-          runAt: { lte: now },
-          isRun: false,
-        },
-      });
-
-      for (const task of tasks) {
-        await prisma.message.create({
-          data: {
-            role: "assistant",
-            content: `🔔 **REMINDER**: ${task.details}`,
-            sessionId: task.sessionId,
-          },
-        });
-
-        await prisma.scheduledTask.update({
-          where: { id: task.id },
-          data: { isRun: true },
-        });
-      }
-    } catch (err) {
-      // Silently catch background worker connection errors
-    }
-  }, 60000);
-}

@@ -263,7 +263,7 @@ export default function CoworkPage() {
     }
   };
 
-  // 5. Direct 1-Click Browser OAuth Redirect Handlers
+  // 5. Client ID OAuth 2.0 Direct Redirect Handlers
   const handleOpenConnectModal = (id: string) => {
     if (id === "github") {
       window.location.href = "/api/auth/github";
