@@ -214,7 +214,6 @@ export default function CoworkPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: promptToUse,
-          repoName: "ShivamSk07/Mindmate",
           branch: "main",
         }),
       });

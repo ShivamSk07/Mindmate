@@ -109,12 +109,27 @@ export async function createAndRunTask(
   const now = new Date().toISOString();
 
   let owner = "ShivamSk07";
-  let repo = preferredRepo || "Mindmate";
+  let repo = "";
 
-  if (repo.includes("/")) {
-    const parts = repo.split("/");
-    owner = parts[0];
-    repo = parts[1];
+  // Extract repo name dynamically from user query (e.g., "repo called zentro", "repo zentro", "ShivamSk07/zentro")
+  const repoMatch = userQuery.match(/(?:repo|repository)\s+(?:called\s+|named\s+)?([a-zA-Z0-9_\-\/]+)/i);
+  if (repoMatch && repoMatch[1]) {
+    const extracted = repoMatch[1].trim();
+    if (extracted.includes("/")) {
+      const parts = extracted.split("/");
+      owner = parts[0];
+      repo = parts[1];
+    } else {
+      repo = extracted;
+    }
+  } else if (preferredRepo && preferredRepo !== "ShivamSk07/Mindmate" && preferredRepo.trim() !== "") {
+    if (preferredRepo.includes("/")) {
+      const parts = preferredRepo.split("/");
+      owner = parts[0];
+      repo = parts[1];
+    } else {
+      repo = preferredRepo;
+    }
   }
 
   const queryLower = userQuery.toLowerCase();
@@ -142,8 +157,10 @@ export async function createAndRunTask(
     { id: "step_1", title: "Understand user goal & select tools", status: "completed" },
   ];
 
+  const repoDisplayTitle = repo ? `${owner}/${repo}` : `${owner} Repositories`;
+
   if (needsDrive) initialPlan.push({ id: "step_drive", title: "Search & read Google Drive documents", status: "waiting" });
-  if (needsGitHub) initialPlan.push({ id: "step_github", title: `Inspect GitHub repository (${owner}/${repo})`, status: "waiting" });
+  if (needsGitHub) initialPlan.push({ id: "step_github", title: `Inspect GitHub repositories (${repoDisplayTitle})`, status: "waiting" });
   if (needsSheets) initialPlan.push({ id: "step_sheets", title: "Analyze Google Sheets metrics & data", status: "waiting" });
   if (needsCalendar) initialPlan.push({ id: "step_cal", title: "Check Google Calendar schedule & free slots", status: "waiting" });
   if (needsGmail) initialPlan.push({ id: "step_gmail", title: "Search & check Gmail inbox messages", status: "waiting" });
