@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   title: "Clarity — Autonomous AI Agentic Workspace",
   description: "Clarity is an autonomous AI agentic workspace that connects your GitHub, Google Drive, Gmail, Calendar, and Sheets to execute multi-tool workflows and automate enterprise tasks.",
   verification: {
-    google: "sMFtcOD5RvVte1dLz-ytiWWiXVekEhGEdke6Sx1jP10",
+    google: "w7SiSdrB1FiHi2nZhS90TO-ZbS4vm7PB47nJQC07VXE",
   },
 };
 
