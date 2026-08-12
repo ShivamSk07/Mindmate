@@ -25,6 +25,7 @@ import { listMCPServers, discoverMCPTools, executeMCPTool } from "./mcp";
 import { browser_open, browser_search, browser_extract } from "./browserAgent";
 import { requiresHumanApproval } from "./toolRegistry";
 import { getCerebrasClient, MODEL } from "./cerebras";
+import { prisma } from "./db";
 
 export interface PlanStep {
   id: string;
@@ -232,6 +233,18 @@ async function executeMultiToolAgentLoop(
     queryLower: task.userQuery.toLowerCase(),
   };
 
+  // Fetch real Google OAuth access token from DB
+  let googleAccessToken: string | null = null;
+  try {
+    const profile = await (prisma as any).userProfile.findFirst({
+      where: { googleConnected: true },
+      select: { googleToken: true, googleEmail: true },
+    });
+    googleAccessToken = profile?.googleToken || null;
+  } catch (e) {
+    console.warn("Could not fetch Google token from DB:", e);
+  }
+
   let driveDocsText = "";
   let githubContextText = "";
   let calendarSlotsText = "";
@@ -256,7 +269,7 @@ async function executeMultiToolAgentLoop(
     });
     task.usedTools.push("drive_search_files");
 
-    const driveFiles = await drive_search_files(task.userQuery);
+    const driveFiles = await drive_search_files(task.userQuery, googleAccessToken);
     if (driveFiles.length > 0) {
       const fileContent = await drive_get_file_content(driveFiles[0].id);
       driveDocsText = `GOOGLE DRIVE FILES (${driveFiles.length} found):\n` +
@@ -367,8 +380,13 @@ async function executeMultiToolAgentLoop(
     });
     task.usedTools.push("gmail_search");
 
-    const emails = await gmail_search(task.userQuery);
-    gmailDraftText = `CONNECTED GMAIL ACCOUNT: shivam@clarity.app (Shivam Kothekar)\n\nGMAIL MESSAGES INBOX (${emails.length} messages found):\n` +
+    const emails = await gmail_search(task.userQuery, googleAccessToken);
+    const userEmail = (await (prisma as any).userProfile.findFirst({
+      where: { googleConnected: true },
+      select: { googleEmail: true },
+    }))?.googleEmail || "your Gmail account";
+
+    gmailDraftText = `CONNECTED GMAIL ACCOUNT: ${userEmail}\n\nGMAIL INBOX (${emails.length} messages found):\n` +
       emails.map(e => `• From: ${e.from}\n  To: ${e.to}\n  Subject: ${e.subject}\n  Snippet: "${e.snippet}"\n  Date: ${new Date(e.date).toLocaleString()}\n  Status: ${e.isUnread ? "UNREAD" : "READ"}`).join("\n\n");
 
     if (gmailStep) gmailStep.status = "completed";

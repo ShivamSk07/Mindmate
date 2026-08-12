@@ -31,13 +31,15 @@ model UserProfile {
   fontSize        String   @default("15")
   language        String   @default("English")
   bubbleStyle     String   @default("modern")
-  githubConnected Boolean  @default(false)
-  githubToken     String?  @db.Text
-  githubUsername  String?
-  githubAvatarUrl String?
-  googleConnected Boolean  @default(false)
-  googleEmail     String?
-  mcpConnected    Boolean  @default(false)
+  githubConnected      Boolean  @default(false)
+  githubToken          String?  @db.Text
+  githubUsername       String?
+  githubAvatarUrl      String?
+  googleConnected      Boolean  @default(false)
+  googleEmail          String?
+  googleToken          String?  @db.Text
+  googleRefreshToken   String?  @db.Text
+  mcpConnected         Boolean  @default(false)
 }
 
 model Persona {
