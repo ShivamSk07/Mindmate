@@ -368,8 +368,8 @@ async function executeMultiToolAgentLoop(
     task.usedTools.push("gmail_search");
 
     const emails = await gmail_search(task.userQuery);
-    gmailDraftText = `GMAIL MESSAGES (${emails.length} found):\n` +
-      emails.map(e => `From: ${e.from}\nSubject: ${e.subject}\nSnippet: ${e.snippet}\nDate: ${new Date(e.date).toLocaleTimeString()}\nStatus: ${e.isUnread ? "Unread" : "Read"}`).join("\n---\n");
+    gmailDraftText = `CONNECTED GMAIL ACCOUNT: shivam@clarity.app (Shivam Kothekar)\n\nGMAIL MESSAGES INBOX (${emails.length} messages found):\n` +
+      emails.map(e => `• From: ${e.from}\n  To: ${e.to}\n  Subject: ${e.subject}\n  Snippet: "${e.snippet}"\n  Date: ${new Date(e.date).toLocaleString()}\n  Status: ${e.isUnread ? "UNREAD" : "READ"}`).join("\n\n");
 
     if (gmailStep) gmailStep.status = "completed";
   }
@@ -536,15 +536,21 @@ async function finalizeMultiToolReport(
   if (ctx.calendarSlotsText) contextParts.push(ctx.calendarSlotsText);
   if (ctx.writeActionResult) contextParts.push(`EXECUTED ACTION: ${ctx.writeActionResult}`);
 
-  const sysPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent.
-Fulfill the user's task using the retrieved tool data. Focus strictly on what was requested without adding unnecessary or unrequested tool summaries. Avoid robotic intro phrases.`;
+  const sysPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent (like Manus / Claude CoWork).
+Fulfill the user's query directly, naturally, and intelligently using the retrieved workspace data.
 
-  const userPrompt = `USER GOAL: "${task.userQuery}"
+STRICT INSTRUCTIONS:
+1. Provide a direct, clean, human-like response answering the user's prompt.
+2. If the user asks for their email, inbox, or latest messages, clearly state their connected email address first, and then list their latest emails in a beautiful, executive, easy-to-read format.
+3. DO NOT output robotic template headings like "Inference", "Source Details", "Conclusion", "Recommendation", or "Executive Summary Goal:" unless explicitly requested.
+4. Keep the tone natural, crisp, smart, and professional.`;
+
+  const userPrompt = `USER REQUEST: "${task.userQuery}"
 
 RETRIEVED WORKSPACE DATA:
 ${contextParts.join("\n\n")}
 
-Provide a clear, executive Markdown report directly addressing the user's goal with exact findings.`;
+Provide a direct, natural, executive response answering the user's goal.`;
 
   let reportText = "";
   try {
