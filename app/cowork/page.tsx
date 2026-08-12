@@ -1056,6 +1056,9 @@ export default function CoworkPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
       {/* ── MODAL 4: MCP DASHBOARD CONTROL MODAL ── */}
       <MCPDashboardModal
         isOpen={showMCPDashboardModal}
