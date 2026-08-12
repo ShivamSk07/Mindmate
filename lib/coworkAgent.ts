@@ -235,6 +235,8 @@ async function executeMultiToolAgentLoop(
 
   // Fetch real Google OAuth access token from DB
   let googleAccessToken: string | null = null;
+  let githubAccessToken: string | null = null;
+  let githubUsername: string = owner;
   try {
     const profile = await (prisma as any).userProfile.findFirst({
       where: { googleConnected: true },
@@ -243,6 +245,18 @@ async function executeMultiToolAgentLoop(
     googleAccessToken = profile?.googleToken || null;
   } catch (e) {
     console.warn("Could not fetch Google token from DB:", e);
+  }
+
+  // Fetch real GitHub OAuth access token from DB
+  try {
+    const ghProfile = await (prisma as any).userProfile.findFirst({
+      where: { githubConnected: true },
+      select: { githubToken: true, githubUsername: true },
+    });
+    githubAccessToken = ghProfile?.githubToken || null;
+    githubUsername = ghProfile?.githubUsername || owner;
+  } catch (e) {
+    console.warn("Could not fetch GitHub token from DB:", e);
   }
 
   let driveDocsText = "";
@@ -297,22 +311,43 @@ async function executeMultiToolAgentLoop(
     if (ghStep) ghStep.status = "running";
     taskStore.set(taskId, task);
 
+    // Use real connected GitHub username if available
+    const effectiveOwner = githubUsername || owner;
+    const effectiveRepo = repo;
+
     task.activityFeed.push({
       id: `act_gh_tree_${Date.now()}`,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
       type: "tool_call",
       category: "github",
       title: "Loading GitHub repository tree",
-      description: `github_get_repository_tree "${owner}/${repo}" (${branch})`,
+      description: `github_get_repository_tree "${effectiveOwner}/${effectiveRepo}" (${branch})`,
       toolName: "github_get_repository_tree",
     });
     task.usedTools.push("github_get_repository_tree");
 
-    const tree = await github_get_repository_tree(owner, repo, branch);
-    const commits = await github_get_commits(owner, repo);
-    const fileData = await github_get_file(owner, repo, "lib/auth.ts", branch);
+    try {
+      const repos = await github_list_repositories(effectiveOwner, githubAccessToken);
+      const primaryRepo = repos.find(r => r.name.toLowerCase() === effectiveRepo.toLowerCase()) || repos[0];
+      const resolvedOwner = primaryRepo?.full_name?.split("/")[0] || effectiveOwner;
+      const resolvedRepo = primaryRepo?.name || effectiveRepo;
 
-    githubContextText = `GITHUB REPOSITORY (${owner}/${repo}):\nTree Files: ${tree.length} files scanned\nKey File (lib/auth.ts):\n${fileData.content.slice(0, 500)}`;
+      const tree = await github_get_repository_tree(resolvedOwner, resolvedRepo, branch);
+      const commits = await github_get_commits(resolvedOwner, resolvedRepo);
+      const issues = await github_get_issues(resolvedOwner, resolvedRepo);
+
+      githubContextText = `GITHUB ACCOUNT: @${resolvedOwner}\n` +
+        `REPOSITORIES (${repos.length} found):\n` +
+        repos.slice(0, 5).map(r => `• ${r.full_name} (${r.language || "N/A"}, ⭐${r.stargazers_count}, ${r.open_issues_count} issues)`).join("\n") +
+        `\n\nACTIVE REPO: ${resolvedOwner}/${resolvedRepo}\n` +
+        `Files: ${tree.length} files scanned\n` +
+        `Recent Commits (${commits.length}):\n` +
+        commits.slice(0, 3).map(c => `• ${c.commit.message.split("\n")[0]} — ${c.commit.author.name} (${new Date(c.commit.author.date).toLocaleDateString()})`).join("\n") +
+        (issues.length > 0 ? `\nOpen Issues (${issues.length}):\n` + issues.slice(0, 3).map(i => `• #${i.number}: ${i.title}`).join("\n") : "");
+    } catch (e) {
+      console.warn("GitHub data fetch error:", e);
+      githubContextText = `GITHUB: Connected as @${effectiveOwner}. Repository data fetch encountered an issue.`;
+    }
 
     if (ghStep) ghStep.status = "completed";
   }

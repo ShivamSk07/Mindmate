@@ -62,12 +62,12 @@ export interface GitHubCommit {
   html_url: string;
 }
 
-function getGitHubToken(): string | null {
-  return process.env.GITHUB_TOKEN || process.env.GITHUB_PERSONAL_ACCESS_TOKEN || null;
+function getGitHubToken(userToken?: string | null): string | null {
+  return userToken || process.env.GITHUB_TOKEN || process.env.GITHUB_PERSONAL_ACCESS_TOKEN || null;
 }
 
-async function githubFetch(endpoint: string, options: RequestInit = {}) {
-  const token = getGitHubToken();
+async function githubFetch(endpoint: string, options: RequestInit = {}, userToken?: string | null) {
+  const token = getGitHubToken(userToken);
   const headers: Record<string, string> = {
     "User-Agent": "Clarity-CoWork-Agent",
     "Accept": "application/vnd.github.v3+json",
@@ -93,9 +93,11 @@ async function githubFetch(endpoint: string, options: RequestInit = {}) {
 // READ TOOLS
 // -------------------------------------------------------------
 
-export async function github_list_repositories(username = "ShivamSk07"): Promise<GitHubRepo[]> {
+export async function github_list_repositories(username = "ShivamSk07", accessToken?: string | null): Promise<GitHubRepo[]> {
   try {
-    const repos = await githubFetch(`/users/${username}/repos?sort=updated&per_page=30`);
+    // Use authenticated endpoint if user token is available (gets private repos too)
+    const endpoint = accessToken ? `/user/repos?sort=updated&per_page=30` : `/users/${username}/repos?sort=updated&per_page=30`;
+    const repos = await githubFetch(endpoint, {}, accessToken);
     return repos.map((r: any) => ({
       id: r.id,
       name: r.name,
@@ -111,7 +113,7 @@ export async function github_list_repositories(username = "ShivamSk07"): Promise
       updated_at: r.updated_at,
     }));
   } catch (err) {
-    // Return default Mindmate repo list fallback
+    console.warn("GitHub repos fetch failed, using fallback:", err);
     return [
       {
         id: 101,
@@ -127,20 +129,6 @@ export async function github_list_repositories(username = "ShivamSk07"): Promise
         open_issues_count: 1,
         updated_at: new Date().toISOString(),
       },
-      {
-        id: 102,
-        name: "portfolio",
-        full_name: "ShivamSk07/portfolio",
-        description: "Personal portfolio website built with Next.js",
-        private: false,
-        html_url: "https://github.com/ShivamSk07/portfolio",
-        default_branch: "main",
-        language: "TypeScript",
-        stargazers_count: 5,
-        forks_count: 0,
-        open_issues_count: 0,
-        updated_at: new Date(Date.now() - 86400000 * 3).toISOString(),
-      }
     ];
   }
 }
