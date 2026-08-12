@@ -42,6 +42,8 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import MCPDashboardModal from "@/components/MCPDashboardModal";
+import { getSupportedMCPRegistry, SupportedMCPServer } from "@/lib/mcpRegistry";
 
 interface IntegrationItem {
   id: string;
@@ -137,12 +139,18 @@ export default function CoworkPage() {
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const [copiedReport, setCopiedReport] = useState(false);
 
+  // MCP Control & @Mention State
+  const [showMCPDashboardModal, setShowMCPDashboardModal] = useState(false);
+  const [showMentionMenu, setShowMentionMenu] = useState(false);
+  const [mcpRegistry, setMcpRegistry] = useState<SupportedMCPServer[]>([]);
+
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // 1. Initial Data Fetch
   useEffect(() => {
     fetchIntegrationsStatus();
     fetchTaskHistory();
+    setMcpRegistry(getSupportedMCPRegistry());
   }, []);
 
   const fetchIntegrationsStatus = async () => {
@@ -401,6 +409,14 @@ export default function CoworkPage() {
               <span className={`w-1.5 h-1.5 rounded-full ${item.connected || item.id === "browser" ? "bg-emerald-400" : "bg-zinc-600"}`} />
             </button>
           ))}
+
+          <button
+            onClick={() => setShowMCPDashboardModal(true)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-violet-600/20 text-violet-300 border border-violet-500/30 hover:bg-violet-600/30 transition-all ml-1"
+          >
+            <Plug size={12} />
+            <span>MCP Registry Dashboard</span>
+          </button>
         </div>
 
         {/* Back & Actions */}
@@ -661,23 +677,69 @@ export default function CoworkPage() {
                 ))}
               </div>
 
+              {/* @Mention Autocomplete Dropdown */}
+              {showMentionMenu && (
+                <div className="p-2 rounded-xl bg-[#141417] border border-[#27272a] shadow-2xl space-y-1 animate-fade-in text-xs max-h-48 overflow-y-auto scrollbar-thin">
+                  <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 flex items-center justify-between border-b border-[#232328]">
+                    <span>SUPPORTED MCP SERVERS (@MENTION TO DIRECT)</span>
+                    <button onClick={() => setShowMentionMenu(false)} className="hover:text-white">✕</button>
+                  </div>
+                  {mcpRegistry.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        const cleanPrompt = promptInput.endsWith("@") ? promptInput.slice(0, -1) : promptInput;
+                        setPromptInput(`${cleanPrompt} ${item.tag} `);
+                        setShowMentionMenu(false);
+                      }}
+                      className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#1f1f23] text-left transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span>{item.icon}</span>
+                        <div>
+                          <span className="font-bold text-white mr-1.5">{item.tag}</span>
+                          <span className="text-zinc-400 text-[11px]">{item.name}</span>
+                        </div>
+                      </div>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#09090b] text-zinc-400 border border-[#232328]">
+                        {item.enabled ? "Active" : "Config Required"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Main Input Field */}
-              <div className="flex items-center gap-3 bg-[#09090b] border border-[#27272a] focus-within:border-violet-500/60 rounded-xl px-4 py-3 transition-all">
+              <div className="flex items-center gap-3 bg-[#09090b] border border-[#27272a] focus-within:border-violet-500/60 rounded-xl px-4 py-3 transition-all relative">
                 <Sparkles size={18} className="text-violet-400 flex-shrink-0" />
                 <input
                   type="text"
                   value={promptInput}
-                  onChange={(e) => setPromptInput(e.target.value)}
+                  onChange={(e) => {
+                    setPromptInput(e.target.value);
+                    if (e.target.value.endsWith("@")) {
+                      setShowMentionMenu(true);
+                    }
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
                       handleStartTask();
                     }
                   }}
-                  placeholder="Ask Clarity CoWork to inspect repos, read Drive, search Gmail, check Calendar..."
+                  placeholder="Type @stitch, @postgres, @github or describe your goal..."
                   disabled={isSubmitting}
                   className="flex-1 bg-transparent border-0 outline-none text-sm text-zinc-100 placeholder-zinc-500"
                 />
+
+                <button
+                  type="button"
+                  onClick={() => setShowMentionMenu(!showMentionMenu)}
+                  className="text-xs font-mono px-2 py-1 rounded bg-[#18181c] border border-[#232328] text-violet-300 hover:text-white transition-colors"
+                  title="Mention MCP Server"
+                >
+                  @mention
+                </button>
 
                 <button
                   onClick={() => handleStartTask()}
@@ -994,8 +1056,12 @@ export default function CoworkPage() {
               </button>
             </div>
           </form>
-        </div>
-      )}
+      {/* ── MODAL 4: MCP DASHBOARD CONTROL MODAL ── */}
+      <MCPDashboardModal
+        isOpen={showMCPDashboardModal}
+        onClose={() => setShowMCPDashboardModal(false)}
+        onRegistryUpdated={() => setMcpRegistry(getSupportedMCPRegistry())}
+      />
 
     </div>
   );

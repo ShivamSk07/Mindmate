@@ -26,6 +26,7 @@ import { browser_open, browser_search, browser_extract } from "./browserAgent";
 import { requiresHumanApproval } from "./toolRegistry";
 import { getCerebrasClient, MODEL } from "./cerebras";
 import { prisma } from "./db";
+import { parseMentionedMCPServers } from "./mcpRegistry";
 
 export interface PlanStep {
   id: string;
@@ -133,16 +134,20 @@ export async function createAndRunTask(
   }
 
   const queryLower = userQuery.toLowerCase();
+  const mentionedMCPServers = parseMentionedMCPServers(userQuery);
+  const mcpServerTitle = mentionedMCPServers.length > 0 
+    ? `Execute ${mentionedMCPServers.map(s => s.name).join(", ")}` 
+    : "Discover & execute MCP Server tools";
 
-  // Multi-Tool Detection Logic based on user query intent
+  // Multi-Tool Detection Logic based on user query intent & @mentions
   const isDriveQuery = queryLower.includes("drive") || queryLower.includes("proposal") || queryLower.includes("pdf") || queryLower.includes("doc") || queryLower.includes("file") || queryLower.includes("files") || queryLower.includes("folder");
   const isCalendarQuery = queryLower.includes("calendar") || queryLower.includes("meeting") || queryLower.includes("slot") || queryLower.includes("schedule") || queryLower.includes("tomorrow") || queryLower.includes("event") || queryLower.includes("gcal");
   const isGmailQuery = queryLower.includes("email") || queryLower.includes("mail") || queryLower.includes("draft") || queryLower.includes("inbox") || queryLower.includes("rahul") || queryLower.includes("gmail") || queryLower.includes("message") || queryLower.includes("messages");
   const isSheetsQuery = queryLower.includes("sheet") || queryLower.includes("sheets") || queryLower.includes("spreadsheet") || queryLower.includes("sales") || queryLower.includes("revenue") || queryLower.includes("excel");
-  const isBrowserQuery = queryLower.includes("browser") || queryLower.includes("docs url") || queryLower.includes("search web") || queryLower.includes("website");
-  const isMCPQuery = queryLower.includes("mcp") || queryLower.includes("stitch");
+  const isBrowserQuery = queryLower.includes("browser") || queryLower.includes("docs url") || queryLower.includes("search web") || queryLower.includes("website") || queryLower.includes("@browser");
+  const isMCPQuery = queryLower.includes("mcp") || queryLower.includes("stitch") || queryLower.includes("@") || mentionedMCPServers.length > 0;
 
-  const isExplicitGitHub = queryLower.includes("github") || queryLower.includes("repo") || queryLower.includes("code") || queryLower.includes("pr") || queryLower.includes("commit") || queryLower.includes("audit") || queryLower.includes("issue");
+  const isExplicitGitHub = queryLower.includes("github") || queryLower.includes("repo") || queryLower.includes("code") || queryLower.includes("pr") || queryLower.includes("commit") || queryLower.includes("audit") || queryLower.includes("issue") || queryLower.includes("@github");
   const isAnyOtherTool = isDriveQuery || isCalendarQuery || isGmailQuery || isSheetsQuery || isBrowserQuery || isMCPQuery;
 
   const needsGitHub = isExplicitGitHub || !isAnyOtherTool;
@@ -165,7 +170,7 @@ export async function createAndRunTask(
   if (needsCalendar) initialPlan.push({ id: "step_cal", title: "Check Google Calendar schedule & free slots", status: "waiting" });
   if (needsGmail) initialPlan.push({ id: "step_gmail", title: "Search & check Gmail inbox messages", status: "waiting" });
   if (needsBrowser) initialPlan.push({ id: "step_browser", title: "Search & extract web documentation via Browser Agent", status: "waiting" });
-  if (needsMCP) initialPlan.push({ id: "step_mcp", title: "Discover & execute MCP Server tools", status: "waiting" });
+  if (needsMCP) initialPlan.push({ id: "step_mcp", title: mcpServerTitle, status: "waiting" });
 
   initialPlan.push({ id: "step_final", title: "Synthesize result & generate workspace artifacts", status: "waiting" });
 
