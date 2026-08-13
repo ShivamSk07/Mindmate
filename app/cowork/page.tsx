@@ -38,7 +38,12 @@ import {
   UserCheck,
   Lock,
   KeyRound,
-  ExternalLink
+  ExternalLink,
+  Maximize2,
+  Minimize2,
+  Info,
+  Terminal,
+  Send
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -68,6 +73,7 @@ interface ActivityItem {
   description: string;
   toolName?: string;
   query?: string;
+  details?: any;
 }
 
 interface PendingApproval {
@@ -87,9 +93,17 @@ interface Artifact {
   createdAt: string;
 }
 
+interface MessageItem {
+  id: string;
+  sender: "user" | "agent";
+  content: string;
+  timestamp: string;
+}
+
 interface CoworkTask {
   id: string;
   userQuery: string;
+  messages?: MessageItem[];
   repoOwner: string;
   repoName: string;
   branch: string;
@@ -111,8 +125,6 @@ export default function CoworkPage() {
   // Integrations State
   const [integrations, setIntegrations] = useState<IntegrationItem[]>([]);
   const [activeToolsCount, setActiveToolsCount] = useState(1);
-  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
-  const [connectingId, setConnectingId] = useState<string | null>(null);
 
   // Auth Dialog Modals State
   const [showGitHubAuthModal, setShowGitHubAuthModal] = useState(false);
@@ -123,21 +135,22 @@ export default function CoworkPage() {
   const [googleEmailInput, setGoogleEmailInput] = useState("");
 
   const [showAddMCPModal, setShowAddMCPModal] = useState(false);
-  const [mcpServerName, setMcpServerName] = useState("");
-  const [mcpServerUrl, setMcpServerUrl] = useState("");
-
-  // Left Sidebar State
-  const [workspaceNav, setWorkspaceNav] = useState<"overview" | "tasks" | "artifacts">("overview");
 
   // Task & Execution State
   const [recentTasks, setRecentTasks] = useState<CoworkTask[]>([]);
   const [currentTask, setCurrentTask] = useState<CoworkTask | null>(null);
   const [promptInput, setPromptInput] = useState("");
+  const [followupInput, setFollowupInput] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isFollowupSubmitting, setIsFollowupSubmitting] = useState(false);
 
   // Artifact State
   const [activeArtifact, setActiveArtifact] = useState<Artifact | null>(null);
   const [copiedReport, setCopiedReport] = useState(false);
+  const [isFullscreenCanvas, setIsFullscreenCanvas] = useState(false);
+
+  // Inspector Modal State
+  const [selectedLogItem, setSelectedLogItem] = useState<ActivityItem | null>(null);
 
   // MCP Control & @Mention State
   const [showMCPDashboardModal, setShowMCPDashboardModal] = useState(false);
@@ -145,6 +158,7 @@ export default function CoworkPage() {
   const [mcpRegistry, setMcpRegistry] = useState<SupportedMCPServer[]>([]);
 
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const chatScrollRef = useRef<HTMLDivElement | null>(null);
 
   // 1. Initial Data Fetch
   useEffect(() => {
@@ -208,6 +222,13 @@ export default function CoworkPage() {
     };
   }, [currentTask?.id, currentTask?.status, activeArtifact]);
 
+  // Scroll to bottom on new chat messages
+  useEffect(() => {
+    if (chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [currentTask?.messages, currentTask?.activityFeed]);
+
   // 3. Start Agentic Task
   const handleStartTask = async (customPrompt?: string) => {
     const promptToUse = customPrompt || promptInput;
@@ -231,7 +252,6 @@ export default function CoworkPage() {
 
       setCurrentTask(data.task);
       setPromptInput("");
-
     } catch (err: any) {
       alert(err.message || "An error occurred");
     } finally {
@@ -239,7 +259,35 @@ export default function CoworkPage() {
     }
   };
 
-  // 4. Approval Handlers
+  // 4. Send Multi-Turn Follow-up inside current Task
+  const handleSendFollowup = async () => {
+    if (!currentTask || !followupInput.trim() || isFollowupSubmitting) return;
+
+    const text = followupInput.trim();
+    setFollowupInput("");
+    setIsFollowupSubmitting(true);
+
+    try {
+      const res = await fetch(`/api/cowork/tasks/${currentTask.id}/followup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: text }),
+      });
+      const data = await res.json();
+      if (res.ok && data.task) {
+        setCurrentTask(data.task);
+        if (data.task.artifacts?.length > 0) {
+          setActiveArtifact(data.task.artifacts[0]);
+        }
+      }
+    } catch (e) {
+      console.error("Follow-up submission error", e);
+    } finally {
+      setIsFollowupSubmitting(false);
+    }
+  };
+
+  // 5. Approval Handlers
   const handleApproveAction = async () => {
     if (!currentTask) return;
     try {
@@ -270,7 +318,6 @@ export default function CoworkPage() {
     }
   };
 
-  // 5. Client ID OAuth 2.0 Direct Redirect Handlers
   const handleOpenConnectModal = (id: string) => {
     if (id === "github") {
       window.location.href = "/api/auth/github";
@@ -281,87 +328,16 @@ export default function CoworkPage() {
     }
   };
 
-  const handleSubmitGitHubAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setConnectingId("github");
-    try {
-      const res = await fetch("/api/cowork/github/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "connect",
-          username: githubUsernameInput.trim(),
-          token: githubTokenInput.trim() || undefined,
-        }),
-      });
-      if (res.ok) {
-        setShowGitHubAuthModal(false);
-        fetchIntegrationsStatus();
-      }
-    } catch (e) {
-      console.error("GitHub Auth Error", e);
-    } finally {
-      setConnectingId(null);
-    }
-  };
-
-  const handleSubmitGoogleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setConnectingId("google");
-    try {
-      const res = await fetch("/api/cowork/google/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "connect",
-          email: googleEmailInput.trim() || "shivam@clarity.app",
-        }),
-      });
-      if (res.ok) {
-        setShowGoogleAuthModal(false);
-        fetchIntegrationsStatus();
-      }
-    } catch (e) {
-      console.error("Google Auth Error", e);
-    } finally {
-      setConnectingId(null);
-    }
-  };
-
-  const handleDisconnectIntegration = async (id: string) => {
-    setConnectingId(id);
-    try {
-      if (id === "github") {
-        await fetch("/api/cowork/github/connect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "disconnect" }),
-        });
-      } else if (["drive", "calendar", "gmail", "sheets"].includes(id)) {
-        await fetch("/api/cowork/google/connect", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "disconnect" }),
-        });
-      }
-      await fetchIntegrationsStatus();
-    } catch (e) {
-      console.error("Disconnect error", e);
-    } finally {
-      setConnectingId(null);
-    }
-  };
-
   const getCategoryIcon = (cat?: string) => {
     switch (cat) {
-      case "github": return <Github size={14} className="text-white flex-shrink-0" />;
-      case "drive": return <HardDrive size={14} className="text-white flex-shrink-0" />;
-      case "calendar": return <Calendar size={14} className="text-white flex-shrink-0" />;
-      case "gmail": return <Mail size={14} className="text-white flex-shrink-0" />;
-      case "sheets": return <FileSpreadsheet size={14} className="text-white flex-shrink-0" />;
-      case "mcp": return <Plug size={14} className="text-white flex-shrink-0" />;
-      case "browser": return <Globe size={14} className="text-white flex-shrink-0" />;
-      default: return <Sparkles size={14} className="text-white flex-shrink-0" />;
+      case "github": return <Github size={14} className="text-[#a78bfa] flex-shrink-0" />;
+      case "drive": return <HardDrive size={14} className="text-[#60a5fa] flex-shrink-0" />;
+      case "calendar": return <Calendar size={14} className="text-[#f472b6] flex-shrink-0" />;
+      case "gmail": return <Mail size={14} className="text-[#f87171] flex-shrink-0" />;
+      case "sheets": return <FileSpreadsheet size={14} className="text-[#34d399] flex-shrink-0" />;
+      case "mcp": return <Plug size={14} className="text-[#fbbf24] flex-shrink-0" />;
+      case "browser": return <Globe size={14} className="text-[#38bdf8] flex-shrink-0" />;
+      default: return <Sparkles size={14} className="text-[#a78bfa] flex-shrink-0" />;
     }
   };
 
@@ -376,13 +352,13 @@ export default function CoworkPage() {
     <div className="h-[100dvh] w-full bg-[#09090b] text-zinc-100 flex flex-col overflow-hidden font-sans">
       
       {/* ── TOP HEADER BAR ── */}
-      <header className="h-14 px-5 bg-[#0f0f12] border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 z-20">
+      <header className="h-14 px-5 bg-[#0d0d10] border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 z-20">
         <div className="flex items-center gap-3">
           <Link href="/chat" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
             <div className="w-7 h-7 rounded-lg bg-[#18181c] border border-[#27272a] flex items-center justify-center p-1">
               <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
             </div>
-            <span className="text-sm font-semibold text-zinc-100 tracking-tight">Clarity CoWork</span>
+            <span className="text-sm font-bold text-white tracking-tight">Clarity CoWork</span>
           </Link>
           <span className="text-xs text-zinc-600">/</span>
           <span className="text-xs font-mono text-zinc-400">Agentic Workspace</span>
@@ -391,67 +367,74 @@ export default function CoworkPage() {
         {/* Action Controls */}
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => setShowIntegrationsModal(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#18181c] border border-[#232328] hover:bg-[#232328] text-xs font-medium text-zinc-300 transition-colors"
+            onClick={() => setShowMCPDashboardModal(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#141417] border border-[#232328] hover:bg-[#1f1f23] text-xs font-medium text-zinc-300 transition-colors"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>{activeToolsCount} Connected Tools</span>
           </button>
 
           <button
             onClick={() => setShowMCPDashboardModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181c] border border-[#232328] hover:bg-[#232328] text-xs font-medium text-zinc-300 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141417] border border-[#232328] hover:bg-[#1f1f23] text-xs font-medium text-zinc-300 transition-colors"
           >
-            <Plug size={13} />
+            <Plug size={13} className="text-amber-400" />
             <span>MCP Settings</span>
           </button>
 
           <Link
             href="/chat"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#18181c] border border-[#232328] hover:bg-[#232328] text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141417] border border-[#232328] hover:bg-[#1f1f23] text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
           >
             <ArrowLeft size={13} /> Back to Chat
           </Link>
         </div>
       </header>
 
-      {/* ── MAIN WORKSPACE CANVAS ── */}
+      {/* ── MAIN WORKSPACE CONTAINER ── */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
 
         {/* ── LEFT DRAWER (TASKS & ARTIFACTS HISTORY) ── */}
-        <aside className="w-[260px] bg-[#0c0c0e] border-r border-[#1f1f23] flex flex-col h-full flex-shrink-0">
-          <div className="p-4 border-b border-[#1f1f23] flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">History & Artifacts</span>
+        <aside className="w-[240px] bg-[#0c0c0e] border-r border-[#1f1f23] flex flex-col h-full flex-shrink-0">
+          <div className="p-3.5 border-b border-[#1f1f23] flex items-center justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Agent Goals</span>
             <button
               onClick={() => {
                 setCurrentTask(null);
                 setActiveArtifact(null);
               }}
-              className="text-xs text-violet-400 hover:text-violet-300 font-medium transition-colors"
+              className="text-xs text-violet-400 hover:text-violet-300 font-semibold transition-colors flex items-center gap-1"
             >
-              + New Task
+              <Plus size={13} /> New Goal
             </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin">
             {recentTasks.length > 0 && (
               <div className="space-y-1.5">
-                <span className="block px-1 text-[10px] font-mono text-zinc-400">RECENT AGENT GOALS</span>
-                {recentTasks.slice(0, 8).map((t) => (
+                <span className="block px-1 text-[10px] font-mono text-zinc-400 uppercase">Recent Executions</span>
+                {recentTasks.slice(0, 10).map((t) => (
                   <div
                     key={t.id}
                     onClick={() => {
                       setCurrentTask(t);
                       if (t.artifacts?.length > 0) setActiveArtifact(t.artifacts[0]);
                     }}
-                    className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                    className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
                       currentTask?.id === t.id
-                        ? "bg-[#18181c] border-zinc-600 text-white"
-                        : "bg-[#121215] border-[#232328] text-zinc-400 hover:text-zinc-200 hover:bg-[#18181c]"
+                        ? "bg-[#18181c] border-violet-500/50 text-white shadow-md"
+                        : "bg-[#111114] border-[#232328] text-zinc-400 hover:text-zinc-200 hover:bg-[#161619]"
                     }`}
                   >
-                    <div className="text-xs font-medium truncate">{t.userQuery}</div>
-                    <div className="text-[10px] text-zinc-400 font-mono mt-0.5 capitalize">{t.status}</div>
+                    <div className="text-xs font-semibold truncate">{t.userQuery}</div>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded ${
+                        t.status === "completed" ? "bg-emerald-500/10 text-emerald-400" :
+                        t.status === "running" ? "bg-blue-500/10 text-blue-400" :
+                        "bg-zinc-800 text-zinc-400"
+                      }`}>{t.status}</span>
+                      <span className="text-[9px] text-zinc-400">{t.artifacts?.length || 0} artifacts</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -459,19 +442,19 @@ export default function CoworkPage() {
 
             {currentTask?.artifacts && currentTask.artifacts.length > 0 && (
               <div className="pt-3 border-t border-[#1f1f23] space-y-1.5">
-                <span className="block px-1 text-[10px] font-mono text-zinc-400">GENERATED ARTIFACTS</span>
+                <span className="block px-1 text-[10px] font-mono text-zinc-400 uppercase">Generated Canvas Artifacts</span>
                 {currentTask.artifacts.map((art) => (
                   <div
                     key={art.id}
                     onClick={() => setActiveArtifact(art)}
-                    className={`p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                    className={`p-2 rounded-lg border text-xs cursor-pointer transition-all ${
                       activeArtifact?.id === art.id
-                        ? "bg-[#18181c] border-zinc-600 text-white"
-                        : "bg-[#121215] border-[#232328] text-zinc-400 hover:text-zinc-200"
+                        ? "bg-violet-950/40 border-violet-500/60 text-white"
+                        : "bg-[#111114] border-[#232328] text-zinc-400 hover:text-zinc-200"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate font-medium">
-                      <FileText size={13} className="text-zinc-400 flex-shrink-0" />
+                      <FileText size={13} className="text-violet-400 flex-shrink-0" />
                       <span className="truncate">{art.title}</span>
                     </div>
                   </div>
@@ -481,140 +464,326 @@ export default function CoworkPage() {
           </div>
         </aside>
 
-        {/* ── CENTER STAGE: GEMINI / MANUS STYLE CONVERSATION & EXECUTION CANVAS ── */}
-        <main className="flex-1 flex flex-col h-full min-w-0 bg-[#09090b] relative">
-          
-          <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-thin">
-            <div className="max-w-4xl mx-auto space-y-8 pb-32">
+        {/* WELCOME CANVAS WHEN NO TASK ACTIVE */}
+        {!currentTask && (
+          <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[#09090b]">
+            <div className="max-w-xl text-center space-y-6">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600/20 to-purple-800/20 border border-violet-500/30 mx-auto flex items-center justify-center p-3 shadow-2xl">
+                <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
+              </div>
 
-              {/* WELCOME CANVAS WHEN NO TASK ACTIVE */}
-              {!currentTask && (
-                <div className="py-16 text-center space-y-6">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-zinc-800 to-zinc-900 border border-zinc-700 mx-auto flex items-center justify-center p-3 shadow-xl">
-                    <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-white tracking-tight">What would you like Clarity CoWork to do?</h2>
+                <p className="text-sm text-zinc-400 leading-relaxed">
+                  Run multi-tool agent workflows across GitHub, Google Drive, Gmail, Calendar, Sheets, MCP, and Browser agent with real-time reasoning and canvas outputs.
+                </p>
+              </div>
+
+              {/* Integration Chips */}
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                {integrations.map((item) => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleOpenConnectModal(item.id)}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium bg-[#121215] border border-[#232328] text-zinc-300 hover:border-zinc-500 transition-all"
+                  >
+                    {getCategoryIcon(item.id)}
+                    <span>{item.name}</span>
+                    <span className={`w-2 h-2 rounded-full ${item.connected || item.id === "browser" ? "bg-emerald-400" : "bg-zinc-600"}`} />
+                  </button>
+                ))}
+              </div>
+
+              {/* Initial Input Bar */}
+              <div className="pt-4 max-w-xl mx-auto">
+                <div className="flex items-center gap-3 bg-[#111114] border border-[#27272a] focus-within:border-violet-500/60 rounded-2xl p-3 shadow-2xl transition-all">
+                  <Sparkles size={18} className="text-violet-400 flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={promptInput}
+                    onChange={(e) => setPromptInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleStartTask();
+                      }
+                    }}
+                    placeholder="Describe your goal or enter @stitch, @github, @drive..."
+                    className="flex-1 bg-transparent border-0 outline-none text-sm text-zinc-100 placeholder-zinc-500"
+                  />
+                  <button
+                    onClick={() => handleStartTask()}
+                    disabled={!promptInput.trim() || isSubmitting}
+                    className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-lg disabled:opacity-50"
+                  >
+                    {isSubmitting ? <RefreshCw size={13} className="animate-spin" /> : <><span>Run Goal</span><Play size={12} fill="currentColor" /></>}
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-3 justify-center">
+                  {MULTI_TOOL_PROMPTS.map((sug, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleStartTask(sug)}
+                      className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-[#141417] hover:bg-[#1f1f23] border border-[#232328] text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </main>
+        )}
+
+        {/* ── ACTIVE SPLIT-PANE WORKSPACE (MANUS / CLAUDE COWORK STYLE) ── */}
+        {currentTask && (
+          <div className="flex-1 flex min-w-0 h-full overflow-hidden">
+            
+            {/* ── LEFT PANE: AGENT TIMELINE, LOGS & MULTI-TURN CHAT (42% Width) ── */}
+            <section className="w-[42%] bg-[#09090b] border-r border-[#1f1f23] flex flex-col h-full min-w-[340px]">
+              
+              {/* Header Info */}
+              <div className="p-4 border-b border-[#1f1f23] bg-[#0d0d10] flex items-center justify-between flex-shrink-0">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-mono text-violet-400 uppercase tracking-wider font-semibold">Active Agent Task</div>
+                  <h2 className="text-sm font-bold text-white truncate">{currentTask.userQuery}</h2>
+                </div>
+                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase flex-shrink-0 ${
+                  currentTask.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                  currentTask.status === "running" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse" :
+                  "bg-zinc-800 text-zinc-400"
+                }`}>
+                  {currentTask.status}
+                </span>
+              </div>
+
+              {/* Scrollable Timeline & Chat Body */}
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
+                
+                {/* Stepper Node Workflow */}
+                <div className="p-4 rounded-xl bg-[#111114] border border-[#232328] space-y-3">
+                  <div className="flex items-center justify-between border-b border-[#232328] pb-2">
+                    <span className="text-[11px] font-bold uppercase text-zinc-300 flex items-center gap-1.5">
+                      <Layers size={14} className="text-violet-400" /> Execution Workflow Nodes
+                    </span>
                   </div>
-
-                  <div className="space-y-2 max-w-xl mx-auto">
-                    <h2 className="text-2xl font-bold text-white tracking-tight">What would you like Clarity CoWork to do?</h2>
-                    <p className="text-sm text-zinc-400 leading-relaxed">
-                      Connect your tools and run autonomous multi-tool agent workflows across GitHub, Google Drive, Gmail, Calendar, Sheets, MCP, and Web search.
-                    </p>
-                  </div>
-
-                  {/* Integration Nodes Pill Grid */}
-                  <div className="flex flex-wrap items-center justify-center gap-2 max-w-2xl mx-auto pt-2">
-                    {integrations.map((item) => (
-                      <button
-                        key={item.id}
-                        onClick={() => handleOpenConnectModal(item.id)}
-                        className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium border transition-all ${
-                          item.connected || item.id === "browser"
-                            ? "bg-[#141417] border-zinc-700 text-white hover:border-zinc-500"
-                            : "bg-[#0f0f12] border-[#232328] text-zinc-400 hover:text-white"
-                        }`}
-                      >
-                        {getCategoryIcon(item.id)}
-                        <span>{item.name}</span>
-                        <span className={`w-2 h-2 rounded-full ${item.connected || item.id === "browser" ? "bg-emerald-400" : "bg-zinc-600"}`} />
-                      </button>
+                  <div className="space-y-2">
+                    {currentTask.plan.map((step) => (
+                      <div key={step.id} className="flex items-center gap-3 text-xs">
+                        {step.status === "completed" && <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />}
+                        {step.status === "running" && <RefreshCw size={15} className="text-blue-400 animate-spin flex-shrink-0" />}
+                        {step.status === "waiting" && <Clock size={15} className="text-zinc-600 flex-shrink-0" />}
+                        {step.status === "approval_required" && <AlertCircle size={15} className="text-amber-400 flex-shrink-0" />}
+                        {step.status === "failed" && <XCircle size={15} className="text-rose-400 flex-shrink-0" />}
+                        <span className={`font-medium ${
+                          step.status === "completed" ? "text-zinc-300" :
+                          step.status === "running" ? "text-white font-semibold" :
+                          "text-zinc-500"
+                        }`}>{step.title}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* ACTIVE AGENT TASK CANVAS */}
-              {currentTask && (
-                <div className="space-y-6">
-                  
-                  {/* User Query Banner */}
-                  <div className="flex items-start gap-4 p-5 rounded-2xl bg-[#121215] border border-[#232328]">
-                    <div className="w-8 h-8 rounded-xl bg-violet-600/20 border border-violet-500/30 flex items-center justify-center text-violet-300 font-bold text-xs flex-shrink-0">
-                      You
+                {/* Human Approval Card */}
+                {currentTask.pendingApproval && (
+                  <div className="bg-[#16141a] border border-amber-500/40 rounded-xl p-4 space-y-3 shadow-lg">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold text-xs border-b border-[#232328] pb-2">
+                      <AlertCircle size={15} />
+                      <span>Human Authorization Required</span>
                     </div>
-                    <div className="flex-1 space-y-1">
-                      <div className="text-xs font-mono text-zinc-500">AGENT GOAL REQUEST</div>
-                      <div className="text-base font-semibold text-white">{currentTask.userQuery}</div>
+                    <div className="space-y-1 text-xs">
+                      <div className="font-semibold text-white">{currentTask.pendingApproval.title}</div>
+                      <div className="text-[10px] text-zinc-400 font-mono">Resource: {currentTask.pendingApproval.targetResource}</div>
+                      <p className="text-[11px] text-zinc-300 leading-relaxed pt-1">{currentTask.pendingApproval.description}</p>
+                    </div>
+                    <div className="flex items-center gap-2 pt-2">
+                      <button onClick={handleCancelAction} className="flex-1 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs text-zinc-400 hover:text-white transition-colors">Cancel</button>
+                      <button onClick={handleApproveAction} className="flex-1 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-colors">Approve Action</button>
                     </div>
                   </div>
+                )}
 
-                  {/* EXECUTION PLAN TIMELINE NODE STEPPER */}
-                  <div className="p-6 rounded-2xl bg-[#121215] border border-[#232328] space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#232328] pb-3">
-                      <span className="text-xs font-bold uppercase tracking-wider text-zinc-300 flex items-center gap-2">
-                        <Layers size={15} className="text-violet-400" /> Execution Node Workflow
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase ${
-                        currentTask.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                        currentTask.status === "running" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" :
-                        "bg-zinc-800 text-zinc-400"
-                      }`}>
-                        {currentTask.status}
-                      </span>
-                    </div>
-
-                    <div className="space-y-3">
-                      {currentTask.plan.map((step) => (
-                        <div key={step.id} className="flex items-center gap-3.5 text-xs">
-                          {step.status === "completed" && <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />}
-                          {step.status === "running" && <RefreshCw size={16} className="text-blue-400 animate-spin flex-shrink-0" />}
-                          {step.status === "waiting" && <Clock size={16} className="text-zinc-600 flex-shrink-0" />}
-                          {step.status === "approval_required" && <AlertCircle size={16} className="text-amber-400 flex-shrink-0" />}
-                          {step.status === "failed" && <XCircle size={16} className="text-rose-400 flex-shrink-0" />}
-
-                          <span className={`font-medium ${
-                            step.status === "completed" ? "text-zinc-300" :
-                            step.status === "running" ? "text-white font-semibold" :
-                            step.status === "approval_required" ? "text-amber-400 font-semibold" :
-                            "text-zinc-500"
-                          }`}>
-                            {step.title}
-                          </span>
+                {/* Multi-Turn Thread Messages */}
+                {currentTask.messages && currentTask.messages.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Conversation History</div>
+                    {currentTask.messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`p-3.5 rounded-xl border text-xs leading-relaxed space-y-1 ${
+                          msg.sender === "user"
+                            ? "bg-violet-950/20 border-violet-500/30 text-violet-100 ml-4"
+                            : "bg-[#121215] border-[#232328] text-zinc-200 mr-4"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono">
+                          <span className="font-semibold">{msg.sender === "user" ? "You" : "Clarity Agent"}</span>
+                          <span>{msg.timestamp}</span>
                         </div>
-                      ))}
-                    </div>
+                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                      </div>
+                    ))}
                   </div>
+                )}
 
-                  {/* MAIN AI RESPONSE & ARTIFACT CARD */}
-                  {(currentTask.report || activeArtifact) && (
+                {/* Live Activity Logs Stream with Inspect Buttons */}
+                {currentTask.activityFeed && currentTask.activityFeed.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Live Agent Execution Logs</div>
+                    {currentTask.activityFeed.map((act) => (
+                      <div key={act.id} className="bg-[#111114] border border-[#232328] rounded-xl p-3 space-y-1.5 hover:border-[#2e2e34] transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {getCategoryIcon(act.category)}
+                            <span className="text-xs font-semibold text-zinc-200 truncate">{act.title}</span>
+                          </div>
+                          <span className="text-[9px] font-mono text-zinc-400">{act.timestamp}</span>
+                        </div>
+                        <p className="text-[11px] text-zinc-400 leading-relaxed">{act.description}</p>
+
+                        {/* Inspect Tool Log Button */}
+                        <div className="pt-1 flex justify-end">
+                          <button
+                            onClick={() => setSelectedLogItem(act)}
+                            className="flex items-center gap-1 text-[10px] font-mono text-violet-400 hover:text-violet-300 transition-colors"
+                          >
+                            <Terminal size={11} /> Inspect Logs
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+              </div>
+
+              {/* Multi-Turn Follow-Up Composer Dock */}
+              <div className="p-3 border-t border-[#1f1f23] bg-[#0d0d10] flex-shrink-0 space-y-2">
+                <div className="flex items-center gap-2 bg-[#141417] border border-[#27272a] focus-within:border-violet-500/60 rounded-xl px-3 py-2 transition-all">
+                  <Sparkles size={16} className="text-violet-400 flex-shrink-0" />
+                  <input
+                    type="text"
+                    value={followupInput}
+                    onChange={(e) => setFollowupInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendFollowup();
+                      }
+                    }}
+                    placeholder="Ask follow-up or request changes..."
+                    disabled={isFollowupSubmitting || currentTask.status === "running"}
+                    className="flex-1 bg-transparent border-0 outline-none text-xs text-zinc-100 placeholder-zinc-500"
+                  />
+                  <button
+                    onClick={handleSendFollowup}
+                    disabled={!followupInput.trim() || isFollowupSubmitting || currentTask.status === "running"}
+                    className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white disabled:bg-zinc-800 disabled:text-zinc-600 transition-colors flex-shrink-0"
+                  >
+                    {isFollowupSubmitting ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                  </button>
+                </div>
+              </div>
+
+            </section>
+
+            {/* ── RIGHT PANE: INTERACTIVE WORKSPACE CANVAS (58% Width) ── */}
+            <section className="flex-1 bg-[#09090b] flex flex-col h-full min-w-0 relative">
+              
+              {/* Canvas Navigation Header */}
+              <div className="h-14 px-5 bg-[#0d0d10] border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0">
+                
+                {/* Artifact Tabs */}
+                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                  {currentTask.artifacts && currentTask.artifacts.length > 0 ? (
+                    currentTask.artifacts.map((art) => (
+                      <button
+                        key={art.id}
+                        onClick={() => setActiveArtifact(art)}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                          activeArtifact?.id === art.id
+                            ? "bg-[#18181c] border border-violet-500/50 text-white shadow-sm"
+                            : "bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-[#141417]"
+                        }`}
+                      >
+                        <FileText size={13} className={activeArtifact?.id === art.id ? "text-violet-400" : "text-zinc-500"} />
+                        <span className="truncate max-w-[160px]">{art.title}</span>
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-xs text-zinc-400 font-mono">Workspace Canvas Output</span>
+                  )}
+                </div>
+
+                {/* Canvas Action Controls */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      const contentToCopy = activeArtifact ? activeArtifact.content : currentTask?.report || "";
+                      navigator.clipboard.writeText(contentToCopy);
+                      setCopiedReport(true);
+                      setTimeout(() => setCopiedReport(false), 2000);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141417] hover:bg-[#1f1f23] text-xs font-medium text-zinc-300 hover:text-white transition-colors border border-[#232328]"
+                  >
+                    {copiedReport ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                    <span>{copiedReport ? "Copied" : "Copy Canvas"}</span>
+                  </button>
+
+                  <button
+                    onClick={() => setIsFullscreenCanvas(!isFullscreenCanvas)}
+                    className="p-1.5 rounded-lg bg-[#141417] hover:bg-[#1f1f23] text-zinc-400 hover:text-white transition-colors border border-[#232328]"
+                    title={isFullscreenCanvas ? "Exit Fullscreen" : "Fullscreen View"}
+                  >
+                    {isFullscreenCanvas ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Canvas Document Viewer */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-thin bg-[#0b0b0e]">
+                <div className="max-w-4xl mx-auto space-y-6">
+                  
+                  {(activeArtifact || currentTask.report) ? (
                     <div className="p-6 md:p-8 rounded-2xl bg-[#121215] border border-[#232328] space-y-4 shadow-xl">
                       <div className="flex items-center justify-between border-b border-[#232328] pb-3">
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex items-center gap-2">
                           <ShieldCheck size={18} className="text-violet-400" />
                           <h3 className="text-sm font-bold text-white">
                             {activeArtifact ? activeArtifact.title : "Agent Response & Workspace Findings"}
                           </h3>
                         </div>
-                        <button
-                          onClick={() => {
-                            const contentToCopy = activeArtifact ? activeArtifact.content : currentTask?.report || "";
-                            navigator.clipboard.writeText(contentToCopy);
-                            setCopiedReport(true);
-                            setTimeout(() => setCopiedReport(false), 2000);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1c1c20] hover:bg-[#25252a] text-xs font-medium text-zinc-300 hover:text-white transition-colors border border-[#2e2e34]"
-                        >
-                          {copiedReport ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                          <span>{copiedReport ? "Copied" : "Copy Output"}</span>
-                        </button>
+                        <span className="text-[10px] font-mono text-zinc-400">
+                          {activeArtifact ? activeArtifact.createdAt : ""}
+                        </span>
                       </div>
 
                       <div className="text-xs md:text-sm leading-relaxed text-zinc-200 font-sans overflow-x-auto">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            h1: ({ children }) => <h1 className="text-base md:text-lg font-bold my-3 text-white">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-sm md:text-base font-semibold my-2.5 text-white border-b border-[#232328] pb-1">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-xs md:text-sm font-semibold my-2 text-white">{children}</h3>,
-                            p: ({ children }) => <p className="mb-2.5 leading-relaxed text-zinc-300">{children}</p>,
-                            ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1 text-zinc-300">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1 text-zinc-300">{children}</ol>,
+                            h1: ({ children }) => <h1 className="text-lg md:text-xl font-bold my-4 text-white border-b border-[#232328] pb-2">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-base md:text-lg font-semibold my-3 text-white border-b border-[#232328] pb-1">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-sm md:text-base font-semibold my-2.5 text-violet-300">{children}</h3>,
+                            p: ({ children }) => <p className="mb-3 leading-relaxed text-zinc-300">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1.5 text-zinc-300">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1.5 text-zinc-300">{children}</ol>,
+                            table: ({ children }) => (
+                              <div className="overflow-x-auto my-4 rounded-xl border border-[#232328]">
+                                <table className="w-full text-left border-collapse text-xs">{children}</table>
+                              </div>
+                            ),
+                            th: ({ children }) => <th className="bg-[#18181c] p-2.5 font-bold border-b border-[#232328] text-white">{children}</th>,
+                            td: ({ children }) => <td className="p-2.5 border-b border-[#1f1f23] text-zinc-300">{children}</td>,
                             code: ({ children, ...props }) => (
-                              <code className="bg-[#09090b] border border-[#232328] rounded px-1.5 py-0.5 text-xs font-mono text-zinc-200" {...props}>
+                              <code className="bg-[#09090b] border border-[#232328] rounded px-1.5 py-0.5 text-xs font-mono text-violet-300" {...props}>
                                 {children}
                               </code>
                             ),
                             pre: ({ children }) => (
-                              <pre className="bg-[#09090b] border border-[#232328] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono text-zinc-200">
+                              <pre className="bg-[#09090b] border border-[#232328] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono text-zinc-200 shadow-inner">
                                 {children}
                               </pre>
                             ),
@@ -624,424 +793,81 @@ export default function CoworkPage() {
                         </ReactMarkdown>
                       </div>
                     </div>
-                  )}
-
-                </div>
-              )}
-
-            </div>
-          </div>
-
-          {/* ── FLOATING GEMINI / MANUS STYLE COMPOSER DOCK ── */}
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-full max-w-3xl px-4 z-20">
-            <div className="bg-[#121215]/95 backdrop-blur-xl border border-[#27272a] rounded-2xl p-3 shadow-2xl space-y-2.5">
-              
-              {/* Top Quick Tools Selector Chips */}
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pb-1 text-xs">
-                <span className="text-[10px] font-mono uppercase text-zinc-500 flex-shrink-0">Connected Tools:</span>
-                {integrations.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleOpenConnectModal(item.id)}
-                    className={`flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-colors ${
-                      item.connected || item.id === "browser"
-                        ? "bg-[#1a1a1e] border-zinc-700 text-zinc-200 hover:border-zinc-500"
-                        : "bg-transparent border-[#232328] text-zinc-500 hover:text-zinc-300"
-                    }`}
-                  >
-                    {getCategoryIcon(item.id)}
-                    <span>{item.name}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* @Mention Autocomplete Dropdown */}
-              {showMentionMenu && (
-                <div className="p-2 rounded-xl bg-[#141417] border border-[#27272a] shadow-2xl space-y-1 animate-fade-in text-xs max-h-48 overflow-y-auto scrollbar-thin">
-                  <div className="text-[10px] font-mono text-zinc-500 px-2 py-1 flex items-center justify-between border-b border-[#232328]">
-                    <span>SUPPORTED MCP SERVERS (@MENTION TO DIRECT)</span>
-                    <button onClick={() => setShowMentionMenu(false)} className="hover:text-white">✕</button>
-                  </div>
-                  {mcpRegistry.map((item) => (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        const cleanPrompt = promptInput.endsWith("@") ? promptInput.slice(0, -1) : promptInput;
-                        setPromptInput(`${cleanPrompt} ${item.tag} `);
-                        setShowMentionMenu(false);
-                      }}
-                      className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-[#1f1f23] text-left transition-colors"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div>
-                          <span className="font-semibold text-white mr-1.5">{item.tag}</span>
-                          <span className="text-zinc-400 text-[11px]">{item.name}</span>
-                        </div>
-                      </div>
-                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#09090b] text-zinc-400 border border-[#232328]">
-                        {item.enabled ? "Active" : "Config Required"}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Main Input Field */}
-              <div className="flex items-center gap-3 bg-[#09090b] border border-[#27272a] focus-within:border-violet-500/60 rounded-xl px-4 py-3 transition-all relative">
-                <Sparkles size={18} className="text-violet-400 flex-shrink-0" />
-                <input
-                  type="text"
-                  value={promptInput}
-                  onChange={(e) => {
-                    setPromptInput(e.target.value);
-                    if (e.target.value.endsWith("@")) {
-                      setShowMentionMenu(true);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleStartTask();
-                    }
-                  }}
-                  placeholder="Type @stitch, @postgres, @github or describe your goal..."
-                  disabled={isSubmitting}
-                  className="flex-1 bg-transparent border-0 outline-none text-sm text-zinc-100 placeholder-zinc-500"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => setShowMentionMenu(!showMentionMenu)}
-                  className="text-xs font-mono px-2 py-1 rounded bg-[#18181c] border border-[#232328] text-violet-300 hover:text-white transition-colors"
-                  title="Mention MCP Server"
-                >
-                  @mention
-                </button>
-
-                <button
-                  onClick={() => handleStartTask()}
-                  disabled={!promptInput.trim() || isSubmitting}
-                  className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white disabled:bg-zinc-800 disabled:text-zinc-600 font-semibold text-xs transition-colors flex items-center gap-1.5 flex-shrink-0 shadow-md"
-                >
-                  {isSubmitting ? (
-                    <RefreshCw size={13} className="animate-spin" />
                   ) : (
-                    <>
-                      <span>Run</span>
-                      <Play size={12} fill="currentColor" />
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Suggestion Prompt Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-1">
-                {MULTI_TOOL_PROMPTS.map((sug, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => {
-                      setPromptInput(sug);
-                      handleStartTask(sug);
-                    }}
-                    className="flex-shrink-0 px-2.5 py-1 rounded-md bg-[#18181c] hover:bg-[#232328] border border-[#232328] text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
-                  >
-                    {sug}
-                  </button>
-                ))}
-              </div>
-
-            </div>
-          </div>
-
-        </main>
-
-        {/* ── RIGHT DRAWER: LIVE ACTIVITY LOG STREAM ── */}
-        <aside className="w-[280px] bg-[#0c0c0e] border-l border-[#1f1f23] flex flex-col h-full flex-shrink-0">
-          <div className="px-4 h-14 border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">Live Activity Feed</span>
-            {currentTask?.activityFeed?.length ? (
-              <span className="text-[10px] font-mono text-zinc-500">
-                {currentTask.activityFeed.length} events
-              </span>
-            ) : null}
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
-            {/* HUMAN APPROVAL CARD */}
-            {currentTask?.pendingApproval && (
-              <div className="bg-[#141417] border border-amber-500/40 rounded-xl p-4 space-y-3">
-                <div className="flex items-center gap-2 text-amber-400 font-bold text-xs border-b border-[#232328] pb-2">
-                  <AlertCircle size={15} />
-                  <span>Human Approval Required</span>
-                </div>
-                <div className="space-y-1 text-xs">
-                  <div className="font-semibold text-white">{currentTask.pendingApproval.title}</div>
-                  <div className="text-[10px] text-zinc-400 font-mono">Resource: {currentTask.pendingApproval.targetResource}</div>
-                  <p className="text-[11px] text-zinc-300 leading-relaxed pt-1">{currentTask.pendingApproval.description}</p>
-                </div>
-                <div className="flex items-center gap-2 pt-2">
-                  <button onClick={handleCancelAction} className="flex-1 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs text-zinc-400 hover:text-white transition-colors">Cancel</button>
-                  <button onClick={handleApproveAction} className="flex-1 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-colors">Approve</button>
-                </div>
-              </div>
-            )}
-
-            {currentTask?.activityFeed && currentTask.activityFeed.length > 0 ? (
-              <div className="space-y-2.5">
-                {currentTask.activityFeed.map((act) => (
-                  <div key={act.id} className="bg-[#121215] border border-[#232328] rounded-xl p-3 space-y-1 hover:border-[#2e2e34] transition-colors">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {getCategoryIcon(act.category)}
-                        <span className="text-xs font-medium text-zinc-200 truncate">{act.title}</span>
-                      </div>
-                      <span className="text-[9px] font-mono text-zinc-500 flex-shrink-0">{act.timestamp}</span>
+                    <div className="h-64 flex flex-col items-center justify-center text-zinc-500 space-y-2 border border-dashed border-[#232328] rounded-2xl">
+                      <RefreshCw size={24} className="animate-spin text-violet-400" />
+                      <span className="text-xs font-mono">Agent is executing workspace steps & generating artifacts...</span>
                     </div>
-                    <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">{act.description}</p>
-                  </div>
-                ))}
+                  )}
+
+                </div>
               </div>
-            ) : (
-              <div className="py-16 text-center text-[11px] text-zinc-500">
-                No tool activity recorded yet. Run a goal task to view live execution logs.
-              </div>
-            )}
+
+            </section>
+
           </div>
-        </aside>
+        )}
 
       </div>
 
-      {/* ── MODAL 1: INTEGRATIONS HUB ── */}
-      {showIntegrationsModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <div className="w-full max-w-lg bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
-            <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
-              <div className="flex items-center gap-2">
-                <Briefcase size={18} />
-                <h3 className="text-sm font-semibold text-white">Integrations Hub</h3>
+      {/* ── TOOL LOG INSPECTOR MODAL ── */}
+      {selectedLogItem && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#121215] border border-[#27272a] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl space-y-4 p-6">
+            <div className="flex items-center justify-between border-b border-[#232328] pb-3">
+              <div className="flex items-center gap-2.5">
+                <Terminal size={18} className="text-violet-400" />
+                <h3 className="text-sm font-bold text-white">{selectedLogItem.title}</h3>
               </div>
               <button
-                onClick={() => setShowIntegrationsModal(false)}
-                className="text-[#8e8e93] hover:text-white transition-colors"
+                onClick={() => setSelectedLogItem(null)}
+                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-[#1f1f23] transition-colors"
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
 
-            <div className="space-y-2 max-h-72 overflow-y-auto scrollbar-thin">
-              {integrations.map((item) => (
-                <div key={item.id} className="flex items-center justify-between p-3 rounded-xl bg-[#111113] border border-[#2c2c2e]">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-[#1c1c1e] text-white">
-                      {getCategoryIcon(item.id)}
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-white">{item.name}</div>
-                      <div className="text-[11px] text-[#8e8e93]">
-                        {item.connected ? `Connected (${item.username || item.details || "Active"})` : "Disconnected"}
-                      </div>
-                    </div>
-                  </div>
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2 bg-[#09090b] p-3 rounded-xl border border-[#232328]">
+                <div><span className="text-zinc-500 font-mono">Category:</span> <span className="font-semibold text-white uppercase">{selectedLogItem.category || "system"}</span></div>
+                <div><span className="text-zinc-500 font-mono">Timestamp:</span> <span className="font-semibold text-white">{selectedLogItem.timestamp}</span></div>
+                <div><span className="text-zinc-500 font-mono">Tool Name:</span> <span className="font-semibold text-violet-400">{selectedLogItem.toolName || "N/A"}</span></div>
+                <div><span className="text-zinc-500 font-mono">Event Type:</span> <span className="font-semibold text-emerald-400 uppercase">{selectedLogItem.type}</span></div>
+              </div>
 
-                  {item.id === "browser" ? (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      Ready
-                    </span>
-                  ) : item.connected ? (
-                    <button
-                      onClick={() => handleDisconnectIntegration(item.id)}
-                      disabled={connectingId === item.id}
-                      className="px-3 py-1 rounded-full text-[10px] bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-medium transition-all"
-                    >
-                      {connectingId === item.id ? "..." : "Disconnect"}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleOpenConnectModal(item.id)}
-                      disabled={connectingId === item.id}
-                      className="px-3.5 py-1 rounded-full text-[10px] bg-white text-black font-semibold hover:bg-[#e5e5ea] transition-all"
-                    >
-                      {connectingId === item.id ? "..." : "Connect"}
-                    </button>
-                  )}
+              <div className="space-y-1">
+                <div className="text-[10px] font-mono text-zinc-400 uppercase">Event Description</div>
+                <div className="bg-[#09090b] p-3 rounded-xl border border-[#232328] text-zinc-300 font-mono text-xs">
+                  {selectedLogItem.description}
                 </div>
-              ))}
+              </div>
+
+              {selectedLogItem.query && (
+                <div className="space-y-1">
+                  <div className="text-[10px] font-mono text-zinc-400 uppercase">Tool Query Input</div>
+                  <div className="bg-[#09090b] p-3 rounded-xl border border-[#232328] text-violet-300 font-mono text-xs">
+                    {selectedLogItem.query}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="flex justify-end pt-2">
               <button
-                onClick={() => setShowIntegrationsModal(false)}
-                className="px-5 py-2 rounded-xl bg-white text-black font-semibold text-xs hover:bg-[#e5e5ea] transition-all"
+                onClick={() => setSelectedLogItem(null)}
+                className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors"
               >
-                Done
+                Close Inspector
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── MODAL 2: GITHUB OAUTH AUTHORIZATION DIALOG ── */}
-      {showGitHubAuthModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <form onSubmit={handleSubmitGitHubAuth} className="w-full max-w-md bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
-            <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
-              <div className="flex items-center gap-2">
-                <Github size={18} />
-                <h3 className="text-sm font-semibold text-white">Authorize GitHub Integration</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowGitHubAuthModal(false)}
-                className="text-[#8e8e93] hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <a
-                href="/api/auth/github"
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white text-black hover:bg-[#e5e5ea] font-semibold text-xs transition-all shadow-md"
-              >
-                <Github size={15} />
-                <span>Authorize on GitHub.com (1-Click Direct Redirect)</span>
-                <ExternalLink size={13} />
-              </a>
-
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-[#2c2c2e]"></div>
-                <span className="flex-shrink mx-3 text-[10px] text-[#8e8e93] font-mono">OR MANUAL ACCESS TOKEN</span>
-                <div className="flex-grow border-t border-[#2c2c2e]"></div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">GitHub Username</label>
-                <input
-                  type="text"
-                  value={githubUsernameInput}
-                  onChange={(e) => setGithubUsernameInput(e.target.value)}
-                  placeholder="e.g. ShivamSk07"
-                  required
-                  className="w-full bg-[#111113] border border-[#2c2c2e] rounded-xl px-3 py-2 text-xs text-white outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">GitHub OAuth Token / Personal Access Token (Optional)</label>
-                <input
-                  type="password"
-                  value={githubTokenInput}
-                  onChange={(e) => setGithubTokenInput(e.target.value)}
-                  placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                  className="w-full bg-[#111113] border border-[#2c2c2e] rounded-xl px-3 py-2 text-xs text-white outline-none font-mono"
-                />
-                <p className="text-[10px] text-[#8e8e93] mt-1">
-                  Scopes: repo, read:user, user:email. Token stays strictly on backend.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowGitHubAuthModal(false)}
-                className="flex-1 py-2 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-medium text-white transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={connectingId === "github"}
-                className="flex-1 py-2 rounded-xl bg-[#3a3a3c] hover:bg-[#4a4a4c] text-white font-semibold text-xs transition-all"
-              >
-                {connectingId === "github" ? "Authorizing..." : "Save Manual Token"}
-              </button>
-            </div>
-          </form>
-        </div>
+      {/* MCP Dashboard Modal */}
+      {showMCPDashboardModal && (
+        <MCPDashboardModal isOpen={showMCPDashboardModal} onClose={() => setShowMCPDashboardModal(false)} />
       )}
-
-      {/* ── MODAL 3: GOOGLE OAUTH AUTHORIZATION DIALOG ── */}
-      {showGoogleAuthModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fade-in">
-          <form onSubmit={handleSubmitGoogleAuth} className="w-full max-w-md bg-[#1c1c1e] border border-[#2c2c2e] rounded-[24px] p-6 shadow-2xl space-y-4 text-[#f2f2f7]">
-            <div className="flex items-center justify-between border-b border-[#2c2c2e] pb-3">
-              <div className="flex items-center gap-2">
-                <HardDrive size={18} />
-                <h3 className="text-sm font-semibold text-white">Authorize Google Workspace OAuth</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowGoogleAuthModal(false)}
-                className="text-[#8e8e93] hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <a
-                href="/api/auth/google"
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-white text-black hover:bg-[#e5e5ea] font-semibold text-xs transition-all shadow-md"
-              >
-                <HardDrive size={15} />
-                <span>Authorize on Google.com (1-Click Direct Redirect)</span>
-                <ExternalLink size={13} />
-              </a>
-
-              <div className="relative flex py-1 items-center">
-                <div className="flex-grow border-t border-[#2c2c2e]"></div>
-                <span className="flex-shrink mx-3 text-[10px] text-[#8e8e93] font-mono">OR ENTER WORKSPACE EMAIL</span>
-                <div className="flex-grow border-t border-[#2c2c2e]"></div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold uppercase text-[#8e8e93] mb-1">Google Workspace Email Account</label>
-                <input
-                  type="email"
-                  value={googleEmailInput}
-                  onChange={(e) => setGoogleEmailInput(e.target.value)}
-                  placeholder="shivam@clarity.app"
-                  required
-                  className="w-full bg-[#111113] border border-[#2c2c2e] rounded-xl px-3 py-2 text-xs text-white outline-none"
-                />
-              </div>
-
-              <div className="p-3 bg-[#111113] border border-[#2c2c2e] rounded-xl space-y-1.5 text-[11px] text-[#8e8e93]">
-                <div className="text-white font-medium mb-1">Requested Permissions:</div>
-                <div className="flex items-center gap-2">✓ Google Drive (read docs & PDFs)</div>
-                <div className="flex items-center gap-2">✓ Google Calendar (view & schedule slots)</div>
-                <div className="flex items-center gap-2">✓ Gmail (read emails & create drafts)</div>
-                <div className="flex items-center gap-2">✓ Google Sheets (read datasets & rows)</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowGoogleAuthModal(false)}
-                className="flex-1 py-2 rounded-xl bg-[#2c2c2e] hover:bg-[#3a3a3c] text-xs font-medium text-white transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={connectingId === "google"}
-                className="flex-1 py-2 rounded-xl bg-[#3a3a3c] hover:bg-[#4a4a4c] text-white font-semibold text-xs transition-all"
-              >
-                {connectingId === "google" ? "Authorizing..." : "Save Workspace Account"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* ── MODAL 4: MCP DASHBOARD CONTROL MODAL ── */}
-      <MCPDashboardModal
-        isOpen={showMCPDashboardModal}
-        onClose={() => setShowMCPDashboardModal(false)}
-        onRegistryUpdated={() => setMcpRegistry(getSupportedMCPRegistry())}
-      />
 
     </div>
   );

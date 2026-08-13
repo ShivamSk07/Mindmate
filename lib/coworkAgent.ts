@@ -63,9 +63,17 @@ export interface Artifact {
   createdAt: string;
 }
 
+export interface MessageItem {
+  id: string;
+  sender: "user" | "agent";
+  content: string;
+  timestamp: string;
+}
+
 export interface CoworkTask {
   id: string;
   userQuery: string;
+  messages: MessageItem[];
   repoOwner: string;
   repoName: string;
   branch: string;
@@ -177,6 +185,14 @@ export async function createAndRunTask(
   const initialTask: CoworkTask = {
     id: taskId,
     userQuery,
+    messages: [
+      {
+        id: `msg_init_${Date.now()}`,
+        sender: "user",
+        content: userQuery,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
+    ],
     repoOwner: owner,
     repoName: repo,
     branch: preferredBranch,
@@ -728,3 +744,105 @@ Provide a direct, natural, executive response answering the user's goal.`;
   task.updatedAt = new Date().toISOString();
   taskStore.set(task.id, task);
 }
+
+export async function continueTaskWithFollowup(
+  taskId: string,
+  followupQuery: string
+): Promise<CoworkTask> {
+  const task = taskStore.get(taskId);
+  if (!task) throw new Error("Task not found");
+
+  const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  if (!task.messages) task.messages = [];
+  task.messages.push({
+    id: `msg_${Date.now()}`,
+    sender: "user",
+    content: followupQuery,
+    timestamp: timeStr,
+  });
+
+  task.status = "running";
+  task.activityFeed.push({
+    id: `act_followup_${Date.now()}`,
+    timestamp: timeStr,
+    type: "reasoning",
+    category: "system",
+    title: "Received User Follow-Up",
+    description: `Processing follow-up: "${followupQuery}"`,
+  });
+
+  taskStore.set(taskId, task);
+
+  // Run AI reasoning for follow-up asynchronously
+  (async () => {
+    try {
+      const client = getCerebrasClient();
+      const sysPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent (like Manus / Claude CoWork).
+The user is providing a follow-up request inside an active task.
+Answer the user's request thoroughly, contextually, and directly.
+Maintain a crisp, highly professional, executive tone.`;
+
+      const prevArtifacts = (task.artifacts || []).map(a => `--- ARTIFACT (${a.title}) ---\n${a.content}`).join("\n\n");
+      const userPrompt = `ORIGINAL GOAL: "${task.userQuery}"
+
+EXISTING WORKSPACE ARTIFACTS & DATA:
+${prevArtifacts}
+
+USER FOLLOW-UP INSTRUCTION:
+"${followupQuery}"
+
+Provide a detailed, natural, intelligent response updating or answering the user's follow-up request.`;
+
+      const completion = (await client.chat.completions.create({
+        model: MODEL,
+        messages: [
+          { role: "system", content: sysPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 1400,
+      })) as any;
+
+      const aiReply = completion.choices[0]?.message?.content?.trim() || "Follow-up request completed successfully.";
+      const replyTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+      task.messages.push({
+        id: `msg_ai_${Date.now()}`,
+        sender: "agent",
+        content: aiReply,
+        timestamp: replyTime,
+      });
+
+      // Insert new follow-up artifact at beginning of array
+      task.artifacts.unshift({
+        id: `art_followup_${Date.now()}`,
+        title: `Follow-up: ${followupQuery.slice(0, 25)}...`,
+        type: "report",
+        content: aiReply,
+        createdAt: replyTime,
+      });
+
+      task.report = aiReply;
+      task.status = "completed";
+      task.activityFeed.push({
+        id: `act_followup_done_${Date.now()}`,
+        timestamp: replyTime,
+        type: "success",
+        category: "system",
+        title: "Follow-Up Action Completed",
+        description: "Generated updated workspace response and artifact",
+      });
+
+      task.updatedAt = new Date().toISOString();
+      taskStore.set(taskId, task);
+    } catch (err: any) {
+      console.error("Followup execution failed:", err);
+      task.status = "failed";
+      taskStore.set(taskId, task);
+    }
+  })();
+
+  return task;
+}
+
