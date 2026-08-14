@@ -21,24 +21,8 @@ export interface MCPToolDefinition {
   parametersSchema?: any;
 }
 
-const mcpServersStore: MCPServer[] = [
-  {
-    id: "mcp_srv_1",
-    name: "StitchMCP Server",
-    url: "https://mcp.clarity.app/stitch",
-    connected: true,
-    toolsCount: 6,
-    lastSynced: new Date().toISOString(),
-  },
-  {
-    id: "mcp_srv_2",
-    name: "Custom Dev Tools MCP",
-    url: "https://mcp.clarity.app/custom-tools",
-    connected: true,
-    toolsCount: 4,
-    lastSynced: new Date().toISOString(),
-  },
-];
+// Starts empty — only servers the user explicitly registers will appear here.
+const mcpServersStore: MCPServer[] = [];
 
 export function listMCPServers(): MCPServer[] {
   return mcpServersStore;
@@ -58,37 +42,18 @@ export function registerMCPServer(name: string, url: string): MCPServer {
 }
 
 export async function discoverMCPTools(): Promise<MCPToolDefinition[]> {
+  // Returns real tools only for user-registered servers.
+  // Tool discovery is intentionally empty until users add and configure their own MCP servers.
   const tools: MCPToolDefinition[] = [];
   for (const srv of mcpServersStore) {
     if (srv.connected) {
-      if (srv.name.includes("StitchMCP")) {
-        tools.push(
-          {
-            id: `mcp_${srv.id}_create_project`,
-            serverId: srv.id,
-            serverName: srv.name,
-            name: "mcp_stitch_create_project",
-            description: "StitchMCP: Create new design project workspace",
-          },
-          {
-            id: `mcp_${srv.id}_generate_screen`,
-            serverId: srv.id,
-            serverName: srv.name,
-            name: "mcp_stitch_generate_screen",
-            description: "StitchMCP: Generate UI screen layout from text prompt",
-          }
-        );
-      } else {
-        tools.push(
-          {
-            id: `mcp_${srv.id}_custom_pipeline`,
-            serverId: srv.id,
-            serverName: srv.name,
-            name: "mcp_custom_run_pipeline",
-            description: "Custom MCP: Trigger build & deployment verification pipeline",
-          }
-        );
-      }
+      tools.push({
+        id: `mcp_${srv.id}_tool`,
+        serverId: srv.id,
+        serverName: srv.name,
+        name: `mcp_${srv.id}_invoke`,
+        description: `${srv.name}: Invoke registered MCP server tool`,
+      });
     }
   }
   return tools;

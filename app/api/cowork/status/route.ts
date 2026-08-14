@@ -72,15 +72,15 @@ export async function GET() {
       id: "mcp",
       name: "MCP Servers",
       icon: "Plug",
-      connected: isMcpConnected,
-      details: isMcpConnected ? `${mcpServers.length} servers connected` : "No MCP servers connected",
+      connected: isMcpConnected && mcpServers.length > 0,
+      details: mcpServers.length > 0 ? `${mcpServers.length} server${mcpServers.length > 1 ? "s" : ""} configured` : "No MCP servers configured",
     },
     {
       id: "browser",
       name: "Browser Agent",
       icon: "Globe",
-      connected: true,
-      details: "Ready (Server-side Session)",
+      connected: false,
+      details: "Not configured",
     },
   ];
 

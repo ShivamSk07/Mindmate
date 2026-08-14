@@ -22,9 +22,10 @@ export async function GET() {
   }
 
   try {
-    const username = profile.githubUsername || user.username || "ShivamSk07";
-    const repos = await github_list_repositories(username);
-    return NextResponse.json({ connected: true, repos });
+    const username = profile.githubUsername || user.username;
+    const accessToken = profile.githubToken || null;
+    const repos = await github_list_repositories(username || undefined, accessToken);
+    return NextResponse.json({ connected: true, username, repos });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch repositories" }, { status: 500 });
   }
