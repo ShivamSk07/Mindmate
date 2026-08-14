@@ -349,44 +349,47 @@ export default function CoworkPage() {
   ];
 
   return (
-    <div className="h-[100dvh] w-full bg-[#09090b] text-zinc-100 flex flex-col overflow-hidden font-sans">
+    <div className="h-[100dvh] w-full bg-[#09090b] text-zinc-100 flex flex-col overflow-hidden font-sans selection:bg-violet-500/30">
       
       {/* ── TOP HEADER BAR ── */}
-      <header className="h-14 px-5 bg-[#0d0d10] border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0 z-20">
+      <header className="h-14 px-5 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80 flex items-center justify-between flex-shrink-0 z-20">
         <div className="flex items-center gap-3">
           <Link href="/chat" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
-            <div className="w-7 h-7 rounded-lg bg-[#18181c] border border-[#27272a] flex items-center justify-center p-1">
-              <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 p-1.5 shadow-lg shadow-violet-500/20 flex items-center justify-center">
+              <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain brightness-200" />
             </div>
-            <span className="text-sm font-bold text-white tracking-tight">Clarity CoWork</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-white tracking-tight">Clarity CoWork</span>
+              <span className="px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-400 border border-violet-500/20 text-[10px] font-semibold uppercase tracking-wide">
+                Agentic Workspace
+              </span>
+            </div>
           </Link>
-          <span className="text-xs text-zinc-600">/</span>
-          <span className="text-xs font-mono text-zinc-400">Agentic Workspace</span>
         </div>
 
-        {/* Action Controls */}
+        {/* Header Control Buttons */}
         <div className="flex items-center gap-2.5">
           <button
             onClick={() => setShowMCPDashboardModal(true)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#141417] border border-[#232328] hover:bg-[#1f1f23] text-xs font-medium text-zinc-300 transition-colors"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-850 shadow-sm"
           >
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
             <span>{activeToolsCount} Connected Tools</span>
           </button>
 
           <button
             onClick={() => setShowMCPDashboardModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141417] border border-[#232328] hover:bg-[#1f1f23] text-xs font-medium text-zinc-300 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 text-xs font-medium text-zinc-300 transition-all hover:bg-zinc-850"
           >
-            <Plug size={13} className="text-amber-400" />
-            <span>MCP Settings</span>
+            <Plug size={14} className="text-amber-400" />
+            <span>MCP Control Center</span>
           </button>
 
           <Link
             href="/chat"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141417] border border-[#232328] hover:bg-[#1f1f23] text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 text-xs font-medium text-zinc-400 hover:text-zinc-100 transition-all"
           >
-            <ArrowLeft size={13} /> Back to Chat
+            <ArrowLeft size={14} /> Back to Chat
           </Link>
         </div>
       </header>
@@ -394,16 +397,16 @@ export default function CoworkPage() {
       {/* ── MAIN WORKSPACE CONTAINER ── */}
       <div className="flex-1 flex min-h-0 overflow-hidden relative">
 
-        {/* ── LEFT DRAWER (TASKS & ARTIFACTS HISTORY) ── */}
-        <aside className="w-[240px] bg-[#0c0c0e] border-r border-[#1f1f23] flex flex-col h-full flex-shrink-0">
-          <div className="p-3.5 border-b border-[#1f1f23] flex items-center justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Agent Goals</span>
+        {/* ── LEFT SIDEBAR (GOAL HISTORY & CANVAS ARTIFACTS) ── */}
+        <aside className="w-[250px] bg-zinc-950/90 border-r border-zinc-800/80 flex flex-col h-full flex-shrink-0">
+          <div className="p-3.5 border-b border-zinc-800/80 flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">Workspace Goals</span>
             <button
               onClick={() => {
                 setCurrentTask(null);
                 setActiveArtifact(null);
               }}
-              className="text-xs text-violet-400 hover:text-violet-300 font-semibold transition-colors flex items-center gap-1"
+              className="text-xs px-2.5 py-1 rounded-lg bg-violet-600/15 hover:bg-violet-600/25 border border-violet-500/30 text-violet-300 font-semibold transition-all flex items-center gap-1 shadow-sm"
             >
               <Plus size={13} /> New Goal
             </button>
@@ -411,8 +414,8 @@ export default function CoworkPage() {
 
           <div className="flex-1 overflow-y-auto p-3 space-y-4 scrollbar-thin">
             {recentTasks.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="block px-1 text-[10px] font-mono text-zinc-400 uppercase">Recent Executions</span>
+              <div className="space-y-2">
+                <span className="block px-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Recent Executions</span>
                 {recentTasks.slice(0, 10).map((t) => (
                   <div
                     key={t.id}
@@ -420,20 +423,20 @@ export default function CoworkPage() {
                       setCurrentTask(t);
                       if (t.artifacts?.length > 0) setActiveArtifact(t.artifacts[0]);
                     }}
-                    className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
+                    className={`p-3 rounded-xl border text-xs cursor-pointer transition-all ${
                       currentTask?.id === t.id
-                        ? "bg-[#18181c] border-violet-500/50 text-white shadow-md"
-                        : "bg-[#111114] border-[#232328] text-zinc-400 hover:text-zinc-200 hover:bg-[#161619]"
+                        ? "bg-zinc-900 border-violet-500/60 text-white shadow-lg ring-1 ring-violet-500/20"
+                        : "bg-zinc-900/40 border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/80 hover:border-zinc-700"
                     }`}
                   >
-                    <div className="text-xs font-semibold truncate">{t.userQuery}</div>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className={`text-[9px] font-mono uppercase px-1.5 py-0.5 rounded ${
-                        t.status === "completed" ? "bg-emerald-500/10 text-emerald-400" :
-                        t.status === "running" ? "bg-blue-500/10 text-blue-400" :
-                        "bg-zinc-800 text-zinc-400"
+                    <div className="text-xs font-semibold truncate text-zinc-100">{t.userQuery}</div>
+                    <div className="flex items-center justify-between mt-2">
+                      <span className={`text-[9px] font-semibold uppercase px-2 py-0.5 rounded-full border ${
+                        t.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                        t.status === "running" ? "bg-violet-500/10 text-violet-400 border-violet-500/20 animate-pulse" :
+                        "bg-zinc-800 text-zinc-400 border-zinc-700"
                       }`}>{t.status}</span>
-                      <span className="text-[9px] text-zinc-400">{t.artifacts?.length || 0} artifacts</span>
+                      <span className="text-[10px] text-zinc-500 font-medium">{t.artifacts?.length || 0} artifacts</span>
                     </div>
                   </div>
                 ))}
@@ -441,20 +444,20 @@ export default function CoworkPage() {
             )}
 
             {currentTask?.artifacts && currentTask.artifacts.length > 0 && (
-              <div className="pt-3 border-t border-[#1f1f23] space-y-1.5">
-                <span className="block px-1 text-[10px] font-mono text-zinc-400 uppercase">Generated Canvas Artifacts</span>
+              <div className="pt-3 border-t border-zinc-800/80 space-y-2">
+                <span className="block px-1 text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Canvas Artifacts</span>
                 {currentTask.artifacts.map((art) => (
                   <div
                     key={art.id}
                     onClick={() => setActiveArtifact(art)}
-                    className={`p-2 rounded-lg border text-xs cursor-pointer transition-all ${
+                    className={`p-2.5 rounded-xl border text-xs cursor-pointer transition-all ${
                       activeArtifact?.id === art.id
-                        ? "bg-violet-950/40 border-violet-500/60 text-white"
-                        : "bg-[#111114] border-[#232328] text-zinc-400 hover:text-zinc-200"
+                        ? "bg-violet-950/40 border-violet-500/60 text-white shadow-md"
+                        : "bg-zinc-900/40 border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/80"
                     }`}
                   >
                     <div className="flex items-center gap-2 truncate font-medium">
-                      <FileText size={13} className="text-violet-400 flex-shrink-0" />
+                      <FileText size={14} className="text-violet-400 flex-shrink-0" />
                       <span className="truncate">{art.title}</span>
                     </div>
                   </div>
@@ -464,40 +467,46 @@ export default function CoworkPage() {
           </div>
         </aside>
 
-        {/* WELCOME CANVAS WHEN NO TASK ACTIVE */}
+        {/* ── WELCOME LANDING CANVAS WHEN NO TASK ACTIVE ── */}
         {!currentTask && (
-          <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[#09090b]">
-            <div className="max-w-xl text-center space-y-6">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600/20 to-purple-800/20 border border-violet-500/30 mx-auto flex items-center justify-center p-3 shadow-2xl">
-                <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
+          <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[#09090b] relative overflow-hidden">
+            
+            {/* Subtle Gradient Glow Background */}
+            <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] bg-violet-600/10 blur-[120px] rounded-full pointer-events-none" />
+
+            <div className="max-w-2xl text-center space-y-7 z-10">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 border border-violet-400/30 mx-auto flex items-center justify-center p-3.5 shadow-2xl shadow-violet-500/20">
+                <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain brightness-200" />
               </div>
 
-              <div className="space-y-2">
-                <h2 className="text-2xl font-bold text-white tracking-tight">What would you like Clarity CoWork to do?</h2>
-                <p className="text-sm text-zinc-400 leading-relaxed">
-                  Run multi-tool agent workflows across GitHub, Google Drive, Gmail, Calendar, Sheets, MCP, and Browser agent with real-time reasoning and canvas outputs.
+              <div className="space-y-3">
+                <h2 className="text-3xl font-extrabold text-white tracking-tight">
+                  What would you like Clarity CoWork to accomplish?
+                </h2>
+                <p className="text-sm text-zinc-400 leading-relaxed max-w-lg mx-auto">
+                  Run multi-tool agentic workflows across Live Web Search, GitHub Repositories, Google Drive, Gmail, Calendar, Sheets, and MCP integrations with real-time reasoning and canvas outputs.
                 </p>
               </div>
 
-              {/* Integration Chips */}
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              {/* Connected Integrations Row */}
+              <div className="flex flex-wrap items-center justify-center gap-2.5 pt-1">
                 {integrations.map((item) => (
                   <button
                     key={item.id}
                     onClick={() => handleOpenConnectModal(item.id)}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium bg-[#121215] border border-[#232328] text-zinc-300 hover:border-zinc-500 transition-all"
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-zinc-900/90 border border-zinc-800 text-zinc-300 hover:border-zinc-600 hover:text-white transition-all shadow-sm hover:scale-[1.02]"
                   >
                     {getCategoryIcon(item.id)}
                     <span>{item.name}</span>
-                    <span className={`w-2 h-2 rounded-full ${item.connected || item.id === "browser" ? "bg-emerald-400" : "bg-zinc-600"}`} />
+                    <span className={`w-2 h-2 rounded-full ${item.connected || item.id === "browser" ? "bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" : "bg-zinc-600"}`} />
                   </button>
                 ))}
               </div>
 
-              {/* Initial Input Bar */}
-              <div className="pt-4 max-w-xl mx-auto">
-                <div className="flex items-center gap-3 bg-[#111114] border border-[#27272a] focus-within:border-violet-500/60 rounded-2xl p-3 shadow-2xl transition-all">
-                  <Sparkles size={18} className="text-violet-400 flex-shrink-0" />
+              {/* Primary Input Container */}
+              <div className="pt-2 max-w-xl mx-auto w-full">
+                <div className="flex items-center gap-3 bg-zinc-900/90 border border-zinc-800 focus-within:border-violet-500/70 focus-within:ring-2 focus-within:ring-violet-500/20 rounded-2xl p-3.5 shadow-2xl backdrop-blur-xl transition-all">
+                  <Sparkles size={20} className="text-violet-400 flex-shrink-0" />
                   <input
                     type="text"
                     value={promptInput}
@@ -508,24 +517,32 @@ export default function CoworkPage() {
                         handleStartTask();
                       }
                     }}
-                    placeholder="Describe your goal or enter @stitch, @github, @drive..."
-                    className="flex-1 bg-transparent border-0 outline-none text-sm text-zinc-100 placeholder-zinc-500"
+                    placeholder="Describe your goal or ask a research/code task..."
+                    className="flex-1 bg-transparent border-0 outline-none text-sm text-zinc-100 placeholder-zinc-500 font-sans"
                   />
                   <button
                     onClick={() => handleStartTask()}
                     disabled={!promptInput.trim() || isSubmitting}
-                    className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-lg disabled:opacity-50"
+                    className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white font-semibold text-xs transition-all flex items-center gap-2 shadow-lg shadow-violet-500/25 disabled:opacity-50"
                   >
-                    {isSubmitting ? <RefreshCw size={13} className="animate-spin" /> : <><span>Run Goal</span><Play size={12} fill="currentColor" /></>}
+                    {isSubmitting ? (
+                      <RefreshCw size={14} className="animate-spin" />
+                    ) : (
+                      <>
+                        <span>Execute Goal</span>
+                        <Play size={13} fill="currentColor" />
+                      </>
+                    )}
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-3 justify-center">
+                {/* Preset Prompt Suggestions */}
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none pt-3.5 justify-center">
                   {MULTI_TOOL_PROMPTS.map((sug, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleStartTask(sug)}
-                      className="flex-shrink-0 px-2.5 py-1 rounded-lg bg-[#141417] hover:bg-[#1f1f23] border border-[#232328] text-[11px] text-zinc-400 hover:text-zinc-200 transition-colors"
+                      className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-zinc-900/80 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 hover:text-zinc-100 transition-all shadow-sm"
                     >
                       {sug}
                     </button>
@@ -536,46 +553,46 @@ export default function CoworkPage() {
           </main>
         )}
 
-        {/* ── ACTIVE SPLIT-PANE WORKSPACE (MANUS / CLAUDE COWORK STYLE) ── */}
+        {/* ── ACTIVE SPLIT-PANE WORKSPACE (CLAUDE / MANUS COWORK STYLE) ── */}
         {currentTask && (
           <div className="flex-1 flex min-w-0 h-full overflow-hidden">
             
-            {/* ── LEFT PANE: AGENT TIMELINE, LOGS & MULTI-TURN CHAT (42% Width) ── */}
-            <section className="w-[42%] bg-[#09090b] border-r border-[#1f1f23] flex flex-col h-full min-w-[340px]">
+            {/* ── LEFT PANEL: WORKFLOW TIMELINE, LOGS & CHAT (40% Width) ── */}
+            <section className="w-[40%] bg-zinc-950/80 border-r border-zinc-800/80 flex flex-col h-full min-w-[340px]">
               
-              {/* Header Info */}
-              <div className="p-4 border-b border-[#1f1f23] bg-[#0d0d10] flex items-center justify-between flex-shrink-0">
+              {/* Task Header */}
+              <div className="p-4 border-b border-zinc-800/80 bg-zinc-950 flex items-center justify-between flex-shrink-0">
                 <div className="min-w-0">
-                  <div className="text-[10px] font-mono text-violet-400 uppercase tracking-wider font-semibold">Active Agent Task</div>
+                  <div className="text-[10px] font-semibold text-violet-400 uppercase tracking-wider">Active Task Goal</div>
                   <h2 className="text-sm font-bold text-white truncate">{currentTask.userQuery}</h2>
                 </div>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase flex-shrink-0 ${
-                  currentTask.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
-                  currentTask.status === "running" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20 animate-pulse" :
-                  "bg-zinc-800 text-zinc-400"
+                <span className={`px-3 py-1 rounded-full text-[10px] font-semibold uppercase flex-shrink-0 border ${
+                  currentTask.status === "completed" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
+                  currentTask.status === "running" ? "bg-violet-500/10 text-violet-400 border-violet-500/20 animate-pulse" :
+                  "bg-zinc-800 text-zinc-400 border-zinc-700"
                 }`}>
                   {currentTask.status}
                 </span>
               </div>
 
-              {/* Scrollable Timeline & Chat Body */}
-              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-thin">
+              {/* Scrollable Workflow & Logs Container */}
+              <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-5 scrollbar-thin">
                 
-                {/* Stepper Node Workflow */}
-                <div className="p-4 rounded-xl bg-[#111114] border border-[#232328] space-y-3">
-                  <div className="flex items-center justify-between border-b border-[#232328] pb-2">
-                    <span className="text-[11px] font-bold uppercase text-zinc-300 flex items-center gap-1.5">
-                      <Layers size={14} className="text-violet-400" /> Execution Workflow Nodes
+                {/* Stepper Workflow Nodes */}
+                <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 space-y-3 shadow-md">
+                  <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+                    <span className="text-xs font-bold uppercase tracking-wider text-zinc-200 flex items-center gap-2">
+                      <Layers size={15} className="text-violet-400" /> Workflow Execution Nodes
                     </span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {currentTask.plan.map((step) => (
                       <div key={step.id} className="flex items-center gap-3 text-xs">
-                        {step.status === "completed" && <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />}
-                        {step.status === "running" && <RefreshCw size={15} className="text-blue-400 animate-spin flex-shrink-0" />}
-                        {step.status === "waiting" && <Clock size={15} className="text-zinc-600 flex-shrink-0" />}
-                        {step.status === "approval_required" && <AlertCircle size={15} className="text-amber-400 flex-shrink-0" />}
-                        {step.status === "failed" && <XCircle size={15} className="text-rose-400 flex-shrink-0" />}
+                        {step.status === "completed" && <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />}
+                        {step.status === "running" && <RefreshCw size={16} className="text-violet-400 animate-spin flex-shrink-0" />}
+                        {step.status === "waiting" && <Clock size={16} className="text-zinc-600 flex-shrink-0" />}
+                        {step.status === "approval_required" && <AlertCircle size={16} className="text-amber-400 flex-shrink-0" />}
+                        {step.status === "failed" && <XCircle size={16} className="text-rose-400 flex-shrink-0" />}
                         <span className={`font-medium ${
                           step.status === "completed" ? "text-zinc-300" :
                           step.status === "running" ? "text-white font-semibold" :
@@ -588,68 +605,73 @@ export default function CoworkPage() {
 
                 {/* Human Approval Card */}
                 {currentTask.pendingApproval && (
-                  <div className="bg-[#16141a] border border-amber-500/40 rounded-xl p-4 space-y-3 shadow-lg">
-                    <div className="flex items-center gap-2 text-amber-400 font-bold text-xs border-b border-[#232328] pb-2">
-                      <AlertCircle size={15} />
+                  <div className="bg-amber-950/20 border border-amber-500/40 rounded-2xl p-4 space-y-3 shadow-xl backdrop-blur-md">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold text-xs border-b border-amber-500/20 pb-2">
+                      <AlertCircle size={16} />
                       <span>Human Authorization Required</span>
                     </div>
-                    <div className="space-y-1 text-xs">
+                    <div className="space-y-1.5 text-xs">
                       <div className="font-semibold text-white">{currentTask.pendingApproval.title}</div>
-                      <div className="text-[10px] text-zinc-400 font-mono">Resource: {currentTask.pendingApproval.targetResource}</div>
-                      <p className="text-[11px] text-zinc-300 leading-relaxed pt-1">{currentTask.pendingApproval.description}</p>
+                      <div className="text-[11px] text-zinc-400 font-mono bg-zinc-950/80 px-2 py-1 rounded border border-zinc-800">
+                        Target: {currentTask.pendingApproval.targetResource}
+                      </div>
+                      <p className="text-xs text-zinc-300 leading-relaxed pt-1">{currentTask.pendingApproval.description}</p>
                     </div>
                     <div className="flex items-center gap-2 pt-2">
-                      <button onClick={handleCancelAction} className="flex-1 py-1.5 rounded-lg bg-[#1f1f23] hover:bg-[#27272a] text-xs text-zinc-400 hover:text-white transition-colors">Cancel</button>
-                      <button onClick={handleApproveAction} className="flex-1 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-colors">Approve Action</button>
+                      <button onClick={handleCancelAction} className="flex-1 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs text-zinc-300 hover:text-white font-medium transition-all">
+                        Cancel Action
+                      </button>
+                      <button onClick={handleApproveAction} className="flex-1 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold transition-all shadow-md">
+                        Approve Action
+                      </button>
                     </div>
                   </div>
                 )}
 
                 {/* Multi-Turn Thread Messages */}
                 {currentTask.messages && currentTask.messages.length > 0 && (
-                  <div className="space-y-3 pt-2">
-                    <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Conversation History</div>
+                  <div className="space-y-3 pt-1">
+                    <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider px-1">Conversation History</div>
                     {currentTask.messages.map((msg) => (
                       <div
                         key={msg.id}
-                        className={`p-3.5 rounded-xl border text-xs leading-relaxed space-y-1 ${
+                        className={`p-3.5 rounded-2xl border text-xs leading-relaxed space-y-1 shadow-sm ${
                           msg.sender === "user"
-                            ? "bg-violet-950/20 border-violet-500/30 text-violet-100 ml-4"
-                            : "bg-[#121215] border-[#232328] text-zinc-200 mr-4"
+                            ? "bg-violet-950/25 border-violet-500/30 text-violet-100 ml-3"
+                            : "bg-zinc-900/90 border-zinc-800 text-zinc-200 mr-3"
                         }`}
                       >
-                        <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono">
-                          <span className="font-semibold">{msg.sender === "user" ? "You" : "Clarity Agent"}</span>
+                        <div className="flex items-center justify-between text-[10px] text-zinc-400 font-medium pb-1 border-b border-white/5">
+                          <span className="font-bold">{msg.sender === "user" ? "You" : "Clarity Agent"}</span>
                           <span>{msg.timestamp}</span>
                         </div>
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <div className="whitespace-pre-wrap pt-1 font-sans">{msg.content}</div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {/* Live Activity Logs Stream with Inspect Buttons */}
+                {/* Live Activity Logs Stream */}
                 {currentTask.activityFeed && currentTask.activityFeed.length > 0 && (
-                  <div className="space-y-2 pt-2">
-                    <div className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Live Agent Execution Logs</div>
+                  <div className="space-y-2.5 pt-1">
+                    <div className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider px-1">Live Execution Stream</div>
                     {currentTask.activityFeed.map((act) => (
-                      <div key={act.id} className="bg-[#111114] border border-[#232328] rounded-xl p-3 space-y-1.5 hover:border-[#2e2e34] transition-colors">
+                      <div key={act.id} className="bg-zinc-900/90 border border-zinc-800/80 rounded-2xl p-3.5 space-y-1.5 shadow-sm hover:border-zinc-700 transition-all">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2 min-w-0">
                             {getCategoryIcon(act.category)}
                             <span className="text-xs font-semibold text-zinc-200 truncate">{act.title}</span>
                           </div>
-                          <span className="text-[9px] font-mono text-zinc-400">{act.timestamp}</span>
+                          <span className="text-[10px] text-zinc-500 font-mono">{act.timestamp}</span>
                         </div>
-                        <p className="text-[11px] text-zinc-400 leading-relaxed">{act.description}</p>
+                        <p className="text-xs text-zinc-400 leading-relaxed">{act.description}</p>
 
-                        {/* Inspect Tool Log Button */}
                         <div className="pt-1 flex justify-end">
                           <button
                             onClick={() => setSelectedLogItem(act)}
-                            className="flex items-center gap-1 text-[10px] font-mono text-violet-400 hover:text-violet-300 transition-colors"
+                            className="flex items-center gap-1 text-[11px] font-medium text-violet-400 hover:text-violet-300 transition-colors"
                           >
-                            <Terminal size={11} /> Inspect Logs
+                            <Terminal size={12} /> Inspect Log
                           </button>
                         </div>
                       </div>
@@ -660,9 +682,9 @@ export default function CoworkPage() {
               </div>
 
               {/* Multi-Turn Follow-Up Composer Dock */}
-              <div className="p-3 border-t border-[#1f1f23] bg-[#0d0d10] flex-shrink-0 space-y-2">
-                <div className="flex items-center gap-2 bg-[#141417] border border-[#27272a] focus-within:border-violet-500/60 rounded-xl px-3 py-2 transition-all">
-                  <Sparkles size={16} className="text-violet-400 flex-shrink-0" />
+              <div className="p-3.5 border-t border-zinc-800/80 bg-zinc-950 flex-shrink-0">
+                <div className="flex items-center gap-2 bg-zinc-900/90 border border-zinc-800 focus-within:border-violet-500/70 focus-within:ring-2 focus-within:ring-violet-500/20 rounded-2xl px-3.5 py-2.5 transition-all shadow-md">
+                  <Sparkles size={18} className="text-violet-400 flex-shrink-0" />
                   <input
                     type="text"
                     value={followupInput}
@@ -673,51 +695,51 @@ export default function CoworkPage() {
                         handleSendFollowup();
                       }
                     }}
-                    placeholder="Ask follow-up or request changes..."
+                    placeholder="Ask a follow-up or request canvas changes..."
                     disabled={isFollowupSubmitting || currentTask.status === "running"}
-                    className="flex-1 bg-transparent border-0 outline-none text-xs text-zinc-100 placeholder-zinc-500"
+                    className="flex-1 bg-transparent border-0 outline-none text-xs text-zinc-100 placeholder-zinc-500 font-sans"
                   />
                   <button
                     onClick={handleSendFollowup}
                     disabled={!followupInput.trim() || isFollowupSubmitting || currentTask.status === "running"}
-                    className="p-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white disabled:bg-zinc-800 disabled:text-zinc-600 transition-colors flex-shrink-0"
+                    className="p-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white disabled:bg-zinc-800 disabled:text-zinc-600 transition-all flex-shrink-0 shadow-sm"
                   >
-                    {isFollowupSubmitting ? <RefreshCw size={13} className="animate-spin" /> : <Send size={13} />}
+                    {isFollowupSubmitting ? <RefreshCw size={14} className="animate-spin" /> : <Send size={14} />}
                   </button>
                 </div>
               </div>
 
             </section>
 
-            {/* ── RIGHT PANE: INTERACTIVE WORKSPACE CANVAS (58% Width) ── */}
+            {/* ── RIGHT PANEL: INTERACTIVE CANVAS (60% Width) ── */}
             <section className="flex-1 bg-[#09090b] flex flex-col h-full min-w-0 relative">
               
-              {/* Canvas Navigation Header */}
-              <div className="h-14 px-5 bg-[#0d0d10] border-b border-[#1f1f23] flex items-center justify-between flex-shrink-0">
+              {/* Canvas Header */}
+              <div className="h-14 px-5 bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-800/80 flex items-center justify-between flex-shrink-0">
                 
-                {/* Artifact Tabs */}
-                <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+                {/* Artifact Tabs Strip */}
+                <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
                   {currentTask.artifacts && currentTask.artifacts.length > 0 ? (
                     currentTask.artifacts.map((art) => (
                       <button
                         key={art.id}
                         onClick={() => setActiveArtifact(art)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                        className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
                           activeArtifact?.id === art.id
-                            ? "bg-[#18181c] border border-violet-500/50 text-white shadow-sm"
-                            : "bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-[#141417]"
+                            ? "bg-zinc-900 border border-violet-500/60 text-white shadow-md ring-1 ring-violet-500/20"
+                            : "bg-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60"
                         }`}
                       >
-                        <FileText size={13} className={activeArtifact?.id === art.id ? "text-violet-400" : "text-zinc-500"} />
-                        <span className="truncate max-w-[160px]">{art.title}</span>
+                        <FileText size={14} className={activeArtifact?.id === art.id ? "text-violet-400" : "text-zinc-500"} />
+                        <span className="truncate max-w-[180px]">{art.title}</span>
                       </button>
                     ))
                   ) : (
-                    <span className="text-xs text-zinc-400 font-mono">Workspace Canvas Output</span>
+                    <span className="text-xs text-zinc-400 font-semibold">Workspace Canvas</span>
                   )}
                 </div>
 
-                {/* Canvas Action Controls */}
+                {/* Canvas Control Buttons */}
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
@@ -726,64 +748,64 @@ export default function CoworkPage() {
                       setCopiedReport(true);
                       setTimeout(() => setCopiedReport(false), 2000);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#141417] hover:bg-[#1f1f23] text-xs font-medium text-zinc-300 hover:text-white transition-colors border border-[#232328]"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-xs font-medium text-zinc-300 hover:text-white transition-all shadow-sm"
                   >
-                    {copiedReport ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                    {copiedReport ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                     <span>{copiedReport ? "Copied" : "Copy Canvas"}</span>
                   </button>
 
                   <button
                     onClick={() => setIsFullscreenCanvas(!isFullscreenCanvas)}
-                    className="p-1.5 rounded-lg bg-[#141417] hover:bg-[#1f1f23] text-zinc-400 hover:text-white transition-colors border border-[#232328]"
-                    title={isFullscreenCanvas ? "Exit Fullscreen" : "Fullscreen View"}
+                    className="p-2 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-white transition-all shadow-sm"
+                    title={isFullscreenCanvas ? "Exit Fullscreen" : "Fullscreen Canvas"}
                   >
-                    {isFullscreenCanvas ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    {isFullscreenCanvas ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
                   </button>
                 </div>
               </div>
 
-              {/* Main Canvas Document Viewer */}
-              <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-thin bg-[#0b0b0e]">
+              {/* Canvas Document Viewer */}
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 scrollbar-thin bg-zinc-950/40">
                 <div className="max-w-4xl mx-auto space-y-6">
                   
                   {(activeArtifact || currentTask.report) ? (
-                    <div className="p-6 md:p-8 rounded-2xl bg-[#121215] border border-[#232328] space-y-4 shadow-xl">
-                      <div className="flex items-center justify-between border-b border-[#232328] pb-3">
-                        <div className="flex items-center gap-2">
-                          <ShieldCheck size={18} className="text-violet-400" />
-                          <h3 className="text-sm font-bold text-white">
+                    <div className="p-7 md:p-9 rounded-2xl bg-zinc-900/90 border border-zinc-800/80 space-y-5 shadow-2xl backdrop-blur-md">
+                      <div className="flex items-center justify-between border-b border-zinc-800 pb-4">
+                        <div className="flex items-center gap-2.5">
+                          <ShieldCheck size={20} className="text-violet-400" />
+                          <h3 className="text-base font-bold text-white tracking-tight">
                             {activeArtifact ? activeArtifact.title : "Agent Response & Workspace Findings"}
                           </h3>
                         </div>
-                        <span className="text-[10px] font-mono text-zinc-400">
+                        <span className="text-xs font-medium text-zinc-500 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800">
                           {activeArtifact ? activeArtifact.createdAt : ""}
                         </span>
                       </div>
 
-                      <div className="text-xs md:text-sm leading-relaxed text-zinc-200 font-sans overflow-x-auto">
+                      <div className="text-sm leading-relaxed text-zinc-200 font-sans overflow-x-auto">
                         <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
-                            h1: ({ children }) => <h1 className="text-lg md:text-xl font-bold my-4 text-white border-b border-[#232328] pb-2">{children}</h1>,
-                            h2: ({ children }) => <h2 className="text-base md:text-lg font-semibold my-3 text-white border-b border-[#232328] pb-1">{children}</h2>,
-                            h3: ({ children }) => <h3 className="text-sm md:text-base font-semibold my-2.5 text-violet-300">{children}</h3>,
-                            p: ({ children }) => <p className="mb-3 leading-relaxed text-zinc-300">{children}</p>,
-                            ul: ({ children }) => <ul className="list-disc pl-5 mb-3 space-y-1.5 text-zinc-300">{children}</ul>,
-                            ol: ({ children }) => <ol className="list-decimal pl-5 mb-3 space-y-1.5 text-zinc-300">{children}</ol>,
+                            h1: ({ children }) => <h1 className="text-xl md:text-2xl font-extrabold my-4 text-white border-b border-zinc-800 pb-2">{children}</h1>,
+                            h2: ({ children }) => <h2 className="text-lg md:text-xl font-bold my-3 text-white border-b border-zinc-800 pb-1">{children}</h2>,
+                            h3: ({ children }) => <h3 className="text-base font-semibold my-2.5 text-violet-300">{children}</h3>,
+                            p: ({ children }) => <p className="mb-3.5 leading-relaxed text-zinc-300">{children}</p>,
+                            ul: ({ children }) => <ul className="list-disc pl-5 mb-4 space-y-1.5 text-zinc-300">{children}</ul>,
+                            ol: ({ children }) => <ol className="list-decimal pl-5 mb-4 space-y-1.5 text-zinc-300">{children}</ol>,
                             table: ({ children }) => (
-                              <div className="overflow-x-auto my-4 rounded-xl border border-[#232328]">
+                              <div className="overflow-x-auto my-5 rounded-2xl border border-zinc-800 shadow-md">
                                 <table className="w-full text-left border-collapse text-xs">{children}</table>
                               </div>
                             ),
-                            th: ({ children }) => <th className="bg-[#18181c] p-2.5 font-bold border-b border-[#232328] text-white">{children}</th>,
-                            td: ({ children }) => <td className="p-2.5 border-b border-[#1f1f23] text-zinc-300">{children}</td>,
+                            th: ({ children }) => <th className="bg-zinc-850 p-3 font-bold border-b border-zinc-750 text-white">{children}</th>,
+                            td: ({ children }) => <td className="p-3 border-b border-zinc-800/70 text-zinc-300">{children}</td>,
                             code: ({ children, ...props }) => (
-                              <code className="bg-[#09090b] border border-[#232328] rounded px-1.5 py-0.5 text-xs font-mono text-violet-300" {...props}>
+                              <code className="bg-zinc-950 border border-zinc-800 rounded px-1.5 py-0.5 text-xs font-mono text-violet-300" {...props}>
                                 {children}
                               </code>
                             ),
                             pre: ({ children }) => (
-                              <pre className="bg-[#09090b] border border-[#232328] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono text-zinc-200 shadow-inner">
+                              <pre className="bg-zinc-950 border border-zinc-800/90 rounded-2xl p-4 overflow-x-auto text-xs my-4 font-mono text-zinc-200 shadow-inner">
                                 {children}
                               </pre>
                             ),
@@ -794,9 +816,9 @@ export default function CoworkPage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="h-64 flex flex-col items-center justify-center text-zinc-500 space-y-2 border border-dashed border-[#232328] rounded-2xl">
-                      <RefreshCw size={24} className="animate-spin text-violet-400" />
-                      <span className="text-xs font-mono">Agent is executing workspace steps & generating artifacts...</span>
+                    <div className="h-64 flex flex-col items-center justify-center text-zinc-400 space-y-3 border border-dashed border-zinc-800 rounded-3xl bg-zinc-900/30">
+                      <RefreshCw size={26} className="animate-spin text-violet-400" />
+                      <span className="text-xs font-medium text-zinc-400">Agent is executing workspace steps & generating artifacts...</span>
                     </div>
                   )}
 
@@ -812,40 +834,40 @@ export default function CoworkPage() {
 
       {/* ── TOOL LOG INSPECTOR MODAL ── */}
       {selectedLogItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#121215] border border-[#27272a] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl space-y-4 p-6">
-            <div className="flex items-center justify-between border-b border-[#232328] pb-3">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl space-y-4 p-6 text-zinc-100">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <Terminal size={18} className="text-violet-400" />
-                <h3 className="text-sm font-bold text-white">{selectedLogItem.title}</h3>
+                <Terminal size={20} className="text-violet-400" />
+                <h3 className="text-base font-bold text-white">{selectedLogItem.title}</h3>
               </div>
               <button
                 onClick={() => setSelectedLogItem(null)}
-                className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-[#1f1f23] transition-colors"
+                className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2 bg-[#09090b] p-3 rounded-xl border border-[#232328]">
-                <div><span className="text-zinc-500 font-mono">Category:</span> <span className="font-semibold text-white uppercase">{selectedLogItem.category || "system"}</span></div>
-                <div><span className="text-zinc-500 font-mono">Timestamp:</span> <span className="font-semibold text-white">{selectedLogItem.timestamp}</span></div>
-                <div><span className="text-zinc-500 font-mono">Tool Name:</span> <span className="font-semibold text-violet-400">{selectedLogItem.toolName || "N/A"}</span></div>
-                <div><span className="text-zinc-500 font-mono">Event Type:</span> <span className="font-semibold text-emerald-400 uppercase">{selectedLogItem.type}</span></div>
+              <div className="grid grid-cols-2 gap-3 bg-zinc-950 p-4 rounded-2xl border border-zinc-800">
+                <div><span className="text-zinc-500 font-medium">Category:</span> <span className="font-semibold text-white uppercase">{selectedLogItem.category || "system"}</span></div>
+                <div><span className="text-zinc-500 font-medium">Timestamp:</span> <span className="font-semibold text-white">{selectedLogItem.timestamp}</span></div>
+                <div><span className="text-zinc-500 font-medium">Tool Name:</span> <span className="font-semibold text-violet-400">{selectedLogItem.toolName || "N/A"}</span></div>
+                <div><span className="text-zinc-500 font-medium">Event Type:</span> <span className="font-semibold text-emerald-400 uppercase">{selectedLogItem.type}</span></div>
               </div>
 
-              <div className="space-y-1">
-                <div className="text-[10px] font-mono text-zinc-400 uppercase">Event Description</div>
-                <div className="bg-[#09090b] p-3 rounded-xl border border-[#232328] text-zinc-300 font-mono text-xs">
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Event Description</div>
+                <div className="bg-zinc-950 p-3.5 rounded-2xl border border-zinc-800 text-zinc-300 font-mono text-xs leading-relaxed">
                   {selectedLogItem.description}
                 </div>
               </div>
 
               {selectedLogItem.query && (
-                <div className="space-y-1">
-                  <div className="text-[10px] font-mono text-zinc-400 uppercase">Tool Query Input</div>
-                  <div className="bg-[#09090b] p-3 rounded-xl border border-[#232328] text-violet-300 font-mono text-xs">
+                <div className="space-y-1.5">
+                  <div className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Tool Input Query</div>
+                  <div className="bg-zinc-950 p-3.5 rounded-2xl border border-zinc-800 text-violet-300 font-mono text-xs">
                     {selectedLogItem.query}
                   </div>
                 </div>
@@ -855,7 +877,7 @@ export default function CoworkPage() {
             <div className="flex justify-end pt-2">
               <button
                 onClick={() => setSelectedLogItem(null)}
-                className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-all shadow-md"
               >
                 Close Inspector
               </button>

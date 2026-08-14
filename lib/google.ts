@@ -45,34 +45,8 @@ export async function drive_search_files(query: string, accessToken?: string | n
     }
   }
 
-  // Fallback sample data
-  const sampleDriveFiles: DriveFile[] = [
-    {
-      id: "drive_doc_1",
-      name: "Mindmate Project Proposal & Technical Specification.pdf",
-      mimeType: "application/pdf",
-      size: "2.4 MB",
-      modifiedTime: new Date(Date.now() - 3600000 * 2).toISOString(),
-      webViewLink: "https://drive.google.com/file/d/mindmate-proposal",
-    },
-    {
-      id: "drive_doc_2",
-      name: "Q3 2026 Security Architecture & Auth Deliverables.docx",
-      mimeType: "application/vnd.google-apps.document",
-      size: "450 KB",
-      modifiedTime: new Date(Date.now() - 3600000 * 5).toISOString(),
-      webViewLink: "https://drive.google.com/file/d/auth-specs",
-    },
-    {
-      id: "drive_sheet_1",
-      name: "Product Roadmap & Quarterly Revenue Metrics.xlsx",
-      mimeType: "application/vnd.google-apps.spreadsheet",
-      size: "1.1 MB",
-      modifiedTime: new Date(Date.now() - 3600000 * 12).toISOString(),
-      webViewLink: "https://drive.google.com/file/d/roadmap-sheet",
-    },
-  ];
-  return sampleDriveFiles;
+  // Return empty array if Google account is not connected
+  return [];
 }
 
 export async function drive_get_file_content(fileId: string): Promise<{ id: string; name: string; content: string }> {
@@ -244,31 +218,8 @@ export async function gmail_search(query: string, accessToken?: string | null): 
     }
   }
 
-  // Fallback sample data
-  return [
-    {
-      id: "msg_101",
-      threadId: "th_101",
-      from: "Rahul Sharma <rahul.sharma@example.com>",
-      to: "Shivam Kothekar <shivam@gmail.com>",
-      subject: "Project Update & Internship Review",
-      snippet: "Hi Shivam, please review the latest updates and share the proposal status by tomorrow...",
-      body: "Hi Shivam,\n\nPlease review the latest updates on Mindmate and share the Drive proposal details.",
-      date: new Date(Date.now() - 1800000).toISOString(),
-      isUnread: true,
-    },
-    {
-      id: "msg_102",
-      threadId: "th_102",
-      from: "Security Audit Team <security@clarity.app>",
-      to: "Shivam Kothekar <shivam@gmail.com>",
-      subject: "Security Clearance Confirmation",
-      snippet: "All 5 security protocols verified for production launch...",
-      body: "Hi Shivam,\n\nAll security boundary checks have passed.",
-      date: new Date(Date.now() - 7200000).toISOString(),
-      isUnread: false,
-    },
-  ];
+  // Return empty list if Google OAuth token is not connected
+  return [];
 }
 
 export async function gmail_create_draft(to: string, subject: string, body: string): Promise<{ draftId: string; to: string; subject: string; body: string }> {

@@ -23,6 +23,7 @@ import {
 } from "./google";
 import { listMCPServers, discoverMCPTools, executeMCPTool } from "./mcp";
 import { browser_open, browser_search, browser_extract } from "./browserAgent";
+import { searchWeb, SearchResult } from "./search";
 import { requiresHumanApproval } from "./toolRegistry";
 import { getCerebrasClient, MODEL } from "./cerebras";
 import { prisma } from "./db";
@@ -302,6 +303,40 @@ async function executeMultiToolAgentLoop(
   let calendarSlotsText = "";
   let gmailDraftText = "";
   let sheetsDataText = "";
+  let webSearchText = "";
+
+  // 0. LIVE WEB SEARCH STEP (Runs for web inquiries, documentation, facts, news, or general prompts)
+  const isWebSearchQuery = flags.needsBrowser || queryLower.includes("search") || queryLower.includes("latest") || queryLower.includes("news") || queryLower.includes("what") || queryLower.includes("how") || queryLower.includes("find") || queryLower.includes("info") || queryLower.includes("docs") || queryLower.includes("vs") || (!flags.needsDrive && !flags.needsCalendar && !flags.needsGmail && !flags.needsSheets && !flags.needsGitHub);
+
+  if (isWebSearchQuery) {
+    const browserStep = task.plan.find(s => s.id === "step_browser");
+    if (browserStep) browserStep.status = "running";
+    taskStore.set(taskId, task);
+
+    try {
+      const searchResults = await searchWeb(task.userQuery, 5);
+      if (searchResults && searchResults.length > 0) {
+        webSearchText = `LIVE WEB SEARCH RESULTS (${searchResults.length} sources found):\n` +
+          searchResults.map((r: SearchResult, idx: number) => `[Source ${idx + 1}] ${r.title}\nURL: ${r.url}\nSummary: ${r.snippet}`).join("\n\n");
+
+        task.activityFeed.push({
+          id: `act_web_${Date.now()}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
+          type: "tool_call",
+          category: "browser",
+          title: "Live Web Search Executed",
+          description: `Fetched ${searchResults.length} real-time web results for "${task.userQuery.slice(0, 40)}"`,
+          toolName: "searchWeb",
+          query: task.userQuery,
+        });
+        task.usedTools.push("searchWeb");
+      }
+    } catch (e) {
+      console.warn("Live web search error:", e);
+    }
+
+    if (browserStep) browserStep.status = "completed";
+  }
 
   // 1. GOOGLE DRIVE STEP
   if (flags.needsDrive) {
@@ -528,6 +563,7 @@ async function executeMultiToolAgentLoop(
     calendarSlotsText,
     gmailDraftText,
     sheetsDataText,
+    webSearchText,
   });
 }
 
@@ -615,11 +651,13 @@ async function finalizeMultiToolReport(
     calendarSlotsText: string;
     gmailDraftText: string;
     sheetsDataText: string;
+    webSearchText?: string;
     writeActionResult?: string;
   }
 ) {
   const client = getCerebrasClient();
   const contextParts: string[] = [];
+  if (ctx.webSearchText) contextParts.push(ctx.webSearchText);
   if (ctx.driveDocsText) contextParts.push(ctx.driveDocsText);
   if (ctx.gmailDraftText) contextParts.push(ctx.gmailDraftText);
   if (ctx.githubContextText) contextParts.push(ctx.githubContextText);
@@ -696,6 +734,16 @@ Provide a direct, natural, executive response answering the user's goal.`;
     content: reportText,
     createdAt: now,
   });
+
+  if (ctx.webSearchText) {
+    artifacts.push({
+      id: `art_web_${Date.now()}`,
+      title: "Live Web Search Findings",
+      type: "report",
+      content: ctx.webSearchText,
+      createdAt: now,
+    });
+  }
 
   if (ctx.driveDocsText) {
     artifacts.push({
