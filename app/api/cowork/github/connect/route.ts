@@ -3,34 +3,11 @@ import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
-  const user = await getSessionUser();
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
+  const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
+  const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 
-  if (!user) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  const ghUsername = user.username || "ShivamSk07";
-  try {
-    await prisma.userProfile.upsert({
-      where: { userId: user.userId },
-      update: {
-        githubConnected: true,
-        githubUsername: ghUsername,
-        githubAvatarUrl: `https://github.com/${ghUsername}.png`,
-      },
-      create: {
-        userId: user.userId,
-        githubConnected: true,
-        githubUsername: ghUsername,
-        githubAvatarUrl: `https://github.com/${ghUsername}.png`,
-      },
-    });
-  } catch (e) {
-    console.error("Failed to connect GitHub via GET:", e);
-  }
-
-  return NextResponse.redirect(new URL("/cowork?connected=github", appUrl));
+  return NextResponse.redirect(new URL("/api/auth/github", appUrl));
 }
 
 export async function POST(request: NextRequest) {
