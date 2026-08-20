@@ -77,7 +77,7 @@ ${fileList}
       extraContext = `FIGMA DESIGN CONTEXT: Dark mode theme tokens (#000000 main, #1c1c1e cards, #2c2c2e borders, #007aff primary blue).`;
     }
 
-    logs.push(`[${new Date().toLocaleTimeString()}] 🧠 Invoking Cerebras AI Agent Reasoner...`);
+    logs.push(`[${new Date().toLocaleTimeString()}] 🧠 Invoking Groq AI Agent Reasoner (${MODEL})...`);
 
     // 2. Execute Task using Cerebras AI LLM
     const agentSystemPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent.

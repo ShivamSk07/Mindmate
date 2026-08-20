@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import Cerebras from "@cerebras/cerebras_cloud_sdk";
+import Groq from "groq-sdk";
 
-const cerebrasApiKey = process.env.CEREBRAS_API_KEY;
-const cerebras = cerebrasApiKey ? new Cerebras({ apiKey: cerebrasApiKey }) : null;
+const groqApiKey = process.env.GROQ_API_KEY || process.env.CEREBRAS_API_KEY;
+const groqClient = groqApiKey ? new Groq({ apiKey: groqApiKey }) : null;
 
 export const dynamic = "force-dynamic";
 
@@ -60,12 +60,12 @@ export async function POST(request: NextRequest) {
       }
     } else if (fileType.startsWith("image/")) {
       try {
-        if (!cerebras) {
-          return NextResponse.json({ error: "CEREBRAS_API_KEY is not configured on server" }, { status: 500 });
+        if (!groqClient) {
+          return NextResponse.json({ error: "GROQ_API_KEY is not configured on server" }, { status: 500 });
         }
         const base64Image = buffer.toString("base64");
-        const response = await cerebras.chat.completions.create({
-          model: "gemma-4-31b",
+        const response = await groqClient.chat.completions.create({
+          model: "llama-3.2-11b-vision-preview",
           messages: [
             {
               role: "user",
