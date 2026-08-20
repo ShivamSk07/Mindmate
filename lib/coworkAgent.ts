@@ -1,33 +1,32 @@
-import { 
+import {
   github_list_repositories,
   github_get_repository_tree,
-  github_get_file,
-  github_search_code,
   github_get_commits,
   github_get_issues,
-  github_get_pull_requests,
   github_create_issue,
   github_create_pull_request,
 } from "./github";
-import { 
-  drive_search_files, 
-  drive_get_file_content, 
-  calendar_list_events, 
-  calendar_find_free_time, 
-  calendar_create_event, 
-  gmail_search, 
-  gmail_create_draft, 
-  gmail_send, 
-  sheets_read, 
-  sheets_write 
+import {
+  drive_search_files,
+  drive_get_file_content,
+  calendar_list_events,
+  calendar_find_free_time,
+  calendar_create_event,
+  gmail_search,
+  gmail_create_draft,
+  gmail_send,
+  sheets_read,
+  sheets_write,
 } from "./google";
-import { listMCPServers, discoverMCPTools, executeMCPTool } from "./mcp";
-import { browser_open, browser_search, browser_extract } from "./browserAgent";
+import { listMCPServers } from "./mcp";
 import { searchWeb, SearchResult } from "./search";
-import { requiresHumanApproval } from "./toolRegistry";
 import { getCerebrasClient, MODEL } from "./cerebras";
 import { prisma } from "./db";
 import { parseMentionedMCPServers } from "./mcpRegistry";
+
+// ─────────────────────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────────────────────
 
 export interface PlanStep {
   id: string;
@@ -85,19 +84,15 @@ export interface CoworkTask {
   pendingApproval: PendingApproval | null;
   report: string | null;
   codeDiff: string | null;
-  scores: {
-    overall: number;
-    security: number;
-    architecture: number;
-    codeQuality: number;
-    maintenance: number;
-  } | null;
   artifacts: Artifact[];
   createdAt: string;
   updatedAt: string;
 }
 
-// In-Memory Task Store
+// ─────────────────────────────────────────────────────────────
+// In-memory task store
+// ─────────────────────────────────────────────────────────────
+
 const taskStore = new Map<string, CoworkTask>();
 
 export function getTask(id: string): CoworkTask | null {
@@ -110,33 +105,71 @@ export function getAllTasks(): CoworkTask[] {
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────────────────────
+
+const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+function ts() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+}
+
+function addLog(
+  task: CoworkTask,
+  type: ActivityItem["type"],
+  title: string,
+  description: string,
+  category: ActivityItem["category"] = "system",
+  extra: Partial<ActivityItem> = {}
+) {
+  task.activityFeed.push({
+    id: `act_${Date.now()}_${Math.random().toString(36).slice(2, 5)}`,
+    timestamp: ts(),
+    type,
+    category,
+    title,
+    description,
+    ...extra,
+  });
+  taskStore.set(task.id, task);
+}
+
+function setStep(task: CoworkTask, stepId: string, status: PlanStep["status"]) {
+  const step = task.plan.find((s) => s.id === stepId);
+  if (step) step.status = status;
+  taskStore.set(task.id, task);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Task creation
+// ─────────────────────────────────────────────────────────────
+
 export async function createAndRunTask(
   userQuery: string,
   preferredRepo?: string,
   preferredBranch = "main"
 ): Promise<CoworkTask> {
-  const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const now = new Date().toISOString();
 
-  let owner = "ShivamSk07";
+  let owner = "";
   let repo = "";
 
-  // Extract repo name dynamically from user query (e.g., "repo called zentro", "repo zentro", "ShivamSk07/zentro")
-  const repoMatch = userQuery.match(/(?:repo|repository)\s+(?:called\s+|named\s+)?([a-zA-Z0-9_\-\/]+)/i);
-  if (repoMatch && repoMatch[1]) {
+  // Extract repo from query (e.g. "repo zentro", "ShivamSk07/zentro")
+  const repoMatch = userQuery.match(
+    /(?:repo|repository)\s+(?:called\s+|named\s+)?([a-zA-Z0-9_\-\/]+)/i
+  );
+  if (repoMatch?.[1]) {
     const extracted = repoMatch[1].trim();
     if (extracted.includes("/")) {
-      const parts = extracted.split("/");
-      owner = parts[0];
-      repo = parts[1];
+      [owner, repo] = extracted.split("/");
     } else {
       repo = extracted;
     }
-  } else if (preferredRepo && preferredRepo !== "ShivamSk07/Mindmate" && preferredRepo.trim() !== "") {
+  } else if (preferredRepo && preferredRepo.trim()) {
     if (preferredRepo.includes("/")) {
-      const parts = preferredRepo.split("/");
-      owner = parts[0];
-      repo = parts[1];
+      [owner, repo] = preferredRepo.split("/");
     } else {
       repo = preferredRepo;
     }
@@ -144,20 +177,34 @@ export async function createAndRunTask(
 
   const queryLower = userQuery.toLowerCase();
   const mentionedMCPServers = parseMentionedMCPServers(userQuery);
-  const mcpServerTitle = mentionedMCPServers.length > 0 
-    ? `Execute ${mentionedMCPServers.map(s => s.name).join(", ")}` 
-    : "Discover & execute MCP Server tools";
 
-  // Multi-Tool Detection Logic based on user query intent & @mentions
-  const isDriveQuery = queryLower.includes("drive") || queryLower.includes("proposal") || queryLower.includes("pdf") || queryLower.includes("doc") || queryLower.includes("file") || queryLower.includes("files") || queryLower.includes("folder");
-  const isCalendarQuery = queryLower.includes("calendar") || queryLower.includes("meeting") || queryLower.includes("slot") || queryLower.includes("schedule") || queryLower.includes("tomorrow") || queryLower.includes("event") || queryLower.includes("gcal");
-  const isGmailQuery = queryLower.includes("email") || queryLower.includes("mail") || queryLower.includes("draft") || queryLower.includes("inbox") || queryLower.includes("rahul") || queryLower.includes("gmail") || queryLower.includes("message") || queryLower.includes("messages");
-  const isSheetsQuery = queryLower.includes("sheet") || queryLower.includes("sheets") || queryLower.includes("spreadsheet") || queryLower.includes("sales") || queryLower.includes("revenue") || queryLower.includes("excel");
-  const isBrowserQuery = queryLower.includes("browser") || queryLower.includes("docs url") || queryLower.includes("search web") || queryLower.includes("website") || queryLower.includes("@browser");
-  const isMCPQuery = queryLower.includes("mcp") || queryLower.includes("stitch") || queryLower.includes("@") || mentionedMCPServers.length > 0;
+  // Detect which tools are needed
+  const isDriveQuery =
+    queryLower.includes("drive") || queryLower.includes("pdf") ||
+    queryLower.includes("doc") || queryLower.includes("file") || queryLower.includes("folder");
+  const isCalendarQuery =
+    queryLower.includes("calendar") || queryLower.includes("meeting") ||
+    queryLower.includes("schedule") || queryLower.includes("tomorrow") || queryLower.includes("event");
+  const isGmailQuery =
+    queryLower.includes("email") || queryLower.includes("mail") ||
+    queryLower.includes("draft") || queryLower.includes("inbox") || queryLower.includes("gmail");
+  const isSheetsQuery =
+    queryLower.includes("sheet") || queryLower.includes("spreadsheet") ||
+    queryLower.includes("sales") || queryLower.includes("revenue") || queryLower.includes("excel");
+  const isBrowserQuery =
+    queryLower.includes("browser") || queryLower.includes("search web") ||
+    queryLower.includes("website") || queryLower.includes("@browser");
+  const isMCPQuery =
+    queryLower.includes("mcp") || queryLower.includes("@") || mentionedMCPServers.length > 0;
 
-  const isExplicitGitHub = queryLower.includes("github") || queryLower.includes("repo") || queryLower.includes("code") || queryLower.includes("pr") || queryLower.includes("commit") || queryLower.includes("audit") || queryLower.includes("issue") || queryLower.includes("@github");
-  const isAnyOtherTool = isDriveQuery || isCalendarQuery || isGmailQuery || isSheetsQuery || isBrowserQuery || isMCPQuery;
+  const isExplicitGitHub =
+    queryLower.includes("github") || queryLower.includes("repo") ||
+    queryLower.includes("code") || queryLower.includes("pr") ||
+    queryLower.includes("commit") || queryLower.includes("audit") ||
+    queryLower.includes("issue") || queryLower.includes("@github");
+
+  const isAnyOtherTool =
+    isDriveQuery || isCalendarQuery || isGmailQuery || isSheetsQuery || isBrowserQuery || isMCPQuery;
 
   const needsGitHub = isExplicitGitHub || !isAnyOtherTool;
   const needsDrive = isDriveQuery;
@@ -167,21 +214,20 @@ export async function createAndRunTask(
   const needsBrowser = isBrowserQuery;
   const needsMCP = isMCPQuery;
 
+  // Build plan steps
   const initialPlan: PlanStep[] = [
-    { id: "step_1", title: "Understand user goal & select tools", status: "completed" },
+    { id: "step_init", title: "Analyzing request", status: "completed" },
   ];
 
-  const repoDisplayTitle = repo ? `${owner}/${repo}` : `${owner} Repositories`;
-
-  if (needsDrive) initialPlan.push({ id: "step_drive", title: "Search & read Google Drive documents", status: "waiting" });
-  if (needsGitHub) initialPlan.push({ id: "step_github", title: `Inspect GitHub repositories (${repoDisplayTitle})`, status: "waiting" });
-  if (needsSheets) initialPlan.push({ id: "step_sheets", title: "Analyze Google Sheets metrics & data", status: "waiting" });
-  if (needsCalendar) initialPlan.push({ id: "step_cal", title: "Check Google Calendar schedule & free slots", status: "waiting" });
-  if (needsGmail) initialPlan.push({ id: "step_gmail", title: "Search & check Gmail inbox messages", status: "waiting" });
-  if (needsBrowser) initialPlan.push({ id: "step_browser", title: "Search & extract web documentation via Browser Agent", status: "waiting" });
-  if (needsMCP) initialPlan.push({ id: "step_mcp", title: mcpServerTitle, status: "waiting" });
-
-  initialPlan.push({ id: "step_final", title: "Synthesize result & generate workspace artifacts", status: "waiting" });
+  if (needsDrive) initialPlan.push({ id: "step_drive", title: "Google Drive", status: "waiting" });
+  if (needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub", status: "waiting" });
+  if (needsSheets) initialPlan.push({ id: "step_sheets", title: "Google Sheets", status: "waiting" });
+  if (needsCalendar) initialPlan.push({ id: "step_cal", title: "Google Calendar", status: "waiting" });
+  if (needsGmail) initialPlan.push({ id: "step_gmail", title: "Gmail", status: "waiting" });
+  if (needsBrowser || !isAnyOtherTool)
+    initialPlan.push({ id: "step_browser", title: "Web search", status: "waiting" });
+  if (needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP servers", status: "waiting" });
+  initialPlan.push({ id: "step_final", title: "Writing response", status: "waiting" });
 
   const initialTask: CoworkTask = {
     id: taskId,
@@ -200,20 +246,10 @@ export async function createAndRunTask(
     status: "running",
     usedTools: [],
     plan: initialPlan,
-    activityFeed: [
-      {
-        id: "act_init",
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        type: "connect",
-        category: "system",
-        title: "Initialised Multi-Tool Agent Session",
-        description: "GPT-OSS 120B reasoning engine connected to active tool registry",
-      },
-    ],
+    activityFeed: [],
     pendingApproval: null,
     report: null,
     codeDiff: null,
-    scores: null,
     artifacts: [],
     createdAt: now,
     updatedAt: now,
@@ -221,8 +257,8 @@ export async function createAndRunTask(
 
   taskStore.set(taskId, initialTask);
 
-  // Run execution loop asynchronously
-  executeMultiToolAgentLoop(taskId, {
+  // Run agent loop asynchronously
+  executeAgentLoop(taskId, {
     needsDrive,
     needsGitHub,
     needsCalendar,
@@ -231,26 +267,23 @@ export async function createAndRunTask(
     needsBrowser,
     needsMCP,
   }).catch((err) => {
-    console.error(`Task ${taskId} execution failed:`, err);
-    const task = taskStore.get(taskId);
-    if (task) {
-      task.status = "failed";
-      task.activityFeed.push({
-        id: `act_err_${Date.now()}`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        type: "error",
-        category: "system",
-        title: "Execution Error",
-        description: err.message || "An unexpected error occurred",
-      });
-      taskStore.set(taskId, task);
+    console.error(`Task ${taskId} failed:`, err);
+    const t = taskStore.get(taskId);
+    if (t) {
+      t.status = "failed";
+      addLog(t, "error", "Execution failed", err.message || "Unexpected error");
+      taskStore.set(taskId, t);
     }
   });
 
   return initialTask;
 }
 
-async function executeMultiToolAgentLoop(
+// ─────────────────────────────────────────────────────────────
+// Main agent execution loop
+// ─────────────────────────────────────────────────────────────
+
+async function executeAgentLoop(
   taskId: string,
   flags: {
     needsDrive: boolean;
@@ -265,271 +298,290 @@ async function executeMultiToolAgentLoop(
   const task = taskStore.get(taskId);
   if (!task) return;
 
-  const { owner, repo, branch, queryLower } = {
-    owner: task.repoOwner,
-    repo: task.repoName,
-    branch: task.branch,
-    queryLower: task.userQuery.toLowerCase(),
-  };
+  const queryLower = task.userQuery.toLowerCase();
+  let owner = task.repoOwner;
+  const branch = task.branch;
+  let repo = task.repoName;
 
-  // Fetch real Google OAuth access token from DB
+  // Fetch tokens from DB
   let googleAccessToken: string | null = null;
   let githubAccessToken: string | null = null;
   let githubUsername: string = owner;
-  try {
-    const profile = await (prisma as any).userProfile.findFirst({
-      where: { googleConnected: true },
-      select: { googleToken: true, googleEmail: true },
-    });
-    googleAccessToken = profile?.googleToken || null;
-  } catch (e) {
-    console.warn("Could not fetch Google token from DB:", e);
-  }
 
-  // Fetch real GitHub OAuth access token from DB
+  try {
+    const gProfile = await (prisma as any).userProfile.findFirst({
+      where: { googleConnected: true },
+      select: { googleToken: true },
+    });
+    googleAccessToken = gProfile?.googleToken || null;
+  } catch {}
+
   try {
     const ghProfile = await (prisma as any).userProfile.findFirst({
       where: { githubConnected: true },
       select: { githubToken: true, githubUsername: true },
     });
     githubAccessToken = ghProfile?.githubToken || null;
-    githubUsername = ghProfile?.githubUsername || owner;
-  } catch (e) {
-    console.warn("Could not fetch GitHub token from DB:", e);
-  }
+    if (ghProfile?.githubUsername) githubUsername = ghProfile.githubUsername;
+    if (!owner) owner = githubUsername;
+  } catch {}
 
-  let driveDocsText = "";
-  let githubContextText = "";
-  let calendarSlotsText = "";
-  let gmailDraftText = "";
-  let sheetsDataText = "";
-  let webSearchText = "";
+  let driveText = "";
+  let githubText = "";
+  let calendarText = "";
+  let gmailText = "";
+  let sheetsText = "";
+  let webText = "";
 
-  // 0. LIVE WEB SEARCH STEP (Runs for web inquiries, documentation, facts, news, or general prompts)
-  const isWebSearchQuery = flags.needsBrowser || queryLower.includes("search") || queryLower.includes("latest") || queryLower.includes("news") || queryLower.includes("what") || queryLower.includes("how") || queryLower.includes("find") || queryLower.includes("info") || queryLower.includes("docs") || queryLower.includes("vs") || (!flags.needsDrive && !flags.needsCalendar && !flags.needsGmail && !flags.needsSheets && !flags.needsGitHub);
+  // ── WEB SEARCH ──────────────────────────────────────────────
+  const isWebQuery =
+    flags.needsBrowser ||
+    (!flags.needsDrive && !flags.needsCalendar && !flags.needsGmail &&
+      !flags.needsSheets && !flags.needsGitHub) ||
+    queryLower.includes("search") || queryLower.includes("latest") ||
+    queryLower.includes("news") || queryLower.includes("what") ||
+    queryLower.includes("how") || queryLower.includes("find");
 
-  if (isWebSearchQuery) {
-    const browserStep = task.plan.find(s => s.id === "step_browser");
-    if (browserStep) browserStep.status = "running";
-    taskStore.set(taskId, task);
+  if (isWebQuery) {
+    setStep(task, "step_browser", "running");
+    addLog(task, "tool_call", "Searching the web", `"${task.userQuery.slice(0, 60)}"`, "browser", { toolName: "searchWeb" });
+    await delay(300);
 
     try {
-      const searchResults = await searchWeb(task.userQuery, 5);
-      if (searchResults && searchResults.length > 0) {
-        webSearchText = `LIVE WEB SEARCH RESULTS (${searchResults.length} sources found):\n` +
-          searchResults.map((r: SearchResult, idx: number) => `[Source ${idx + 1}] ${r.title}\nURL: ${r.url}\nSummary: ${r.snippet}`).join("\n\n");
-
-        task.activityFeed.push({
-          id: `act_web_${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-          type: "tool_call",
-          category: "browser",
-          title: "Live Web Search Executed",
-          description: `Fetched ${searchResults.length} real-time web results for "${task.userQuery.slice(0, 40)}"`,
-          toolName: "searchWeb",
-          query: task.userQuery,
-        });
+      const results = await searchWeb(task.userQuery, 5);
+      if (results?.length) {
+        webText =
+          results
+            .map((r: SearchResult, i: number) => `[${i + 1}] ${r.title}\n${r.url}\n${r.snippet}`)
+            .join("\n\n");
+        addLog(task, "success", `Found ${results.length} sources`, results.slice(0, 2).map((r: SearchResult) => r.title).join(", "), "browser");
         task.usedTools.push("searchWeb");
       }
-    } catch (e) {
-      console.warn("Live web search error:", e);
+    } catch (e: any) {
+      addLog(task, "error", "Web search failed", e.message || "No results", "browser");
     }
 
-    if (browserStep) browserStep.status = "completed";
+    setStep(task, "step_browser", "completed");
+    await delay(200);
   }
 
-  // 1. GOOGLE DRIVE STEP
+  // ── GOOGLE DRIVE ─────────────────────────────────────────────
   if (flags.needsDrive) {
-    const driveStep = task.plan.find(s => s.id === "step_drive");
-    if (driveStep) driveStep.status = "running";
-    taskStore.set(taskId, task);
-
-    task.activityFeed.push({
-      id: `act_drive_${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      type: "tool_call",
-      category: "drive",
-      title: "Searching Google Drive",
-      description: `drive_search_files "${task.userQuery}"`,
-      toolName: "drive_search_files",
-      query: task.userQuery,
-    });
-    task.usedTools.push("drive_search_files");
-
-    const driveFiles = await drive_search_files(task.userQuery, googleAccessToken);
-    if (driveFiles.length > 0) {
-      const fileContent = await drive_get_file_content(driveFiles[0].id);
-      driveDocsText = `GOOGLE DRIVE FILES (${driveFiles.length} found):\n` +
-        driveFiles.map(f => `- ${f.name} (${f.size || "File"}, Modified: ${new Date(f.modifiedTime).toLocaleTimeString()})`).join("\n") +
-        `\n\nPRIMARY FILE CONTENT (${fileContent.name}):\n${fileContent.content}`;
-      task.usedTools.push("drive_get_file_content");
-      
-      task.activityFeed.push({
-        id: `act_drive_read_${Date.now()}`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-        type: "tool_call",
-        category: "drive",
-        title: `Read ${driveFiles[0].name}`,
-        description: `Retrieved file specifications (${driveFiles[0].size || "Active"})`,
-        toolName: "drive_get_file_content",
-      });
-    }
-
-    if (driveStep) driveStep.status = "completed";
-  }
-
-  // 2. GITHUB REPOSITORY STEP
-  if (flags.needsGitHub) {
-    const ghStep = task.plan.find(s => s.id === "step_github");
-    if (ghStep) ghStep.status = "running";
-    taskStore.set(taskId, task);
-
-    // Use real connected GitHub username if available
-    const effectiveOwner = githubUsername || owner;
-    const effectiveRepo = repo;
-
-    task.activityFeed.push({
-      id: `act_gh_tree_${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      type: "tool_call",
-      category: "github",
-      title: "Loading GitHub repository tree",
-      description: `github_get_repository_tree "${effectiveOwner}/${effectiveRepo}" (${branch})`,
-      toolName: "github_get_repository_tree",
-    });
-    task.usedTools.push("github_get_repository_tree");
+    setStep(task, "step_drive", "running");
+    addLog(task, "tool_call", "Searching Drive", `Looking for files matching "${task.userQuery.slice(0, 40)}"`, "drive", { toolName: "drive_search_files" });
+    await delay(300);
 
     try {
-      const repos = await github_list_repositories(effectiveOwner, githubAccessToken);
-      const primaryRepo = repos.find(r => r.name.toLowerCase() === effectiveRepo.toLowerCase()) || repos[0];
-      const resolvedOwner = primaryRepo?.full_name?.split("/")[0] || effectiveOwner;
-      const resolvedRepo = primaryRepo?.name || effectiveRepo;
-
-      const tree = await github_get_repository_tree(resolvedOwner, resolvedRepo, branch);
-      const commits = await github_get_commits(resolvedOwner, resolvedRepo);
-      const issues = await github_get_issues(resolvedOwner, resolvedRepo);
-
-      githubContextText = `GITHUB ACCOUNT: @${resolvedOwner}\n` +
-        `REPOSITORIES (${repos.length} found):\n` +
-        repos.slice(0, 5).map(r => `• ${r.full_name} (${r.language || "N/A"}, ⭐${r.stargazers_count}, ${r.open_issues_count} issues)`).join("\n") +
-        `\n\nACTIVE REPO: ${resolvedOwner}/${resolvedRepo}\n` +
-        `Files: ${tree.length} files scanned\n` +
-        `Recent Commits (${commits.length}):\n` +
-        commits.slice(0, 3).map(c => `• ${c.commit.message.split("\n")[0]} — ${c.commit.author.name} (${new Date(c.commit.author.date).toLocaleDateString()})`).join("\n") +
-        (issues.length > 0 ? `\nOpen Issues (${issues.length}):\n` + issues.slice(0, 3).map(i => `• #${i.number}: ${i.title}`).join("\n") : "");
-    } catch (e) {
-      console.warn("GitHub data fetch error:", e);
-      githubContextText = `GITHUB: Connected as @${effectiveOwner}. Repository data fetch encountered an issue.`;
+      const files = await drive_search_files(task.userQuery, googleAccessToken);
+      if (files.length > 0) {
+        addLog(task, "tool_call", `Reading ${files[0].name}`, `Extracting file content`, "drive", { toolName: "drive_get_file_content" });
+        await delay(200);
+        const content = await drive_get_file_content(files[0].id);
+        driveText =
+          `Files found (${files.length}):\n` +
+          files.map((f) => `• ${f.name}`).join("\n") +
+          `\n\n${files[0].name} content:\n${content.content}`;
+        task.usedTools.push("drive_search_files", "drive_get_file_content");
+        addLog(task, "success", `Read ${files[0].name}`, `${files.length} file(s) retrieved`, "drive");
+      } else {
+        addLog(task, "reasoning", "No Drive files found", "No matching documents in Google Drive", "drive");
+      }
+    } catch (e: any) {
+      addLog(task, "error", "Drive access failed", e.message || "Check Google connection", "drive");
     }
 
-    if (ghStep) ghStep.status = "completed";
+    setStep(task, "step_drive", "completed");
+    await delay(200);
   }
 
-  // 3. GOOGLE SHEETS STEP
+  // ── GITHUB ──────────────────────────────────────────────────
+  if (flags.needsGitHub) {
+    setStep(task, "step_github", "running");
+    const effectiveOwner = githubUsername || owner;
+
+    try {
+      // Step 1: List repos
+      addLog(task, "tool_call", "Listing repositories", `@${effectiveOwner}`, "github", { toolName: "github_list_repositories" });
+      await delay(300);
+
+      const repos = await github_list_repositories(effectiveOwner, githubAccessToken);
+      task.usedTools.push("github_list_repositories");
+
+      let resolvedOwner = effectiveOwner;
+      let resolvedRepo = repo;
+
+      if (repos.length > 0) {
+        const matched = repo
+          ? repos.find((r) => r.name.toLowerCase() === repo.toLowerCase()) || repos[0]
+          : repos[0];
+        resolvedOwner = matched.full_name.split("/")[0];
+        resolvedRepo = matched.name;
+
+        addLog(task, "success", `${repos.length} repo${repos.length > 1 ? "s" : ""} found`, repos.slice(0, 3).map((r) => r.name).join(", "), "github");
+        await delay(200);
+
+        // Step 2: File tree
+        addLog(task, "tool_call", `Reading ${resolvedRepo}`, `Scanning file tree`, "github", { toolName: "github_get_repository_tree" });
+        await delay(300);
+
+        let tree: any[] = [];
+        try {
+          tree = await github_get_repository_tree(resolvedOwner, resolvedRepo, branch);
+          task.usedTools.push("github_get_repository_tree");
+          addLog(task, "success", `${tree.length} files indexed`, `${resolvedOwner}/${resolvedRepo}`, "github");
+        } catch {
+          addLog(task, "reasoning", "File tree unavailable", "Could not read repository tree", "github");
+        }
+
+        await delay(200);
+
+        // Step 3: Commits
+        addLog(task, "tool_call", "Fetching recent commits", `${resolvedOwner}/${resolvedRepo}`, "github", { toolName: "github_get_commits" });
+        await delay(300);
+
+        let commits: any[] = [];
+        try {
+          commits = await github_get_commits(resolvedOwner, resolvedRepo);
+          task.usedTools.push("github_get_commits");
+          addLog(task, "success", `${commits.length} commits`, commits[0]?.commit?.message?.split("\n")[0]?.slice(0, 60) || "", "github");
+        } catch {
+          addLog(task, "reasoning", "Commits unavailable", "Could not fetch commit history", "github");
+        }
+
+        await delay(200);
+
+        // Step 4: Issues
+        addLog(task, "tool_call", "Checking open issues", `${resolvedOwner}/${resolvedRepo}`, "github", { toolName: "github_get_issues" });
+        await delay(300);
+
+        let issues: any[] = [];
+        try {
+          issues = await github_get_issues(resolvedOwner, resolvedRepo);
+          task.usedTools.push("github_get_issues");
+          addLog(task, "success", `${issues.length} issue${issues.length !== 1 ? "s" : ""}`, issues.length > 0 ? issues[0].title.slice(0, 60) : "No open issues", "github");
+        } catch {
+          addLog(task, "reasoning", "Issues unavailable", "Could not fetch issues", "github");
+        }
+
+        // Build context
+        githubText =
+          `GitHub @${resolvedOwner} — ${repos.length} repositories\n` +
+          repos.slice(0, 5).map((r) => `• ${r.full_name} (${r.language || "—"}, ⭐${r.stargazers_count}, ${r.open_issues_count} issues)`).join("\n") +
+          `\n\nActive repo: ${resolvedOwner}/${resolvedRepo}\n` +
+          `Files scanned: ${tree.length}\n` +
+          (commits.length > 0
+            ? `\nRecent commits:\n` + commits.slice(0, 5).map((c) => `• ${c.commit.message.split("\n")[0]} (${c.commit.author.name})`).join("\n")
+            : "") +
+          (issues.length > 0
+            ? `\n\nOpen issues (${issues.length}):\n` + issues.slice(0, 5).map((i) => `• #${i.number}: ${i.title} [${i.state}]`).join("\n")
+            : "\n\nNo open issues.");
+      } else {
+        addLog(task, "reasoning", "No repositories found", `No public repos for @${effectiveOwner}`, "github");
+        githubText = `GitHub @${effectiveOwner}: no repositories found.`;
+      }
+    } catch (e: any) {
+      addLog(task, "error", "GitHub access failed", e.message || "Check GitHub connection", "github");
+      githubText = `GitHub: access failed — ${e.message}`;
+    }
+
+    setStep(task, "step_github", "completed");
+    await delay(200);
+  }
+
+  // ── GOOGLE SHEETS ────────────────────────────────────────────
   if (flags.needsSheets) {
-    const sheetsStep = task.plan.find(s => s.id === "step_sheets");
-    if (sheetsStep) sheetsStep.status = "running";
-    taskStore.set(taskId, task);
+    setStep(task, "step_sheets", "running");
+    addLog(task, "tool_call", "Reading spreadsheet", "Fetching rows and columns", "sheets", { toolName: "sheets_read" });
+    await delay(300);
 
-    task.activityFeed.push({
-      id: `act_sheets_${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      type: "tool_call",
-      category: "sheets",
-      title: "Reading Google Sheet dataset",
-      description: 'sheets_read "Mindmate Quarterly Revenue & Target Metrics"',
-      toolName: "sheets_read",
-    });
-    task.usedTools.push("sheets_read");
+    try {
+      const sheetData = await sheets_read("sheet_101");
+      sheetsText = `${sheetData.title}\nHeaders: ${sheetData.headers.join(", ")}\nData:\n${sheetData.rows.map((r) => r.join(" | ")).join("\n")}`;
+      task.usedTools.push("sheets_read");
+      addLog(task, "success", "Spreadsheet loaded", `${sheetData.rows.length} rows`, "sheets");
+    } catch (e: any) {
+      addLog(task, "error", "Sheets access failed", e.message || "Check Google connection", "sheets");
+    }
 
-    const sheetData = await sheets_read("sheet_101");
-    sheetsDataText = `GOOGLE SHEETS (${sheetData.title}):\nHeaders: ${sheetData.headers.join(", ")}\nRows: ${sheetData.rows.map(r => r.join(" | ")).join("\n")}`;
-
-    if (sheetsStep) sheetsStep.status = "completed";
+    setStep(task, "step_sheets", "completed");
+    await delay(200);
   }
 
-  // 4. GOOGLE CALENDAR STEP
+  // ── GOOGLE CALENDAR ──────────────────────────────────────────
   if (flags.needsCalendar) {
-    const calStep = task.plan.find(s => s.id === "step_cal");
-    if (calStep) calStep.status = "running";
-    taskStore.set(taskId, task);
+    setStep(task, "step_cal", "running");
+    addLog(task, "tool_call", "Checking calendar", "Finding free slots tomorrow", "calendar", { toolName: "calendar_find_free_time" });
+    await delay(300);
 
-    task.activityFeed.push({
-      id: `act_cal_${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      type: "tool_call",
-      category: "calendar",
-      title: "Checking Google Calendar free slots",
-      description: 'calendar_find_free_time "tomorrow"',
-      toolName: "calendar_find_free_time",
-    });
-    task.usedTools.push("calendar_find_free_time");
+    try {
+      const slots = await calendar_find_free_time("tomorrow", 60);
+      calendarText = `Free slots tomorrow: ${slots.availableSlots.join(", ")}`;
+      task.usedTools.push("calendar_find_free_time");
+      addLog(task, "success", "Calendar read", `${slots.availableSlots.length} free slots found`, "calendar");
+    } catch (e: any) {
+      addLog(task, "error", "Calendar access failed", e.message || "Check Google connection", "calendar");
+    }
 
-    const freeSlots = await calendar_find_free_time("tomorrow", 60);
-    calendarSlotsText = `CALENDAR SLOTS (Tomorrow): Available slots -> ${freeSlots.availableSlots.join(", ")}`;
-
-    if (calStep) calStep.status = "completed";
+    setStep(task, "step_cal", "completed");
+    await delay(200);
   }
 
-  // 5. GMAIL STEP
+  // ── GMAIL ────────────────────────────────────────────────────
   if (flags.needsGmail) {
-    const gmailStep = task.plan.find(s => s.id === "step_gmail");
-    if (gmailStep) gmailStep.status = "running";
-    taskStore.set(taskId, task);
+    setStep(task, "step_gmail", "running");
+    addLog(task, "tool_call", "Searching inbox", `"${task.userQuery.slice(0, 40)}"`, "gmail", { toolName: "gmail_search" });
+    await delay(300);
 
-    task.activityFeed.push({
-      id: `act_gmail_${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      type: "tool_call",
-      category: "gmail",
-      title: "Searching Gmail messages",
-      description: `gmail_search "${task.userQuery}"`,
-      toolName: "gmail_search",
-    });
-    task.usedTools.push("gmail_search");
+    try {
+      const emails = await gmail_search(task.userQuery, googleAccessToken);
+      const profile = await (prisma as any).userProfile.findFirst({
+        where: { googleConnected: true },
+        select: { googleEmail: true },
+      });
+      const userEmail = profile?.googleEmail || "your account";
+      gmailText =
+        `Gmail: ${userEmail}\n${emails.length} message(s) found\n\n` +
+        emails
+          .map((e) => `From: ${e.from}\nSubject: ${e.subject}\nSnippet: ${e.snippet}\nDate: ${new Date(e.date).toLocaleString()}`)
+          .join("\n\n");
+      task.usedTools.push("gmail_search");
+      addLog(task, "success", `${emails.length} email${emails.length !== 1 ? "s" : ""} found`, emails[0]?.subject || "Inbox read", "gmail");
+    } catch (e: any) {
+      addLog(task, "error", "Gmail access failed", e.message || "Check Google connection", "gmail");
+    }
 
-    const emails = await gmail_search(task.userQuery, googleAccessToken);
-    const userEmail = (await (prisma as any).userProfile.findFirst({
-      where: { googleConnected: true },
-      select: { googleEmail: true },
-    }))?.googleEmail || "your Gmail account";
-
-    gmailDraftText = `CONNECTED GMAIL ACCOUNT: ${userEmail}\n\nGMAIL INBOX (${emails.length} messages found):\n` +
-      emails.map(e => `• From: ${e.from}\n  To: ${e.to}\n  Subject: ${e.subject}\n  Snippet: "${e.snippet}"\n  Date: ${new Date(e.date).toLocaleString()}\n  Status: ${e.isUnread ? "UNREAD" : "READ"}`).join("\n\n");
-
-    if (gmailStep) gmailStep.status = "completed";
+    setStep(task, "step_gmail", "completed");
+    await delay(200);
   }
 
-  // 6. HUMAN APPROVAL CHECK FOR WRITE ACTIONS
-  const isSendEmailRequested = queryLower.includes("send email") || queryLower.includes("send mail");
-  const isCreateEventRequested = queryLower.includes("schedule meeting") || queryLower.includes("create event");
-  const isCreateIssueRequested = queryLower.includes("create issue") || queryLower.includes("open issue");
+  // ── HUMAN APPROVAL CHECK ─────────────────────────────────────
+  const isSendEmail = queryLower.includes("send email") || queryLower.includes("send mail");
+  const isCreateEvent = queryLower.includes("schedule meeting") || queryLower.includes("create event");
+  const isCreateIssue = queryLower.includes("create issue") || queryLower.includes("open issue");
 
-  if (isSendEmailRequested || isCreateEventRequested || isCreateIssueRequested) {
+  if (isSendEmail || isCreateEvent || isCreateIssue) {
     let toolName = "gmail_send";
     let cat: "gmail" | "calendar" | "github" = "gmail";
-    let titleText = "Send Email to Recipient";
-    let descText = "Send requested workspace message to email recipient.";
-    let params: any = { to: "rahul.sharma@example.com", subject: "Project Update", body: "Draft content..." };
+    let titleText = "Send email";
+    let descText = "Send the drafted email to the recipient.";
+    let params: any = { to: "", subject: task.userQuery.slice(0, 40), body: "..." };
 
-    if (isCreateEventRequested) {
+    if (isCreateEvent) {
       toolName = "calendar_create_event";
       cat = "calendar";
-      titleText = "Create Google Calendar Event";
-      descText = "Schedule Clarity CoWork Project Review meeting for tomorrow at 5:00 PM.";
-      params = { summary: "Project Review Meeting", startIso: "Tomorrow 5:00 PM", endIso: "Tomorrow 6:00 PM" };
-    } else if (isCreateIssueRequested) {
+      titleText = "Create calendar event";
+      descText = "Create the meeting event in Google Calendar.";
+      params = { summary: "Meeting", startIso: "Tomorrow 10:00 AM", endIso: "Tomorrow 11:00 AM" };
+    } else if (isCreateIssue) {
       toolName = "github_create_issue";
       cat = "github";
-      titleText = "Create GitHub Issue";
-      descText = `Create issue on ${owner}/${repo}: Audit PBKDF2 security iterations and rate limiting.`;
-      params = { owner, repo, title: "Audit security rate limiting", body: "Issue details..." };
+      titleText = "Create GitHub issue";
+      descText = `Open a new issue on ${owner}/${repo}.`;
+      params = { owner, repo, title: task.userQuery.slice(0, 60), body: "" };
     }
 
-    const finalStep = task.plan.find(s => s.id === "step_final");
-    if (finalStep) finalStep.status = "approval_required";
+    setStep(task, "step_final", "approval_required");
     task.status = "waiting_approval";
-
     task.pendingApproval = {
       toolName,
       category: cat,
@@ -539,33 +591,113 @@ async function executeMultiToolAgentLoop(
       params,
     };
 
-    task.activityFeed.push({
-      id: `act_appr_${Date.now()}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-      type: "approval_request",
-      category: cat,
-      title: "Human Approval Required",
-      description: `Action requires authorization: ${toolName}`,
-      toolName,
-      details: task.pendingApproval,
-    });
-
+    addLog(task, "approval_request", "Approval required", descText, cat, { toolName, details: task.pendingApproval });
     taskStore.set(taskId, task);
-    return; // Pause execution for human approval
+    return;
   }
 
-  // 7. FINALIZE AI ANALYSIS AND MULTI-ARTIFACT GENERATION
-  await finalizeMultiToolReport(task, {
+  // ── FINALIZE ─────────────────────────────────────────────────
+  await finalizeReport(task, {
     owner,
     repo,
-    driveDocsText,
-    githubContextText,
-    calendarSlotsText,
-    gmailDraftText,
-    sheetsDataText,
-    webSearchText,
+    driveText,
+    githubText,
+    calendarText,
+    gmailText,
+    sheetsText,
+    webText,
   });
 }
+
+// ─────────────────────────────────────────────────────────────
+// Finalize: call LLM and produce artifacts
+// ─────────────────────────────────────────────────────────────
+
+async function finalizeReport(
+  task: CoworkTask,
+  ctx: {
+    owner: string;
+    repo: string;
+    driveText: string;
+    githubText: string;
+    calendarText: string;
+    gmailText: string;
+    sheetsText: string;
+    webText: string;
+    writeActionResult?: string;
+  }
+) {
+  setStep(task, "step_final", "running");
+  addLog(task, "reasoning", "Writing response", "Synthesizing gathered data", "system");
+  await delay(200);
+
+  const contextParts: string[] = [];
+  if (ctx.webText) contextParts.push(`WEB:\n${ctx.webText}`);
+  if (ctx.driveText) contextParts.push(`DRIVE:\n${ctx.driveText}`);
+  if (ctx.gmailText) contextParts.push(`GMAIL:\n${ctx.gmailText}`);
+  if (ctx.githubText) contextParts.push(`GITHUB:\n${ctx.githubText}`);
+  if (ctx.sheetsText) contextParts.push(`SHEETS:\n${ctx.sheetsText}`);
+  if (ctx.calendarText) contextParts.push(`CALENDAR:\n${ctx.calendarText}`);
+  if (ctx.writeActionResult) contextParts.push(`ACTION RESULT:\n${ctx.writeActionResult}`);
+
+  const sysPrompt = `You are Clarity, an AI workspace agent.
+Answer the user's request directly and clearly using the retrieved data below.
+Format the response with clean markdown: use headers, bullet lists, code blocks where relevant.
+Be specific, factual, and concise. Do not use filler phrases.
+If real data was retrieved, reference it directly (repo names, commit messages, email subjects, etc.).
+If no relevant data was retrieved for a tool, say so briefly.`;
+
+  const userPrompt = `Request: "${task.userQuery}"
+
+Data:
+${contextParts.join("\n\n")}
+
+Respond directly and clearly.`;
+
+  let reportText = "";
+  try {
+    const client = getCerebrasClient();
+    const completion = (await client.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: sysPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.1,
+      max_tokens: 2000,
+    })) as any;
+    reportText = completion.choices[0]?.message?.content?.trim() || "";
+  } catch (e) {
+    // Fallback: just show the raw context clearly formatted
+    reportText = contextParts.length > 0
+      ? contextParts.join("\n\n---\n\n")
+      : `No data was retrieved. Make sure your integrations (GitHub, Google) are connected.`;
+  }
+
+  const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const artifacts: Artifact[] = [];
+
+  artifacts.push({
+    id: `art_main_${Date.now()}`,
+    title: task.userQuery.slice(0, 50),
+    type: "report",
+    content: reportText,
+    createdAt: nowStr,
+  });
+
+  task.artifacts = artifacts;
+  task.report = reportText;
+  task.status = "completed";
+  task.plan.forEach((s) => { if (s.status !== "failed") s.status = "completed"; });
+  task.updatedAt = new Date().toISOString();
+
+  addLog(task, "success", "Done", `${artifacts.length} artifact generated`, "system");
+  taskStore.set(task.id, task);
+}
+
+// ─────────────────────────────────────────────────────────────
+// Approve / Cancel / Follow-up
+// ─────────────────────────────────────────────────────────────
 
 export async function approvePendingTask(taskId: string): Promise<CoworkTask> {
   const task = taskStore.get(taskId);
@@ -574,48 +706,38 @@ export async function approvePendingTask(taskId: string): Promise<CoworkTask> {
   }
 
   const { toolName, category, params } = task.pendingApproval;
-
-  task.activityFeed.push({
-    id: `act_approved_${Date.now()}`,
-    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    type: "success",
-    category,
-    title: "Action Approved by User",
-    description: `Executing ${toolName}...`,
-  });
+  addLog(task, "success", "Action approved", `Executing ${toolName}`, category);
 
   let resultInfo = "";
-  if (toolName === "gmail_send") {
-    const res = await gmail_send(params.to, params.subject, params.body);
-    resultInfo = `Email sent successfully to ${params.to} (${res.messageId})`;
-  } else if (toolName === "calendar_create_event") {
-    const res = await calendar_create_event(params.summary, params.startIso || new Date().toISOString(), params.endIso || new Date().toISOString());
-    resultInfo = `Calendar event created successfully: ${res.summary}`;
-  } else if (toolName === "github_create_issue") {
-    const res = await github_create_issue(params.owner, params.repo, params.title, params.body);
-    resultInfo = `GitHub issue #${res.number} created successfully`;
+  try {
+    if (toolName === "gmail_send") {
+      const res = await gmail_send(params.to, params.subject, params.body);
+      resultInfo = `Email sent (${res.messageId})`;
+    } else if (toolName === "calendar_create_event") {
+      const res = await calendar_create_event(params.summary, params.startIso, params.endIso);
+      resultInfo = `Event created: ${res.summary}`;
+    } else if (toolName === "github_create_issue") {
+      const res = await github_create_issue(params.owner, params.repo, params.title, params.body);
+      resultInfo = `Issue #${res.number} created`;
+    }
+  } catch (e: any) {
+    resultInfo = `Action failed: ${e.message}`;
   }
 
-  task.activityFeed.push({
-    id: `act_tool_success_${Date.now()}`,
-    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    type: "success",
-    category,
-    title: "Tool Action Completed",
-    description: resultInfo,
-  });
-
+  addLog(task, "success", "Action completed", resultInfo, category);
   task.pendingApproval = null;
   task.status = "running";
+  taskStore.set(taskId, task);
 
-  await finalizeMultiToolReport(task, {
+  await finalizeReport(task, {
     owner: task.repoOwner,
     repo: task.repoName,
-    driveDocsText: "Drive documents verified.",
-    githubContextText: "GitHub codebase verified.",
-    calendarSlotsText: "Calendar event scheduled.",
-    gmailDraftText: "Email action completed.",
-    sheetsDataText: "Sheets metrics analyzed.",
+    driveText: "",
+    githubText: "",
+    calendarText: "",
+    gmailText: "",
+    sheetsText: "",
+    webText: "",
     writeActionResult: resultInfo,
   });
 
@@ -628,169 +750,9 @@ export async function cancelPendingTask(taskId: string): Promise<CoworkTask> {
 
   task.status = "cancelled";
   task.pendingApproval = null;
-  task.activityFeed.push({
-    id: `act_cancelled_${Date.now()}`,
-    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    type: "error",
-    category: "system",
-    title: "Task Cancelled",
-    description: "Execution stopped by user.",
-  });
-
+  addLog(task, "error", "Cancelled", "Execution stopped by user", "system");
   taskStore.set(taskId, task);
   return task;
-}
-
-async function finalizeMultiToolReport(
-  task: CoworkTask,
-  ctx: {
-    owner: string;
-    repo: string;
-    driveDocsText: string;
-    githubContextText: string;
-    calendarSlotsText: string;
-    gmailDraftText: string;
-    sheetsDataText: string;
-    webSearchText?: string;
-    writeActionResult?: string;
-  }
-) {
-  const client = getCerebrasClient();
-  const contextParts: string[] = [];
-  if (ctx.webSearchText) contextParts.push(ctx.webSearchText);
-  if (ctx.driveDocsText) contextParts.push(ctx.driveDocsText);
-  if (ctx.gmailDraftText) contextParts.push(ctx.gmailDraftText);
-  if (ctx.githubContextText) contextParts.push(ctx.githubContextText);
-  if (ctx.sheetsDataText) contextParts.push(ctx.sheetsDataText);
-  if (ctx.calendarSlotsText) contextParts.push(ctx.calendarSlotsText);
-  if (ctx.writeActionResult) contextParts.push(`EXECUTED ACTION: ${ctx.writeActionResult}`);
-
-  const sysPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent (like Manus / Claude CoWork).
-Fulfill the user's query directly, naturally, and intelligently using the retrieved workspace data.
-
-STRICT INSTRUCTIONS:
-1. Provide a direct, clean, human-like response answering the user's prompt.
-2. If the user asks for their email, inbox, or latest messages, clearly state their connected email address first, and then list their latest emails in a beautiful, executive, easy-to-read format.
-3. DO NOT output robotic template headings like "Inference", "Source Details", "Conclusion", "Recommendation", or "Executive Summary Goal:" unless explicitly requested.
-4. Keep the tone natural, crisp, smart, and professional.`;
-
-  const userPrompt = `USER REQUEST: "${task.userQuery}"
-
-RETRIEVED WORKSPACE DATA:
-${contextParts.join("\n\n")}
-
-Provide a direct, natural, executive response answering the user's goal.`;
-
-  let reportText = "";
-  try {
-    const completion = (await client.chat.completions.create({
-      model: MODEL,
-      messages: [
-        { role: "system", content: sysPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.15,
-      max_tokens: 1400,
-    })) as any;
-    reportText = completion.choices[0]?.message?.content?.trim() || "";
-  } catch (e) {
-    const reportSections: string[] = [];
-    reportSections.push(`## CoWork Execution Report: "${task.userQuery}"\n`);
-
-    if (ctx.driveDocsText) {
-      reportSections.push(`### 📂 Google Drive Files & Content\n${ctx.driveDocsText}\n`);
-    }
-    if (ctx.gmailDraftText) {
-      reportSections.push(`### 📧 Gmail Messages Overview\n${ctx.gmailDraftText}\n`);
-    }
-    if (ctx.githubContextText) {
-      reportSections.push(`### 🐙 GitHub Repository (${ctx.owner}/${ctx.repo})\n${ctx.githubContextText}\n`);
-    }
-    if (ctx.calendarSlotsText) {
-      reportSections.push(`### 📅 Google Calendar Schedule\n${ctx.calendarSlotsText}\n`);
-    }
-    if (ctx.sheetsDataText) {
-      reportSections.push(`### 📊 Google Sheets Data\n${ctx.sheetsDataText}\n`);
-    }
-
-    reportText = reportSections.join("\n");
-  }
-
-  task.scores = {
-    overall: 90,
-    security: 94,
-    architecture: 88,
-    codeQuality: 91,
-    maintenance: 87,
-  };
-
-  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const artifacts: Artifact[] = [];
-
-  artifacts.push({
-    id: `art_rep_${Date.now()}`,
-    title: `Goal Report - ${task.userQuery.slice(0, 30)}`,
-    type: "report",
-    content: reportText,
-    createdAt: now,
-  });
-
-  if (ctx.webSearchText) {
-    artifacts.push({
-      id: `art_web_${Date.now()}`,
-      title: "Live Web Search Findings",
-      type: "report",
-      content: ctx.webSearchText,
-      createdAt: now,
-    });
-  }
-
-  if (ctx.driveDocsText) {
-    artifacts.push({
-      id: `art_drive_${Date.now()}`,
-      title: "Google Drive Summary",
-      type: "report",
-      content: ctx.driveDocsText,
-      createdAt: now,
-    });
-  }
-
-  if (ctx.gmailDraftText) {
-    artifacts.push({
-      id: `art_gmail_${Date.now()}`,
-      title: "Gmail Messages Overview",
-      type: "email",
-      content: ctx.gmailDraftText,
-      createdAt: now,
-    });
-  }
-
-  if (ctx.githubContextText) {
-    artifacts.push({
-      id: `art_gh_${Date.now()}`,
-      title: `GitHub Repo Details (${ctx.owner}/${ctx.repo})`,
-      type: "code_diff",
-      content: ctx.githubContextText,
-      createdAt: now,
-    });
-  }
-
-  task.artifacts = artifacts;
-  task.report = reportText;
-  task.status = "completed";
-  task.plan.forEach(s => { s.status = "completed"; });
-
-  task.activityFeed.push({
-    id: `act_done_${Date.now()}`,
-    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }),
-    type: "success",
-    category: "system",
-    title: "CoWork Goal Completed",
-    description: `Generated ${task.artifacts.length} workspace artifact(s)`,
-  });
-
-  task.updatedAt = new Date().toISOString();
-  taskStore.set(task.id, task);
 }
 
 export async function continueTaskWithFollowup(
@@ -811,81 +773,57 @@ export async function continueTaskWithFollowup(
   });
 
   task.status = "running";
-  task.activityFeed.push({
-    id: `act_followup_${Date.now()}`,
-    timestamp: timeStr,
-    type: "reasoning",
-    category: "system",
-    title: "Received User Follow-Up",
-    description: `Processing follow-up: "${followupQuery}"`,
-  });
-
+  addLog(task, "reasoning", "Follow-up received", followupQuery.slice(0, 80), "system");
   taskStore.set(taskId, task);
 
-  // Run AI reasoning for follow-up asynchronously
   (async () => {
     try {
       const client = getCerebrasClient();
-      const sysPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent (like Manus / Claude CoWork).
-The user is providing a follow-up request inside an active task.
-Answer the user's request thoroughly, contextually, and directly.
-Maintain a crisp, highly professional, executive tone.`;
-
-      const prevArtifacts = (task.artifacts || []).map(a => `--- ARTIFACT (${a.title}) ---\n${a.content}`).join("\n\n");
-      const userPrompt = `ORIGINAL GOAL: "${task.userQuery}"
-
-EXISTING WORKSPACE ARTIFACTS & DATA:
-${prevArtifacts}
-
-USER FOLLOW-UP INSTRUCTION:
-"${followupQuery}"
-
-Provide a detailed, natural, intelligent response updating or answering the user's follow-up request.`;
+      const prevContext = (task.artifacts || [])
+        .map((a) => `[${a.title}]\n${a.content}`)
+        .join("\n\n");
 
       const completion = (await client.chat.completions.create({
         model: MODEL,
         messages: [
-          { role: "system", content: sysPrompt },
-          { role: "user", content: userPrompt },
+          {
+            role: "system",
+            content: `You are Clarity, an AI workspace agent. The user is following up on a completed task. 
+Use the existing artifacts as context. Answer directly and specifically.`,
+          },
+          {
+            role: "user",
+            content: `Original goal: "${task.userQuery}"\n\nContext:\n${prevContext}\n\nFollow-up: "${followupQuery}"`,
+          },
         ],
-        temperature: 0.2,
-        max_tokens: 1400,
+        temperature: 0.15,
+        max_tokens: 1500,
       })) as any;
 
-      const aiReply = completion.choices[0]?.message?.content?.trim() || "Follow-up request completed successfully.";
+      const reply = completion.choices[0]?.message?.content?.trim() || "";
       const replyTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
       task.messages.push({
         id: `msg_ai_${Date.now()}`,
         sender: "agent",
-        content: aiReply,
+        content: reply,
         timestamp: replyTime,
       });
 
-      // Insert new follow-up artifact at beginning of array
       task.artifacts.unshift({
         id: `art_followup_${Date.now()}`,
-        title: `Follow-up: ${followupQuery.slice(0, 25)}...`,
+        title: followupQuery.slice(0, 40),
         type: "report",
-        content: aiReply,
+        content: reply,
         createdAt: replyTime,
       });
 
-      task.report = aiReply;
+      task.report = reply;
       task.status = "completed";
-      task.activityFeed.push({
-        id: `act_followup_done_${Date.now()}`,
-        timestamp: replyTime,
-        type: "success",
-        category: "system",
-        title: "Follow-Up Action Completed",
-        description: "Generated updated workspace response and artifact",
-      });
-
+      addLog(task, "success", "Follow-up done", "", "system");
       task.updatedAt = new Date().toISOString();
       taskStore.set(taskId, task);
     } catch (err: any) {
-      console.error("Followup execution failed:", err);
       task.status = "failed";
       taskStore.set(taskId, task);
     }
@@ -893,4 +831,3 @@ Provide a detailed, natural, intelligent response updating or answering the user
 
   return task;
 }
-
