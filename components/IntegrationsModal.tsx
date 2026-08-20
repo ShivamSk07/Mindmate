@@ -10,13 +10,9 @@ import {
   FileSpreadsheet,
   Plug,
   Globe,
-  CheckCircle2,
-  XCircle,
-  KeyRound,
-  User,
   Loader2,
-  Trash2,
-  RefreshCw,
+  Check,
+  AlertCircle,
   ExternalLink,
 } from "lucide-react";
 
@@ -42,9 +38,6 @@ export default function IntegrationsModal({
   onStatusChange,
 }: IntegrationsModalProps) {
   const [selectedTab, setSelectedTab] = useState<string>("github");
-  const [githubUser, setGithubUser] = useState("");
-  const [githubToken, setGithubToken] = useState("");
-  const [googleEmail, setGoogleEmail] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -64,41 +57,13 @@ export default function IntegrationsModal({
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage({ type: "success", text: "GitHub account disconnected successfully!" });
+        setMessage({ type: "success", text: "GitHub disconnected" });
         onStatusChange();
       } else {
-        setMessage({ type: "error", text: data.error || "Failed to disconnect GitHub" });
+        setMessage({ type: "error", text: data.error || "Failed to disconnect" });
       }
     } catch (e: any) {
       setMessage({ type: "error", text: e.message || "Failed to disconnect" });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleConnectGitHub = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/cowork/github/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: githubUser.trim() || undefined,
-          token: githubToken.trim() || undefined,
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setMessage({ type: "success", text: data.message || "GitHub connected successfully!" });
-        setGithubToken("");
-        onStatusChange();
-      } else {
-        setMessage({ type: "error", text: data.error || "Failed to connect GitHub" });
-      }
-    } catch (e: any) {
-      setMessage({ type: "error", text: e.message || "Connection error" });
     } finally {
       setIsProcessing(false);
     }
@@ -115,10 +80,10 @@ export default function IntegrationsModal({
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage({ type: "success", text: "Google services disconnected successfully!" });
+        setMessage({ type: "success", text: "Google services disconnected" });
         onStatusChange();
       } else {
-        setMessage({ type: "error", text: data.error || "Failed to disconnect Google" });
+        setMessage({ type: "error", text: data.error || "Failed to disconnect" });
       }
     } catch (e: any) {
       setMessage({ type: "error", text: e.message || "Failed to disconnect" });
@@ -127,337 +92,269 @@ export default function IntegrationsModal({
     }
   };
 
+  const INTEGRATION_TABS = [
+    { id: "github", name: "GitHub", icon: Github, connected: !!githubIntegration?.connected },
+    { id: "google", name: "Google Workspace", icon: HardDrive, connected: !!googleIntegration?.connected },
+    { id: "mcp", name: "MCP Servers", icon: Plug, connected: false },
+    { id: "browser", name: "Web Search", icon: Globe, connected: true },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-2xl bg-[#0e0e11] border border-zinc-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-zinc-200">
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+      <div className="w-full max-w-xl bg-[#0a0a0a] border border-zinc-900 rounded-xl flex flex-col overflow-hidden text-zinc-200">
         
-        {/* Modal Header */}
-        <div className="px-6 py-4 border-b border-zinc-800/80 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-zinc-100">Integration Manager</h2>
-            <p className="text-xs text-zinc-500">Connect or disconnect tools for your CoWork agent</p>
+        {/* Header */}
+        <div className="h-12 px-4 border-b border-zinc-900 flex items-center justify-between flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-zinc-200">Integrations</span>
+            <span className="text-[11px] text-zinc-500 bg-zinc-950 px-2 py-0.5 rounded border border-zinc-900">Workspace</span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors"
+            className="p-1 rounded-lg text-zinc-500 hover:text-zinc-200 hover:bg-zinc-900 transition-colors"
           >
-            <X size={18} />
+            <X size={15} />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex flex-1 min-h-[360px]">
+        <div className="flex flex-1 min-h-[300px]">
           
-          {/* Tabs Sidebar */}
-          <div className="w-48 border-r border-zinc-800/80 p-3 space-y-1 bg-zinc-950/40">
-            <button
-              onClick={() => { setSelectedTab("github"); setMessage(null); }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                selectedTab === "github"
-                  ? "bg-zinc-800 text-zinc-100 shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Github size={15} className="text-violet-400" />
-                <span>GitHub</span>
-              </div>
-              <span className={`w-2 h-2 rounded-full ${githubIntegration?.connected ? "bg-emerald-400" : "bg-zinc-700"}`} />
-            </button>
-
-            <button
-              onClick={() => { setSelectedTab("google"); setMessage(null); }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                selectedTab === "google"
-                  ? "bg-zinc-800 text-zinc-100 shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <HardDrive size={15} className="text-blue-400" />
-                <span>Google Suite</span>
-              </div>
-              <span className={`w-2 h-2 rounded-full ${googleIntegration?.connected ? "bg-emerald-400" : "bg-zinc-700"}`} />
-            </button>
-
-            <button
-              onClick={() => { setSelectedTab("mcp"); setMessage(null); }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                selectedTab === "mcp"
-                  ? "bg-zinc-800 text-zinc-100 shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Plug size={15} className="text-amber-400" />
-                <span>MCP Servers</span>
-              </div>
-              <span className="text-[10px] text-zinc-500">Config</span>
-            </button>
-
-            <button
-              onClick={() => { setSelectedTab("browser"); setMessage(null); }}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all ${
-                selectedTab === "browser"
-                  ? "bg-zinc-800 text-zinc-100 shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <Globe size={15} className="text-sky-400" />
-                <span>Live Search</span>
-              </div>
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            </button>
+          {/* Sidebar */}
+          <div className="w-44 border-r border-zinc-900 p-2 space-y-1 bg-[#0a0a0a] flex-shrink-0">
+            {INTEGRATION_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isSelected = selectedTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => { setSelectedTab(tab.id); setMessage(null); }}
+                  className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition-colors ${
+                    isSelected
+                      ? "bg-zinc-900 text-zinc-100 font-medium"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-950"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Icon size={13} className={isSelected ? "text-zinc-200" : "text-zinc-500"} />
+                    <span>{tab.name}</span>
+                  </div>
+                  {tab.connected ? (
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  ) : (
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
+                  )}
+                </button>
+              );
+            })}
           </div>
 
-          {/* Tab Content Panel */}
-          <div className="flex-1 p-6 flex flex-col justify-between">
-            {message && (
-              <div
-                className={`mb-4 px-3.5 py-2.5 rounded-xl text-xs font-medium flex items-center gap-2 ${
-                  message.type === "success"
-                    ? "bg-emerald-950/40 text-emerald-300 border border-emerald-800/40"
-                    : "bg-red-950/40 text-red-300 border border-red-800/40"
-                }`}
-              >
-                {message.type === "success" ? <CheckCircle2 size={15} /> : <XCircle size={15} />}
-                <span>{message.text}</span>
-              </div>
-            )}
+          {/* Main Content */}
+          <div className="flex-1 p-5 flex flex-col justify-between bg-[#0a0a0a]">
+            <div>
+              {message && (
+                <div
+                  className={`mb-4 px-3 py-2 rounded-lg text-xs flex items-center gap-2 border ${
+                    message.type === "success"
+                      ? "bg-zinc-950 text-emerald-400 border-zinc-800"
+                      : "bg-zinc-950 text-red-400 border-zinc-800"
+                  }`}
+                >
+                  {message.type === "success" ? <Check size={13} /> : <AlertCircle size={13} />}
+                  <span>{message.text}</span>
+                </div>
+              )}
 
-            {/* GitHub Tab */}
-            {selectedTab === "github" && (
-              <div className="space-y-4">
-                <div className="flex items-start justify-between">
+              {/* GitHub */}
+              {selectedTab === "github" && (
+                <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                      <Github size={16} /> GitHub Integration
-                    </h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      Authorize Clarity to access your GitHub repositories, codebases, commits, and issues.
+                    <div className="flex items-center gap-2">
+                      <Github size={15} className="text-zinc-200" />
+                      <h3 className="text-xs font-semibold text-zinc-200">GitHub</h3>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      Allows CoWork to search repositories, commits, code, and issues.
                     </p>
                   </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-                      githubIntegration?.connected
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                        : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${githubIntegration?.connected ? "bg-emerald-400" : "bg-zinc-600"}`} />
-                    {githubIntegration?.connected ? "Connected" : "Disconnected"}
-                  </span>
-                </div>
 
-                {githubIntegration?.connected ? (
-                  <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Active Authorized Account</div>
-                      <div className="text-sm font-semibold text-zinc-100">@{githubIntegration.username || "Connected"}</div>
-                    </div>
-                    <button
-                      onClick={handleDisconnectGitHub}
-                      disabled={isProcessing}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/30 hover:bg-red-950/50 border border-red-800/40 text-red-300 text-xs font-semibold transition-all disabled:opacity-50"
-                    >
-                      <Trash2 size={13} />
-                      Disconnect
-                    </button>
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-xl bg-zinc-900/70 border border-zinc-800 space-y-3">
+                  <div className="p-3.5 rounded-lg bg-zinc-950 border border-zinc-900 space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-xs font-semibold text-zinc-200">Official GitHub OAuth</div>
-                        <div className="text-[11px] text-zinc-400">Authenticate securely via GitHub's official authorization dialog</div>
+                        <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium">Status</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              githubIntegration?.connected ? "bg-emerald-500" : "bg-zinc-700"
+                            }`}
+                          />
+                          <span className="text-xs font-medium text-zinc-300">
+                            {githubIntegration?.connected
+                              ? `@${githubIntegration.username || "Connected"}`
+                              : "Not Connected"}
+                          </span>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => { window.location.href = "/api/auth/github"; }}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-xs font-semibold shadow-lg shadow-violet-600/25 transition-all"
-                      >
-                        <Github size={14} />
-                        Authorize with GitHub
-                      </button>
+
+                      {githubIntegration?.connected ? (
+                        <button
+                          onClick={handleDisconnectGitHub}
+                          disabled={isProcessing}
+                          className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-300 hover:text-red-400 transition-colors disabled:opacity-50"
+                        >
+                          {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Disconnect"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { window.location.href = "/api/auth/github"; }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-colors"
+                        >
+                          <Github size={13} />
+                          <span>Connect</span>
+                        </button>
+                      )}
                     </div>
                   </div>
-                )}
-
-                <div className="pt-2 border-t border-zinc-800/80">
-                  <p className="text-[11px] font-medium text-zinc-500 uppercase tracking-wider mb-2">Or Connect with Custom Token / Username</p>
-                  <form onSubmit={handleConnectGitHub} className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
-                          <User size={12} className="text-zinc-500" />
-                          Username
-                        </label>
-                        <input
-                          type="text"
-                          value={githubUser}
-                          onChange={(e) => setGithubUser(e.target.value)}
-                          placeholder={githubIntegration?.username || "e.g. ShivamSk07"}
-                          className="w-full bg-zinc-900/90 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none transition-colors"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-medium text-zinc-400 flex items-center gap-1">
-                          <KeyRound size={12} className="text-zinc-500" />
-                          Personal Access Token
-                        </label>
-                        <input
-                          type="password"
-                          value={githubToken}
-                          onChange={(e) => setGithubToken(e.target.value)}
-                          placeholder="ghp_xxxx (optional)"
-                          className="w-full bg-zinc-900/90 border border-zinc-800 focus:border-violet-500 rounded-xl px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 outline-none transition-colors"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 pt-1">
-                      <button
-                        type="submit"
-                        disabled={isProcessing}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-all disabled:opacity-50"
-                      >
-                        {isProcessing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                        Save Token
-                      </button>
-                    </div>
-                  </form>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Google Suite Tab */}
-            {selectedTab === "google" && (
-              <div className="space-y-4">
-                <div className="flex items-start justify-between">
+              {/* Google Workspace */}
+              {selectedTab === "google" && (
+                <div className="space-y-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                      <HardDrive size={16} className="text-blue-400" /> Google Workspace Suite
-                    </h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      Controls Drive Docs, Gmail search/drafting, Calendar scheduling, and Sheets access.
+                    <div className="flex items-center gap-2">
+                      <HardDrive size={15} className="text-zinc-200" />
+                      <h3 className="text-xs font-semibold text-zinc-200">Google Workspace</h3>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      Enables access across Google Drive, Gmail, Calendar, and Sheets.
                     </p>
                   </div>
-                  <span
-                    className={`px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
-                      googleIntegration?.connected
-                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                        : "bg-zinc-800 text-zinc-400 border border-zinc-700"
-                    }`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${googleIntegration?.connected ? "bg-emerald-400" : "bg-zinc-600"}`} />
-                    {googleIntegration?.connected ? "Connected" : "Disconnected"}
-                  </span>
-                </div>
 
-                {googleIntegration?.connected && (
-                  <div className="p-3.5 rounded-xl bg-zinc-900/80 border border-zinc-800 flex items-center justify-between">
+                  <div className="p-3.5 rounded-lg bg-zinc-950 border border-zinc-900 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium">Status</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              googleIntegration?.connected ? "bg-emerald-500" : "bg-zinc-700"
+                            }`}
+                          />
+                          <span className="text-xs font-medium text-zinc-300">
+                            {googleIntegration?.connected
+                              ? googleIntegration.username || "Connected"
+                              : "Not Connected"}
+                          </span>
+                        </div>
+                      </div>
+
+                      {googleIntegration?.connected ? (
+                        <button
+                          onClick={handleDisconnectGoogle}
+                          disabled={isProcessing}
+                          className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-300 hover:text-red-400 transition-colors disabled:opacity-50"
+                        >
+                          {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Disconnect"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => { window.location.href = "/api/auth/google"; }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-colors"
+                        >
+                          <ExternalLink size={13} />
+                          <span>Connect</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Included Services */}
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    {[
+                      { name: "Google Drive", icon: HardDrive },
+                      { name: "Gmail", icon: Mail },
+                      { name: "Google Calendar", icon: Calendar },
+                      { name: "Google Sheets", icon: FileSpreadsheet },
+                    ].map((svc) => {
+                      const SvcIcon = svc.icon;
+                      return (
+                        <div
+                          key={svc.name}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-900 text-xs text-zinc-400"
+                        >
+                          <SvcIcon size={13} className="text-zinc-500" />
+                          <span>{svc.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* MCP Servers */}
+              {selectedTab === "mcp" && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Plug size={15} className="text-zinc-200" />
+                      <h3 className="text-xs font-semibold text-zinc-200">Model Context Protocol (MCP)</h3>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      Configure custom MCP tool servers in your local environment.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-lg bg-zinc-950 border border-zinc-900 text-xs text-zinc-400 space-y-2">
+                    <p className="text-[11px] text-zinc-500">
+                      MCP servers connect standard tools from PostgreSQL, SQLite, Filesystem, or remote endpoints via <code className="text-zinc-300 font-mono">lib/mcpRegistry.ts</code>.
+                    </p>
+                    <div className="p-2.5 rounded bg-black border border-zinc-900 font-mono text-[11px] text-zinc-400">
+                      {`// Configured in lib/mcpRegistry.ts\nregisterMCPServer({ name: "postgres", ... })`}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Web Search */}
+              {selectedTab === "browser" && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Globe size={15} className="text-zinc-200" />
+                      <h3 className="text-xs font-semibold text-zinc-200">Live Web Search</h3>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      DuckDuckGo real-time internet search when explicitly requested.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-lg bg-zinc-950 border border-zinc-900 flex items-center justify-between">
                     <div>
-                      <div className="text-[10px] text-zinc-500 uppercase tracking-wider font-semibold">Active Google Account</div>
-                      <div className="text-sm font-medium text-zinc-200">{googleIntegration.username || "Connected"}</div>
+                      <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium">Status</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span className="text-xs font-medium text-zinc-300">Active</span>
+                      </div>
                     </div>
-                    <button
-                      onClick={handleDisconnectGoogle}
-                      disabled={isProcessing}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-950/30 hover:bg-red-950/50 border border-red-800/40 text-red-300 text-xs font-semibold transition-all disabled:opacity-50"
-                    >
-                      <Trash2 size={13} />
-                      Disconnect
-                    </button>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/80 text-xs flex items-center gap-2">
-                    <HardDrive size={14} className="text-blue-400" />
-                    <span>Google Drive</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/80 text-xs flex items-center gap-2">
-                    <Mail size={14} className="text-red-400" />
-                    <span>Gmail Inbox</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/80 text-xs flex items-center gap-2">
-                    <Calendar size={14} className="text-pink-400" />
-                    <span>Google Calendar</span>
-                  </div>
-                  <div className="p-2.5 rounded-xl bg-zinc-900/50 border border-zinc-800/80 text-xs flex items-center gap-2">
-                    <FileSpreadsheet size={14} className="text-emerald-400" />
-                    <span>Google Sheets</span>
+                    <span className="text-[11px] text-zinc-500 bg-zinc-900 px-2.5 py-1 rounded-md border border-zinc-800">
+                      Built-in
+                    </span>
                   </div>
                 </div>
+              )}
+            </div>
 
-                <div className="flex items-center justify-end gap-2 pt-2">
-                  <button
-                    onClick={() => { window.location.href = "/api/auth/google"; }}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition-all shadow-md shadow-blue-600/20"
-                  >
-                    <ExternalLink size={13} />
-                    Connect Google Account
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* MCP Tab */}
-            {selectedTab === "mcp" && (
-              <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                      <Plug size={16} className="text-amber-400" /> Model Context Protocol (MCP)
-                    </h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      Connect custom local or remote MCP servers to expose tools directly to CoWork.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-300 space-y-2">
-                  <p>MCP servers can be mentioned inside any CoWork prompt using the <code className="text-amber-300 font-mono">@servername</code> syntax.</p>
-                  <p className="text-zinc-500">Supports stdio and HTTP/SSE MCP endpoints.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Live Search Tab */}
-            {selectedTab === "browser" && (
-              <div className="space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
-                      <Globe size={16} className="text-sky-400" /> Live Web Search
-                    </h3>
-                    <p className="text-xs text-zinc-400 mt-0.5">
-                      Performs real-time web lookups for latest news, external documentation, and internet facts.
-                    </p>
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    Always Ready
-                  </span>
-                </div>
-
-                <div className="p-4 rounded-xl bg-zinc-900/60 border border-zinc-800 text-xs text-zinc-300 space-y-2">
-                  <p>Web search is automatically routed only when you ask about live internet information or explicitly request a search, avoiding redundant search overhead on GitHub/local queries.</p>
-                </div>
-              </div>
-            )}
+            {/* Footer */}
+            <div className="pt-3 border-t border-zinc-900 flex justify-end">
+              <button
+                onClick={onClose}
+                className="px-3.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-xs text-zinc-300 transition-colors"
+              >
+                Close
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* Modal Footer */}
-        <div className="px-6 py-3 bg-zinc-950/80 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-500">
-          <span>Changes take effect immediately</span>
-          <button
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium transition-colors"
-          >
-            Done
-          </button>
         </div>
       </div>
     </div>
