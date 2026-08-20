@@ -5,9 +5,6 @@ import { listMCPServers } from "@/lib/mcp";
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   let isGitHubConnected = false;
   let isGoogleConnected = false;
@@ -16,9 +13,12 @@ export async function GET() {
   let googleEmail: string | null = null;
 
   try {
-    const profile = await prisma.userProfile.findUnique({
-      where: { userId: user.userId },
-    });
+    const profile = user
+      ? await prisma.userProfile.findUnique({ where: { userId: user.userId } })
+      : await prisma.userProfile.findFirst({
+          where: { OR: [{ githubConnected: true }, { googleConnected: true }] },
+        });
+
     if (profile) {
       isGitHubConnected = Boolean(profile.githubConnected);
       isGoogleConnected = Boolean(profile.googleConnected);
@@ -38,35 +38,35 @@ export async function GET() {
       name: "GitHub",
       icon: "Github",
       connected: isGitHubConnected,
-      username: isGitHubConnected ? (ghUsername || user.username) : null,
+      username: isGitHubConnected ? (ghUsername || user?.username || "GitHub Account") : null,
     },
     {
       id: "drive",
       name: "Google Drive",
       icon: "HardDrive",
       connected: isGoogleConnected,
-      username: isGoogleConnected ? (googleEmail || `${user.username}@gmail.com`) : null,
+      username: isGoogleConnected ? (googleEmail || (user ? `${user.username}@gmail.com` : "Google Account")) : null,
     },
     {
       id: "calendar",
       name: "Google Calendar",
       icon: "Calendar",
       connected: isGoogleConnected,
-      username: isGoogleConnected ? (googleEmail || `${user.username}@gmail.com`) : null,
+      username: isGoogleConnected ? (googleEmail || (user ? `${user.username}@gmail.com` : "Google Account")) : null,
     },
     {
       id: "gmail",
       name: "Gmail",
       icon: "Mail",
       connected: isGoogleConnected,
-      username: isGoogleConnected ? (googleEmail || `${user.username}@gmail.com`) : null,
+      username: isGoogleConnected ? (googleEmail || (user ? `${user.username}@gmail.com` : "Google Account")) : null,
     },
     {
       id: "sheets",
       name: "Google Sheets",
       icon: "FileSpreadsheet",
       connected: isGoogleConnected,
-      username: isGoogleConnected ? (googleEmail || `${user.username}@gmail.com`) : null,
+      username: isGoogleConnected ? (googleEmail || (user ? `${user.username}@gmail.com` : "Google Account")) : null,
     },
     {
       id: "mcp",

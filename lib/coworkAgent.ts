@@ -142,6 +142,65 @@ function setStep(task: CoworkTask, stepId: string, status: PlanStep["status"]) {
 }
 
 // ─────────────────────────────────────────────────────────────
+export function detectToolRequirements(userQuery: string) {
+  const q = userQuery.toLowerCase().trim();
+  const mentionedMCPServers = parseMentionedMCPServers(userQuery);
+
+  // GitHub keywords & intents
+  const isGitHub =
+    /\b(github|repo|repos|repository|repositories|commit|commits|pr|prs|pull request|branch|branches|codebase|clone|issue|issues|fork|readme)\b/i.test(q) ||
+    q.includes("@github") ||
+    /\b(first repo|oldest repo|my repo|my repositories|list repo|show repo|check repo)\b/i.test(q);
+
+  // Google Drive keywords
+  const isDrive =
+    /\b(drive|google drive|docs|doc|pdf|pdfs|folder|folders|files in drive|my file|my document)\b/i.test(q) ||
+    q.includes("@drive");
+
+  // Google Calendar keywords
+  const isCalendar =
+    /\b(calendar|meeting|meetings|schedule|appointment|appointments|events|free slot|free time|free slots|schedule meeting)\b/i.test(q) ||
+    q.includes("@calendar");
+
+  // Gmail keywords
+  const isGmail =
+    /\b(gmail|email|emails|mail|mails|inbox|draft|drafts|unread email|send email|compose email)\b/i.test(q) ||
+    q.includes("@gmail");
+
+  // Google Sheets keywords
+  const isSheets =
+    /\b(sheet|sheets|spreadsheet|spreadsheets|excel|rows|columns|dataset|sales table|csv)\b/i.test(q) ||
+    q.includes("@sheets");
+
+  // MCP keywords
+  const isMCP =
+    /\b(mcp|model context protocol)\b/i.test(q) ||
+    q.includes("@mcp") ||
+    mentionedMCPServers.length > 0;
+
+  // Explicit Web Search keywords
+  const isExplicitWeb =
+    /\b(search web|search the web|search google|search online|live search|latest news|news today|current news|web search|browse the web|look up on web|google search)\b/i.test(q) ||
+    q.includes("@browser") ||
+    q.includes("@web");
+
+  const anyWorkspaceTool = isGitHub || isDrive || isCalendar || isGmail || isSheets || isMCP;
+
+  // Run web search ONLY IF explicitly requested OR if no workspace tools are matched
+  const isWeb = isExplicitWeb || !anyWorkspaceTool;
+
+  return {
+    needsGitHub: isGitHub,
+    needsDrive: isDrive,
+    needsCalendar: isCalendar,
+    needsGmail: isGmail,
+    needsSheets: isSheets,
+    needsMCP: isMCP,
+    needsBrowser: isWeb,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
 // Task creation
 // ─────────────────────────────────────────────────────────────
 
@@ -175,58 +234,21 @@ export async function createAndRunTask(
     }
   }
 
-  const queryLower = userQuery.toLowerCase();
-  const mentionedMCPServers = parseMentionedMCPServers(userQuery);
+  // Detect which tools are needed accurately
+  const flags = detectToolRequirements(userQuery);
 
-  // Detect which tools are needed
-  const isDriveQuery =
-    queryLower.includes("drive") || queryLower.includes("pdf") ||
-    queryLower.includes("doc") || queryLower.includes("file") || queryLower.includes("folder");
-  const isCalendarQuery =
-    queryLower.includes("calendar") || queryLower.includes("meeting") ||
-    queryLower.includes("schedule") || queryLower.includes("tomorrow") || queryLower.includes("event");
-  const isGmailQuery =
-    queryLower.includes("email") || queryLower.includes("mail") ||
-    queryLower.includes("draft") || queryLower.includes("inbox") || queryLower.includes("gmail");
-  const isSheetsQuery =
-    queryLower.includes("sheet") || queryLower.includes("spreadsheet") ||
-    queryLower.includes("sales") || queryLower.includes("revenue") || queryLower.includes("excel");
-  const isBrowserQuery =
-    queryLower.includes("browser") || queryLower.includes("search web") ||
-    queryLower.includes("website") || queryLower.includes("@browser");
-  const isMCPQuery =
-    queryLower.includes("mcp") || queryLower.includes("@") || mentionedMCPServers.length > 0;
-
-  const isExplicitGitHub =
-    queryLower.includes("github") || queryLower.includes("repo") ||
-    queryLower.includes("code") || queryLower.includes("pr") ||
-    queryLower.includes("commit") || queryLower.includes("audit") ||
-    queryLower.includes("issue") || queryLower.includes("@github");
-
-  const isAnyOtherTool =
-    isDriveQuery || isCalendarQuery || isGmailQuery || isSheetsQuery || isBrowserQuery || isMCPQuery;
-
-  const needsGitHub = isExplicitGitHub || !isAnyOtherTool;
-  const needsDrive = isDriveQuery;
-  const needsCalendar = isCalendarQuery;
-  const needsGmail = isGmailQuery;
-  const needsSheets = isSheetsQuery;
-  const needsBrowser = isBrowserQuery;
-  const needsMCP = isMCPQuery;
-
-  // Build plan steps
+  // Build dynamic plan steps strictly based on requested tools
   const initialPlan: PlanStep[] = [
     { id: "step_init", title: "Analyzing request", status: "completed" },
   ];
 
-  if (needsDrive) initialPlan.push({ id: "step_drive", title: "Google Drive", status: "waiting" });
-  if (needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub", status: "waiting" });
-  if (needsSheets) initialPlan.push({ id: "step_sheets", title: "Google Sheets", status: "waiting" });
-  if (needsCalendar) initialPlan.push({ id: "step_cal", title: "Google Calendar", status: "waiting" });
-  if (needsGmail) initialPlan.push({ id: "step_gmail", title: "Gmail", status: "waiting" });
-  if (needsBrowser || !isAnyOtherTool)
-    initialPlan.push({ id: "step_browser", title: "Web search", status: "waiting" });
-  if (needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP servers", status: "waiting" });
+  if (flags.needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub Repositories", status: "waiting" });
+  if (flags.needsDrive) initialPlan.push({ id: "step_drive", title: "Google Drive", status: "waiting" });
+  if (flags.needsSheets) initialPlan.push({ id: "step_sheets", title: "Google Sheets", status: "waiting" });
+  if (flags.needsCalendar) initialPlan.push({ id: "step_cal", title: "Google Calendar", status: "waiting" });
+  if (flags.needsGmail) initialPlan.push({ id: "step_gmail", title: "Gmail", status: "waiting" });
+  if (flags.needsBrowser) initialPlan.push({ id: "step_browser", title: "Live Web Search", status: "waiting" });
+  if (flags.needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP Servers", status: "waiting" });
   initialPlan.push({ id: "step_final", title: "Writing response", status: "waiting" });
 
   const initialTask: CoworkTask = {
@@ -258,15 +280,7 @@ export async function createAndRunTask(
   taskStore.set(taskId, initialTask);
 
   // Run agent loop asynchronously
-  executeAgentLoop(taskId, {
-    needsDrive,
-    needsGitHub,
-    needsCalendar,
-    needsGmail,
-    needsSheets,
-    needsBrowser,
-    needsMCP,
-  }).catch((err) => {
+  executeAgentLoop(taskId, flags).catch((err) => {
     console.error(`Task ${taskId} failed:`, err);
     const t = taskStore.get(taskId);
     if (t) {
@@ -333,19 +347,11 @@ async function executeAgentLoop(
   let sheetsText = "";
   let webText = "";
 
-  // ── WEB SEARCH ──────────────────────────────────────────────
-  const isWebQuery =
-    flags.needsBrowser ||
-    (!flags.needsDrive && !flags.needsCalendar && !flags.needsGmail &&
-      !flags.needsSheets && !flags.needsGitHub) ||
-    queryLower.includes("search") || queryLower.includes("latest") ||
-    queryLower.includes("news") || queryLower.includes("what") ||
-    queryLower.includes("how") || queryLower.includes("find");
-
-  if (isWebQuery) {
+  // ── WEB SEARCH (Only when requested) ─────────────────────────
+  if (flags.needsBrowser) {
     setStep(task, "step_browser", "running");
     addLog(task, "tool_call", "Searching the web", `"${task.userQuery.slice(0, 60)}"`, "browser", { toolName: "searchWeb" });
-    await delay(300);
+    await delay(30);
 
     try {
       const results = await searchWeb(task.userQuery, 5);
@@ -362,20 +368,20 @@ async function executeAgentLoop(
     }
 
     setStep(task, "step_browser", "completed");
-    await delay(200);
+    await delay(30);
   }
 
   // ── GOOGLE DRIVE ─────────────────────────────────────────────
   if (flags.needsDrive) {
     setStep(task, "step_drive", "running");
     addLog(task, "tool_call", "Searching Drive", `Looking for files matching "${task.userQuery.slice(0, 40)}"`, "drive", { toolName: "drive_search_files" });
-    await delay(300);
+    await delay(30);
 
     try {
       const files = await drive_search_files(task.userQuery, googleAccessToken);
       if (files.length > 0) {
         addLog(task, "tool_call", `Reading ${files[0].name}`, `Extracting file content`, "drive", { toolName: "drive_get_file_content" });
-        await delay(200);
+        await delay(30);
         const content = await drive_get_file_content(files[0].id);
         driveText =
           `Files found (${files.length}):\n` +
@@ -391,18 +397,17 @@ async function executeAgentLoop(
     }
 
     setStep(task, "step_drive", "completed");
-    await delay(200);
+    await delay(30);
   }
 
   // ── GITHUB ──────────────────────────────────────────────────
   if (flags.needsGitHub) {
     setStep(task, "step_github", "running");
-    const effectiveOwner = githubUsername || owner;
+    const effectiveOwner = githubUsername || owner || "ShivamSk07";
 
     try {
-      // Step 1: List repos
       addLog(task, "tool_call", "Listing repositories", `@${effectiveOwner}`, "github", { toolName: "github_list_repositories" });
-      await delay(300);
+      await delay(30);
 
       const repos = await github_list_repositories(effectiveOwner, githubAccessToken);
       task.usedTools.push("github_list_repositories");
@@ -411,70 +416,93 @@ async function executeAgentLoop(
       let resolvedRepo = repo;
 
       if (repos.length > 0) {
-        const matched = repo
+        // Sort repos by creation date ascending (oldest/first created repo)
+        const sortedByCreated = [...repos].sort((a, b) => {
+          const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          return tA - tB;
+        });
+        const firstCreatedRepo = sortedByCreated[0];
+
+        // Sort repos by updated date descending (most recently updated)
+        const sortedByUpdated = [...repos].sort((a, b) => {
+          const tA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+          const tB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+          return tB - tA;
+        });
+        const latestUpdatedRepo = sortedByUpdated[0];
+
+        let matched = repo
           ? repos.find((r) => r.name.toLowerCase() === repo.toLowerCase()) || repos[0]
+          : (queryLower.includes("first repo") || queryLower.includes("oldest repo"))
+          ? firstCreatedRepo
           : repos[0];
+
         resolvedOwner = matched.full_name.split("/")[0];
         resolvedRepo = matched.name;
 
-        addLog(task, "success", `${repos.length} repo${repos.length > 1 ? "s" : ""} found`, repos.slice(0, 3).map((r) => r.name).join(", "), "github");
-        await delay(200);
+        addLog(task, "success", `${repos.length} repo${repos.length > 1 ? "s" : ""} found`, `First: ${firstCreatedRepo?.name || matched.name}`, "github");
+        await delay(30);
 
-        // Step 2: File tree
-        addLog(task, "tool_call", `Reading ${resolvedRepo}`, `Scanning file tree`, "github", { toolName: "github_get_repository_tree" });
-        await delay(300);
+        const isSpecificCodeInspection = 
+          queryLower.includes("file") || queryLower.includes("code") ||
+          queryLower.includes("commit") || queryLower.includes("audit") ||
+          queryLower.includes("issue") || queryLower.includes("tree") ||
+          queryLower.includes("readme") || Boolean(repo);
 
-        let tree: any[] = [];
-        try {
-          tree = await github_get_repository_tree(resolvedOwner, resolvedRepo, branch);
-          task.usedTools.push("github_get_repository_tree");
-          addLog(task, "success", `${tree.length} files indexed`, `${resolvedOwner}/${resolvedRepo}`, "github");
-        } catch {
-          addLog(task, "reasoning", "File tree unavailable", "Could not read repository tree", "github");
+        let treeText = "";
+        let commitText = "";
+        let issuesText = "";
+
+        if (isSpecificCodeInspection) {
+          // File tree
+          try {
+            const tree = await github_get_repository_tree(resolvedOwner, resolvedRepo, branch);
+            task.usedTools.push("github_get_repository_tree");
+            treeText = `Files scanned (${tree.length}):\n` + tree.slice(0, 15).map(f => `• ${f.path}`).join("\n");
+            addLog(task, "success", `${tree.length} files scanned`, `${resolvedOwner}/${resolvedRepo}`, "github");
+          } catch {}
+
+          // Commits
+          try {
+            const commits = await github_get_commits(resolvedOwner, resolvedRepo);
+            task.usedTools.push("github_get_commits");
+            commitText = `Recent commits (${commits.length}):\n` + commits.slice(0, 5).map(c => `• ${c.commit.message.split("\n")[0]} (${c.commit.author.name})`).join("\n");
+          } catch {}
+
+          // Issues
+          try {
+            const issues = await github_get_issues(resolvedOwner, resolvedRepo);
+            task.usedTools.push("github_get_issues");
+            issuesText = `Open issues (${issues.length}):\n` + issues.slice(0, 5).map(i => `• #${i.number}: ${i.title} [${i.state}]`).join("\n");
+          } catch {}
         }
 
-        await delay(200);
+        // Build rich GitHub context with all details
+        const repoListDetails = repos.map((r, idx) => 
+          `${idx + 1}. **${r.name}** (${r.full_name})
+   - Primary Language: ${r.language || "N/A"}
+   - Visibility: ${r.private ? "Private" : "Public"}
+   - Stars: ⭐ ${r.stargazers_count} | Forks: 🍴 ${r.forks_count} | Issues: ⚠️ ${r.open_issues_count}
+   - Created: ${r.created_at ? new Date(r.created_at).toLocaleDateString() : "N/A"}
+   - Last Updated: ${r.updated_at ? new Date(r.updated_at).toLocaleDateString() : "N/A"}
+   - URL: ${r.html_url}
+   - Description: ${r.description || "No description"}`
+        ).join("\n\n");
 
-        // Step 3: Commits
-        addLog(task, "tool_call", "Fetching recent commits", `${resolvedOwner}/${resolvedRepo}`, "github", { toolName: "github_get_commits" });
-        await delay(300);
+        githubText = `GitHub Account @${resolvedOwner} Overview:
+Total Repositories Found: ${repos.length}
+• Earliest / First Created Repository: ${firstCreatedRepo?.name} (Created: ${firstCreatedRepo?.created_at ? new Date(firstCreatedRepo.created_at).toLocaleString() : "N/A"})
+• Most Recently Updated Repository: ${latestUpdatedRepo?.name} (Updated: ${latestUpdatedRepo?.updated_at ? new Date(latestUpdatedRepo.updated_at).toLocaleString() : "N/A"})
 
-        let commits: any[] = [];
-        try {
-          commits = await github_get_commits(resolvedOwner, resolvedRepo);
-          task.usedTools.push("github_get_commits");
-          addLog(task, "success", `${commits.length} commits`, commits[0]?.commit?.message?.split("\n")[0]?.slice(0, 60) || "", "github");
-        } catch {
-          addLog(task, "reasoning", "Commits unavailable", "Could not fetch commit history", "github");
-        }
+Active Selected Repository: ${resolvedOwner}/${resolvedRepo}
+${treeText ? `\n${treeText}\n` : ""}
+${commitText ? `\n${commitText}\n` : ""}
+${issuesText ? `\n${issuesText}\n` : ""}
 
-        await delay(200);
+All Repositories for @${resolvedOwner}:
+${repoListDetails}`;
 
-        // Step 4: Issues
-        addLog(task, "tool_call", "Checking open issues", `${resolvedOwner}/${resolvedRepo}`, "github", { toolName: "github_get_issues" });
-        await delay(300);
-
-        let issues: any[] = [];
-        try {
-          issues = await github_get_issues(resolvedOwner, resolvedRepo);
-          task.usedTools.push("github_get_issues");
-          addLog(task, "success", `${issues.length} issue${issues.length !== 1 ? "s" : ""}`, issues.length > 0 ? issues[0].title.slice(0, 60) : "No open issues", "github");
-        } catch {
-          addLog(task, "reasoning", "Issues unavailable", "Could not fetch issues", "github");
-        }
-
-        // Build context
-        githubText =
-          `GitHub @${resolvedOwner} — ${repos.length} repositories\n` +
-          repos.slice(0, 5).map((r) => `• ${r.full_name} (${r.language || "—"}, ⭐${r.stargazers_count}, ${r.open_issues_count} issues)`).join("\n") +
-          `\n\nActive repo: ${resolvedOwner}/${resolvedRepo}\n` +
-          `Files scanned: ${tree.length}\n` +
-          (commits.length > 0
-            ? `\nRecent commits:\n` + commits.slice(0, 5).map((c) => `• ${c.commit.message.split("\n")[0]} (${c.commit.author.name})`).join("\n")
-            : "") +
-          (issues.length > 0
-            ? `\n\nOpen issues (${issues.length}):\n` + issues.slice(0, 5).map((i) => `• #${i.number}: ${i.title} [${i.state}]`).join("\n")
-            : "\n\nNo open issues.");
       } else {
         addLog(task, "reasoning", "No repositories found", `No public repos for @${effectiveOwner}`, "github");
         githubText = `GitHub @${effectiveOwner}: no repositories found.`;
@@ -485,14 +513,14 @@ async function executeAgentLoop(
     }
 
     setStep(task, "step_github", "completed");
-    await delay(200);
+    await delay(30);
   }
 
   // ── GOOGLE SHEETS ────────────────────────────────────────────
   if (flags.needsSheets) {
     setStep(task, "step_sheets", "running");
     addLog(task, "tool_call", "Reading spreadsheet", "Fetching rows and columns", "sheets", { toolName: "sheets_read" });
-    await delay(300);
+    await delay(30);
 
     try {
       const sheetData = await sheets_read("sheet_101");
@@ -504,14 +532,14 @@ async function executeAgentLoop(
     }
 
     setStep(task, "step_sheets", "completed");
-    await delay(200);
+    await delay(30);
   }
 
   // ── GOOGLE CALENDAR ──────────────────────────────────────────
   if (flags.needsCalendar) {
     setStep(task, "step_cal", "running");
     addLog(task, "tool_call", "Checking calendar", "Finding free slots tomorrow", "calendar", { toolName: "calendar_find_free_time" });
-    await delay(300);
+    await delay(30);
 
     try {
       const slots = await calendar_find_free_time("tomorrow", 60);
@@ -523,14 +551,14 @@ async function executeAgentLoop(
     }
 
     setStep(task, "step_cal", "completed");
-    await delay(200);
+    await delay(30);
   }
 
   // ── GMAIL ────────────────────────────────────────────────────
   if (flags.needsGmail) {
     setStep(task, "step_gmail", "running");
     addLog(task, "tool_call", "Searching inbox", `"${task.userQuery.slice(0, 40)}"`, "gmail", { toolName: "gmail_search" });
-    await delay(300);
+    await delay(30);
 
     try {
       const emails = await gmail_search(task.userQuery, googleAccessToken);
@@ -551,7 +579,7 @@ async function executeAgentLoop(
     }
 
     setStep(task, "step_gmail", "completed");
-    await delay(200);
+    await delay(30);
   }
 
   // ── HUMAN APPROVAL CHECK ─────────────────────────────────────

@@ -15,6 +15,7 @@ export interface GitHubRepo {
   stargazers_count: number;
   forks_count: number;
   open_issues_count: number;
+  created_at: string;
   updated_at: string;
 }
 
@@ -111,6 +112,7 @@ export async function github_list_repositories(username = "ShivamSk07", accessTo
     stargazers_count: r.stargazers_count,
     forks_count: r.forks_count,
     open_issues_count: r.open_issues_count,
+    created_at: r.created_at || "",
     updated_at: r.updated_at,
   }));
 }
@@ -129,6 +131,7 @@ export async function github_get_repository(owner: string, repo: string): Promis
     stargazers_count: r.stargazers_count,
     forks_count: r.forks_count,
     open_issues_count: r.open_issues_count,
+    created_at: r.created_at || "",
     updated_at: r.updated_at,
   };
 }

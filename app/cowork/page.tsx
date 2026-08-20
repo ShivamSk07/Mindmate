@@ -33,6 +33,8 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import IntegrationsModal from "@/components/IntegrationsModal";
+
 interface IntegrationItem {
   id: string;
   name: string;
@@ -166,6 +168,7 @@ export default function CoworkPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isFollowupSubmitting, setIsFollowupSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
 
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const logScrollRef = useRef<HTMLDivElement | null>(null);
@@ -293,16 +296,11 @@ export default function CoworkPage() {
     } catch {}
   };
 
-  const handleConnect = (id: string) => {
-    if (id === "github") window.location.href = "/api/auth/github";
-    else if (["drive", "calendar", "gmail", "sheets"].includes(id)) window.location.href = "/api/auth/google";
-  };
-
   const PRESETS = [
-    "Summarize my GitHub repos",
+    "What is my first repo?",
+    "Summarize my GitHub repositories",
+    "Search latest news on AI workspace agents",
     "What's in my Google Drive?",
-    "Check my calendar for tomorrow",
-    "Search latest news on AI agents",
   ];
 
   const connectedCount = integrations.filter((i) => i.connected).length;
@@ -311,6 +309,14 @@ export default function CoworkPage() {
 
   return (
     <div className="h-[100dvh] w-full bg-[#0a0a0a] text-zinc-100 flex flex-col overflow-hidden" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
+
+      {/* Integrations Modal */}
+      <IntegrationsModal
+        isOpen={showIntegrationsModal}
+        onClose={() => setShowIntegrationsModal(false)}
+        integrations={integrations}
+        onStatusChange={fetchStatus}
+      />
 
       {/* ── HEADER ── */}
       <header className="h-12 px-4 bg-[#0a0a0a] border-b border-zinc-900 flex items-center justify-between flex-shrink-0">
@@ -325,23 +331,29 @@ export default function CoworkPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Integration status dots */}
-          <div className="flex items-center gap-1.5">
-            {integrations.map((item) => {
-              const Icon = INTEGRATION_ICON[item.id] || Globe;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => !item.connected && handleConnect(item.id)}
-                  title={item.connected ? `${item.name}: ${item.username || "connected"}` : `Connect ${item.name}`}
-                  className={`p-1.5 rounded-lg transition-colors ${item.connected ? "text-zinc-400 bg-zinc-900" : "text-zinc-700 hover:text-zinc-500"}`}
-                >
-                  <Icon size={14} />
-                </button>
-              );
-            })}
-          </div>
-          <span className="text-[11px] text-zinc-600">{connectedCount} connected</span>
+          {/* Integration status button */}
+          <button
+            onClick={() => setShowIntegrationsModal(true)}
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 transition-all text-xs text-zinc-300"
+            title="Manage Integrations"
+          >
+            <div className="flex items-center gap-1">
+              {integrations.map((item) => {
+                const Icon = INTEGRATION_ICON[item.id] || Globe;
+                return (
+                  <span
+                    key={item.id}
+                    className={`p-0.5 ${item.connected ? "text-zinc-300" : "text-zinc-700"}`}
+                  >
+                    <Icon size={13} />
+                  </span>
+                );
+              })}
+            </div>
+            <span className="text-[11px] text-zinc-400 font-medium">
+              {connectedCount} Connected
+            </span>
+          </button>
         </div>
       </header>
 
@@ -464,25 +476,40 @@ export default function CoworkPage() {
               </div>
 
               {/* Integration status */}
-              <div className="flex flex-wrap gap-2">
-                {integrations.map((item) => {
-                  const Icon = INTEGRATION_ICON[item.id] || Globe;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => !item.connected && handleConnect(item.id)}
-                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all ${
-                        item.connected
-                          ? "border-zinc-800 bg-zinc-950 text-zinc-400 cursor-default"
-                          : "border-zinc-900 text-zinc-600 hover:border-zinc-800 hover:text-zinc-500"
-                      }`}
-                    >
-                      <Icon size={12} />
-                      <span>{item.name}</span>
-                      {item.connected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />}
-                    </button>
-                  );
-                })}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Integrations</p>
+                  <button
+                    onClick={() => setShowIntegrationsModal(true)}
+                    className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors font-medium"
+                  >
+                    Manage / Disconnect
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {integrations.map((item) => {
+                    const Icon = INTEGRATION_ICON[item.id] || Globe;
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setShowIntegrationsModal(true)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                          item.connected
+                            ? "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900"
+                            : "border-zinc-900 text-zinc-600 hover:border-zinc-800 hover:text-zinc-400"
+                        }`}
+                      >
+                        <Icon size={13} />
+                        <span>{item.name}</span>
+                        {item.connected ? (
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        ) : (
+                          <span className="text-[10px] text-zinc-600">Connect</span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </main>
