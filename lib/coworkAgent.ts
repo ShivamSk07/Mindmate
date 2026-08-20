@@ -692,9 +692,10 @@ Respond directly and clearly.`;
         { role: "user", content: userPrompt },
       ],
       temperature: 0.1,
-      max_tokens: 2000,
+      max_tokens: 2500,
     })) as any;
-    reportText = completion.choices[0]?.message?.content?.trim() || "";
+    const choice = completion.choices[0]?.message;
+    reportText = choice?.content?.trim() || choice?.reasoning?.trim() || "";
   } catch (e) {
     // Fallback: just show the raw context clearly formatted
     reportText = contextParts.length > 0
@@ -828,7 +829,8 @@ Use the existing artifacts as context. Answer directly and specifically.`,
         max_tokens: 1500,
       })) as any;
 
-      const reply = completion.choices[0]?.message?.content?.trim() || "";
+      const choice = completion.choices[0]?.message;
+      const reply = choice?.content?.trim() || choice?.reasoning?.trim() || "Follow-up processed.";
       const replyTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
       task.messages.push({

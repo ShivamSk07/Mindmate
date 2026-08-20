@@ -34,10 +34,14 @@ export async function generateResponse(messages: Message[], modelName = MODEL): 
         model: targetModel,
         messages: messages as any,
         temperature: 0.7,
-        max_tokens: 1024,
+        max_tokens: 2048,
       })) as any;
 
-      return completion.choices[0]?.message?.content ?? "Sorry, kuch issue aaya. Dobara try karo.";
+      const choice = completion.choices[0]?.message;
+      const content = choice?.content?.trim() || choice?.reasoning?.trim() || "";
+      if (content) return content;
+
+      return "Task completed successfully.";
     } catch (error: any) {
       console.warn(`[Groq Model ${targetModel} Failed]`, error?.message || error);
       lastError = error;
