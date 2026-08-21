@@ -494,7 +494,7 @@ async function executeAgentLoop(
         if (isSpecificCodeInspection) {
           // File tree
           try {
-            const tree = await github_get_repository_tree(resolvedOwner, resolvedRepo, branch);
+            const tree = await github_get_repository_tree(resolvedOwner, resolvedRepo, branch, githubAccessToken);
             task.usedTools.push("github_get_repository_tree");
             treeText = `Files scanned (${tree.length}):\n` + tree.slice(0, 15).map(f => `• ${f.path}`).join("\n");
             addLog(task, "success", `${tree.length} files scanned`, `${resolvedOwner}/${resolvedRepo}`, "github");
@@ -502,14 +502,14 @@ async function executeAgentLoop(
 
           // Commits
           try {
-            const commits = await github_get_commits(resolvedOwner, resolvedRepo);
+            const commits = await github_get_commits(resolvedOwner, resolvedRepo, githubAccessToken);
             task.usedTools.push("github_get_commits");
             commitText = `Recent commits (${commits.length}):\n` + commits.slice(0, 5).map(c => `• ${c.commit.message.split("\n")[0]} (${c.commit.author.name})`).join("\n");
           } catch {}
 
           // Issues
           try {
-            const issues = await github_get_issues(resolvedOwner, resolvedRepo);
+            const issues = await github_get_issues(resolvedOwner, resolvedRepo, githubAccessToken);
             task.usedTools.push("github_get_issues");
             issuesText = `Open issues (${issues.length}):\n` + issues.slice(0, 5).map(i => `• #${i.number}: ${i.title} [${i.state}]`).join("\n");
           } catch {}
@@ -1058,7 +1058,7 @@ async function executeVisualizationLoop(
 
   let tree: any[] = [];
   try {
-    tree = await github_get_repository_tree(owner, repo, branch);
+    tree = await github_get_repository_tree(owner, repo, branch, githubAccessToken);
     addLog(task, "success", `Scanned ${tree.length} tree items`, `Successfully retrieved file hierarchy.`, "github");
     setStep(task, "step_tree", "completed");
   } catch (e: any) {
@@ -1151,7 +1151,7 @@ Do not return markdown formatting, code blocks, or explanations.`;
   for (const path of selectedPaths) {
     try {
       addLog(task, "tool_call", `Fetching file`, path, "github", { toolName: "github_get_file" });
-      const f = await github_get_file(owner, repo, path, branch);
+      const f = await github_get_file(owner, repo, path, branch, githubAccessToken);
       fetchedFiles.push({ path, content: f.content });
     } catch (err) {
       console.warn(`Failed to fetch file content for ${path}:`, err);

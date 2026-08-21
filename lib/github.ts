@@ -117,8 +117,8 @@ export async function github_list_repositories(username = "ShivamSk07", accessTo
   }));
 }
 
-export async function github_get_repository(owner: string, repo: string): Promise<GitHubRepo> {
-  const r = await githubFetch(`/repos/${owner}/${repo}`);
+export async function github_get_repository(owner: string, repo: string, accessToken?: string | null): Promise<GitHubRepo> {
+  const r = await githubFetch(`/repos/${owner}/${repo}`, {}, accessToken);
   return {
     id: r.id,
     name: r.name,
@@ -136,8 +136,8 @@ export async function github_get_repository(owner: string, repo: string): Promis
   };
 }
 
-export async function github_get_repository_tree(owner: string, repo: string, branch = "main"): Promise<GitHubFile[]> {
-  const data = await githubFetch(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
+export async function github_get_repository_tree(owner: string, repo: string, branch = "main", accessToken?: string | null): Promise<GitHubFile[]> {
+  const data = await githubFetch(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`, {}, accessToken);
   return (data.tree || []).slice(0, 1000).map((f: any) => ({
     path: f.path,
     mode: f.mode,
@@ -148,8 +148,8 @@ export async function github_get_repository_tree(owner: string, repo: string, br
   }));
 }
 
-export async function github_get_file(owner: string, repo: string, path: string, branch = "main"): Promise<{ content: string; path: string }> {
-  const data = await githubFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`);
+export async function github_get_file(owner: string, repo: string, path: string, branch = "main", accessToken?: string | null): Promise<{ content: string; path: string }> {
+  const data = await githubFetch(`/repos/${owner}/${repo}/contents/${path}?ref=${branch}`, {}, accessToken);
   if (data.content && data.encoding === "base64") {
     const decoded = Buffer.from(data.content, "base64").toString("utf-8");
     return { content: decoded, path };
@@ -157,9 +157,9 @@ export async function github_get_file(owner: string, repo: string, path: string,
   return { content: data.content || "", path };
 }
 
-export async function github_search_code(owner: string, repo: string, query: string): Promise<{ total_count: number; items: Array<{ name: string; path: string; html_url: string }> }> {
+export async function github_search_code(owner: string, repo: string, query: string, accessToken?: string | null): Promise<{ total_count: number; items: Array<{ name: string; path: string; html_url: string }> }> {
   const q = `${query} repo:${owner}/${repo}`;
-  const data = await githubFetch(`/search/code?q=${encodeURIComponent(q)}`);
+  const data = await githubFetch(`/search/code?q=${encodeURIComponent(q)}`, {}, accessToken);
   return {
     total_count: data.total_count || 0,
     items: (data.items || []).slice(0, 10).map((i: any) => ({
@@ -170,8 +170,8 @@ export async function github_search_code(owner: string, repo: string, query: str
   };
 }
 
-export async function github_get_commits(owner: string, repo: string): Promise<GitHubCommit[]> {
-  const data = await githubFetch(`/repos/${owner}/${repo}/commits?per_page=10`);
+export async function github_get_commits(owner: string, repo: string, accessToken?: string | null): Promise<GitHubCommit[]> {
+  const data = await githubFetch(`/repos/${owner}/${repo}/commits?per_page=10`, {}, accessToken);
   return data.map((c: any) => ({
     sha: c.sha.slice(0, 7),
     commit: {
@@ -182,8 +182,8 @@ export async function github_get_commits(owner: string, repo: string): Promise<G
   }));
 }
 
-export async function github_get_issues(owner: string, repo: string): Promise<GitHubIssue[]> {
-  const data = await githubFetch(`/repos/${owner}/${repo}/issues?state=all&per_page=10`);
+export async function github_get_issues(owner: string, repo: string, accessToken?: string | null): Promise<GitHubIssue[]> {
+  const data = await githubFetch(`/repos/${owner}/${repo}/issues?state=all&per_page=10`, {}, accessToken);
   return data.map((i: any) => ({
     number: i.number,
     title: i.title,
@@ -196,8 +196,8 @@ export async function github_get_issues(owner: string, repo: string): Promise<Gi
   }));
 }
 
-export async function github_get_pull_requests(owner: string, repo: string): Promise<GitHubPullRequest[]> {
-  const data = await githubFetch(`/repos/${owner}/${repo}/pulls?state=all&per_page=10`);
+export async function github_get_pull_requests(owner: string, repo: string, accessToken?: string | null): Promise<GitHubPullRequest[]> {
+  const data = await githubFetch(`/repos/${owner}/${repo}/pulls?state=all&per_page=10`, {}, accessToken);
   return data.map((pr: any) => ({
     number: pr.number,
     title: pr.title,
@@ -211,8 +211,8 @@ export async function github_get_pull_requests(owner: string, repo: string): Pro
   }));
 }
 
-export async function github_get_branches(owner: string, repo: string): Promise<Array<{ name: string; protected: boolean }>> {
-  const data = await githubFetch(`/repos/${owner}/${repo}/branches`);
+export async function github_get_branches(owner: string, repo: string, accessToken?: string | null): Promise<Array<{ name: string; protected: boolean }>> {
+  const data = await githubFetch(`/repos/${owner}/${repo}/branches`, {}, accessToken);
   return data.map((b: any) => ({ name: b.name, protected: b.protected || false }));
 }
 
@@ -220,12 +220,12 @@ export async function github_get_branches(owner: string, repo: string): Promise<
 // WRITE TOOLS (REQUIRES HUMAN APPROVAL FIRST)
 // -------------------------------------------------------------
 
-export async function github_create_issue(owner: string, repo: string, title: string, body: string): Promise<GitHubIssue> {
+export async function github_create_issue(owner: string, repo: string, title: string, body: string, accessToken?: string | null): Promise<GitHubIssue> {
   const data = await githubFetch(`/repos/${owner}/${repo}/issues`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, body }),
-  });
+  }, accessToken);
   return {
     number: data.number,
     title: data.title,
@@ -238,9 +238,9 @@ export async function github_create_issue(owner: string, repo: string, title: st
   };
 }
 
-export async function github_create_branch(owner: string, repo: string, branch_name: string, from_branch = "main"): Promise<{ ref: string; sha: string }> {
+export async function github_create_branch(owner: string, repo: string, branch_name: string, from_branch = "main", accessToken?: string | null): Promise<{ ref: string; sha: string }> {
   // Get base branch SHA
-  const refData = await githubFetch(`/repos/${owner}/${repo}/git/ref/heads/${from_branch}`);
+  const refData = await githubFetch(`/repos/${owner}/${repo}/git/ref/heads/${from_branch}`, {}, accessToken);
   const baseSha = refData.object.sha;
 
   // Create new ref
@@ -251,7 +251,7 @@ export async function github_create_branch(owner: string, repo: string, branch_n
       ref: `refs/heads/${branch_name}`,
       sha: baseSha,
     }),
-  });
+  }, accessToken);
 
   return {
     ref: newRef.ref,
@@ -259,12 +259,12 @@ export async function github_create_branch(owner: string, repo: string, branch_n
   };
 }
 
-export async function github_create_pull_request(owner: string, repo: string, title: string, body: string, head: string, base = "main"): Promise<GitHubPullRequest> {
+export async function github_create_pull_request(owner: string, repo: string, title: string, body: string, head: string, base = "main", accessToken?: string | null): Promise<GitHubPullRequest> {
   const data = await githubFetch(`/repos/${owner}/${repo}/pulls`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ title, body, head, base }),
-  });
+  }, accessToken);
   return {
     number: data.number,
     title: data.title,
