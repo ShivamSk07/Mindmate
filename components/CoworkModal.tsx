@@ -418,6 +418,23 @@ export function CoworkModal({ isOpen, onClose }: CoworkModalProps) {
                             {children}
                           </pre>
                         ),
+                        a: ({ children, href }) => {
+                          if (href?.startsWith("https://kroki.io/")) {
+                            return (
+                              <div className="my-3 p-2 bg-[#111113] border border-[#2c2c2e] rounded-xl overflow-hidden flex flex-col items-center gap-1.5 select-none">
+                                <img src={href} alt="Rendered Diagram" className="max-w-full max-h-[300px] object-contain" />
+                                <a href={href} target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#0a84ff] hover:underline">
+                                  Open in new tab
+                                </a>
+                              </div>
+                            );
+                          }
+                          return (
+                            <a href={href} target="_blank" rel="noopener" className="text-[#0a84ff] hover:underline transition-colors">
+                              {children}
+                            </a>
+                          );
+                        },
                       }}
                     >
                       {agentReport}

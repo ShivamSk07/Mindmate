@@ -938,11 +938,23 @@ export default function CoworkPage() {
                               blockquote: ({ children }) => (
                                 <blockquote className="border-l-2 border-zinc-700 pl-4 my-4 text-zinc-500 italic">{children}</blockquote>
                               ),
-                              a: ({ children, href }) => (
-                                <a href={href} target="_blank" rel="noopener" className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
-                                  {children}
-                                </a>
-                              ),
+                              a: ({ children, href }) => {
+                                if (href?.startsWith("https://kroki.io/")) {
+                                  return (
+                                    <div className="my-4 p-2 bg-[#070707] border border-zinc-800 rounded-lg overflow-hidden flex flex-col items-center gap-2">
+                                      <img src={href} alt="Rendered Diagram" className="max-w-full max-h-[350px] object-contain" />
+                                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-400 hover:underline">
+                                        Open in new tab
+                                      </a>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <a href={href} target="_blank" rel="noopener" className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
+                                    {children}
+                                  </a>
+                                );
+                              },
                               hr: () => <hr className="border-zinc-800 my-6" />,
                             }}
                           >

@@ -205,9 +205,11 @@ export function detectToolRequirements(userQuery: string) {
 export function isVisualizationQuery(query: string): boolean {
   const q = query.toLowerCase().trim();
   return (
-    /\b(visualize|visualisation|visualization|diagram|flowchart|flow-chart|sequence diagram|state diagram|class diagram|dependency graph|architecture|visual representation)\b/i.test(q) ||
-    /\b(show|create|draw|generate)\s+.*?\b(flow|relationship|relationships|connection|connections|journey|overview|architecture|dependency|dependencies|endpoints)\b/i.test(q) ||
-    /\b(show|explain)\b.*?\b(visually|visual)\b/i.test(q)
+    /\bvisu[a-z]*\b/i.test(q) ||
+    /\bdi[a-z]{1,2}gr[a-z]*\b/i.test(q) ||
+    /\bflow[- ]?chart\b/i.test(q) ||
+    /\barchit[a-z]*\b/i.test(q) ||
+    /\b(chart|graph|pathway|pathways|map|maps|relationships|connections)\b/i.test(q)
   );
 }
 
