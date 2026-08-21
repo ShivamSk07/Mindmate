@@ -974,38 +974,45 @@ export function sanitizeMermaid(code: string): string {
   // Strip code fences
   clean = clean.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
 
-  // Normalize Unicode dashes, non-breaking hyphens, and quotes
+  // Normalize Unicode dashes, non-breaking hyphens, and smart quotes
   clean = clean
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, "-")
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2018\u2019]/g, "'");
 
-  // Sanitize special chars inside arrow edge labels |label|
-  // Parentheses, double-quotes, and forward-slashes all break Kroki's Mermaid parser
-  clean = clean.replace(/\|([^|\n]+)\|/g, (_match, labelContent: string) => {
-    const safe = labelContent
-      .replace(/"/g, "'")         // " -> '
-      .replace(/\(/g, "")         // remove (
-      .replace(/\)/g, "")         // remove )
-      .replace(/\//g, " or ")     // / -> ' or '
-      .trim();
-    return `|${safe}|`;
+  // Fix double quotes and angle brackets inside pipe link labels: |label "foo"| -> |label 'foo'|
+  clean = clean.replace(/\|([^|\n\r]+)\|/g, (_, label) => {
+    return `|${label.replace(/"/g, "'").replace(/[<]/g, "&lt;").replace(/[>]/g, "&gt;")}|`;
   });
 
-  // Auto-quote square bracket node labels: id[text] -> id["text"] if unquoted
+  // Auto-quote square bracket node labels: id[text] -> id["text"]
   clean = clean.replace(/([a-zA-Z0-9_\-]+)\[([^"\]\n]+)\]/g, (match, id, text) => {
     const trimmed = text.trim();
-    if (trimmed.startsWith('"') && trimmed.endsWith('"')) return match;
-    const safeText = trimmed.replace(/"/g, "'");
-    return `${id}["${safeText}"]`;
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      const inner = trimmed.slice(1, -1).replace(/"/g, "'");
+      return `${id}["${inner}"]`;
+    }
+    return `${id}["${trimmed.replace(/"/g, "'")}"]`;
   });
 
-  // Auto-quote parentheses node labels: id(text) -> id("text") if unquoted
+  // Auto-quote parentheses node labels: id(text) -> id("text")
   clean = clean.replace(/([a-zA-Z0-9_\-]+)\(([^"\)\n]+)\)/g, (match, id, text) => {
     const trimmed = text.trim();
-    if (trimmed.startsWith('"') && trimmed.endsWith('"')) return match;
-    const safeText = trimmed.replace(/"/g, "'");
-    return `${id}("${safeText}")`;
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      const inner = trimmed.slice(1, -1).replace(/"/g, "'");
+      return `${id}("${inner}")`;
+    }
+    return `${id}("${trimmed.replace(/"/g, "'")}")`;
+  });
+
+  // Auto-quote curly bracket node labels: id{text} -> id{"text"}
+  clean = clean.replace(/([a-zA-Z0-9_\-]+)\{([^"\}\n]+)\}/g, (match, id, text) => {
+    const trimmed = text.trim();
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
+      const inner = trimmed.slice(1, -1).replace(/"/g, "'");
+      return `${id}{"${inner}"}`;
+    }
+    return `${id}{"${trimmed.replace(/"/g, "'")}"}`;
   });
 
   return clean;
@@ -1227,6 +1234,7 @@ Rules:
 - Prefer a clear and understandable diagram over a large complex diagram.
 - Use meaningful human-readable labels.
 - ALWAYS wrap node label text inside double quotes, e.g. A["User (Browser)"] or B["Views (views.py)"].
+- NEVER use double quotes inside arrow pipe labels |...|. Use single quotes or clean text, e.g. -->|Depends('get_db')| or -->|Step 1|.
 - Use the most suitable Mermaid diagram type.
 - Return ONLY valid Mermaid source code.
 - Do not return explanations.
