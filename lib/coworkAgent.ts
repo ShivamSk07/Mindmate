@@ -1,6 +1,8 @@
+import zlib from "zlib";
 import {
   github_list_repositories,
   github_get_repository_tree,
+  github_get_file,
   github_get_commits,
   github_get_issues,
   github_create_issue,
@@ -58,7 +60,7 @@ export interface PendingApproval {
 export interface Artifact {
   id: string;
   title: string;
-  type: "report" | "plan" | "email" | "calendar" | "sheets" | "code_diff" | "review";
+  type: "report" | "plan" | "email" | "calendar" | "sheets" | "code_diff" | "review" | "visualization";
   content: string;
   createdAt: string;
 }
@@ -207,7 +209,8 @@ export function detectToolRequirements(userQuery: string) {
 export async function createAndRunTask(
   userQuery: string,
   preferredRepo?: string,
-  preferredBranch = "main"
+  preferredBranch = "main",
+  isVisualization = false
 ): Promise<CoworkTask> {
   const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const now = new Date().toISOString();
@@ -234,22 +237,31 @@ export async function createAndRunTask(
     }
   }
 
-  // Detect which tools are needed accurately
-  const flags = detectToolRequirements(userQuery);
+  // Build dynamic plan steps strictly based on requested tools or visualization
+  let initialPlan: PlanStep[] = [];
 
-  // Build dynamic plan steps strictly based on requested tools
-  const initialPlan: PlanStep[] = [
-    { id: "step_init", title: "Analyzing request", status: "completed" },
-  ];
+  if (isVisualization) {
+    initialPlan = [
+      { id: "step_init", title: "Analyzing request", status: "completed" },
+      { id: "step_tree", title: "Scanning repository structure", status: "waiting" },
+      { id: "step_files", title: "Retrieving relevant code files", status: "waiting" },
+      { id: "step_mermaid", title: "Generating visual diagram", status: "waiting" },
+      { id: "step_final", title: "Finalizing visualization", status: "waiting" },
+    ];
+  } else {
+    // Detect which tools are needed accurately
+    const flags = detectToolRequirements(userQuery);
 
-  if (flags.needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub Repositories", status: "waiting" });
-  if (flags.needsDrive) initialPlan.push({ id: "step_drive", title: "Google Drive", status: "waiting" });
-  if (flags.needsSheets) initialPlan.push({ id: "step_sheets", title: "Google Sheets", status: "waiting" });
-  if (flags.needsCalendar) initialPlan.push({ id: "step_cal", title: "Google Calendar", status: "waiting" });
-  if (flags.needsGmail) initialPlan.push({ id: "step_gmail", title: "Gmail", status: "waiting" });
-  if (flags.needsBrowser) initialPlan.push({ id: "step_browser", title: "Live Web Search", status: "waiting" });
-  if (flags.needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP Servers", status: "waiting" });
-  initialPlan.push({ id: "step_final", title: "Writing response", status: "waiting" });
+    initialPlan.push({ id: "step_init", title: "Analyzing request", status: "completed" });
+    if (flags.needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub Repositories", status: "waiting" });
+    if (flags.needsDrive) initialPlan.push({ id: "step_drive", title: "Google Drive", status: "waiting" });
+    if (flags.needsSheets) initialPlan.push({ id: "step_sheets", title: "Google Sheets", status: "waiting" });
+    if (flags.needsCalendar) initialPlan.push({ id: "step_cal", title: "Google Calendar", status: "waiting" });
+    if (flags.needsGmail) initialPlan.push({ id: "step_gmail", title: "Gmail", status: "waiting" });
+    if (flags.needsBrowser) initialPlan.push({ id: "step_browser", title: "Live Web Search", status: "waiting" });
+    if (flags.needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP Servers", status: "waiting" });
+    initialPlan.push({ id: "step_final", title: "Writing response", status: "waiting" });
+  }
 
   const initialTask: CoworkTask = {
     id: taskId,
@@ -280,15 +292,28 @@ export async function createAndRunTask(
   taskStore.set(taskId, initialTask);
 
   // Run agent loop asynchronously
-  executeAgentLoop(taskId, flags).catch((err) => {
-    console.error(`Task ${taskId} failed:`, err);
-    const t = taskStore.get(taskId);
-    if (t) {
-      t.status = "failed";
-      addLog(t, "error", "Execution failed", err.message || "Unexpected error");
-      taskStore.set(taskId, t);
-    }
-  });
+  if (isVisualization) {
+    executeVisualizationLoop(taskId, owner, repo, preferredBranch).catch((err) => {
+      console.error(`Visualization task ${taskId} failed:`, err);
+      const t = taskStore.get(taskId);
+      if (t) {
+        t.status = "failed";
+        addLog(t, "error", "Visualization failed", err.message || "Unexpected error");
+        taskStore.set(taskId, t);
+      }
+    });
+  } else {
+    const flags = detectToolRequirements(userQuery);
+    executeAgentLoop(taskId, flags).catch((err) => {
+      console.error(`Task ${taskId} failed:`, err);
+      const t = taskStore.get(taskId);
+      if (t) {
+        t.status = "failed";
+        addLog(t, "error", "Execution failed", err.message || "Unexpected error");
+        taskStore.set(taskId, t);
+      }
+    });
+  }
 
   return initialTask;
 }
@@ -808,6 +833,71 @@ export async function continueTaskWithFollowup(
   (async () => {
     try {
       const client = getCerebrasClient();
+
+      // Check if this is a visualization task
+      const visArtifact = task.artifacts.find((a) => a.type === "visualization");
+      if (visArtifact) {
+        const prevMermaid = visArtifact.content;
+
+        const visSysPrompt = `You are an expert software visualization engine.
+The user is following up on a previously generated Mermaid diagram and wants to modify it.
+Here is the previous Mermaid diagram:
+${prevMermaid}
+
+Analyze the user's follow-up request and return the updated valid Mermaid source code.
+
+Rules:
+- Return ONLY valid Mermaid source code.
+- Do not return explanations.
+- Do not use markdown code fences.
+- Do not generate ASCII art.`;
+
+        const visUserPrompt = `Follow-up request: "${followupQuery}"
+Generate the updated Mermaid diagram now:`;
+
+        const completion = (await client.chat.completions.create({
+          model: MODEL,
+          messages: [
+            { role: "system", content: visSysPrompt },
+            { role: "user", content: visUserPrompt },
+          ],
+          temperature: 0.15,
+          max_tokens: 2000,
+        })) as any;
+
+        let newMermaid = completion.choices[0]?.message?.content?.trim() || "";
+        newMermaid = sanitizeMermaid(newMermaid);
+        const newKroki = getKrokiUrl(newMermaid);
+        const replyTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+        task.messages.push({
+          id: `msg_ai_${Date.now()}`,
+          sender: "agent",
+          content: `Diagram updated successfully: [Rendered Diagram](${newKroki})`,
+          timestamp: replyTime,
+        });
+
+        // Unshift/insert the new visualization artifact to make it active
+        task.artifacts.unshift({
+          id: `art_vis_${Date.now()}`,
+          title: followupQuery.slice(0, 40),
+          type: "visualization",
+          content: newMermaid,
+          createdAt: replyTime,
+        });
+
+        task.report = `### Codebase Visualization (Updated)
+The following diagram represents your codebase for the updated query: *"${followupQuery}"*
+
+[Rendered Diagram](${newKroki})
+`;
+        task.status = "completed";
+        addLog(task, "success", "Visualization updated", "New SVG generated.", "system");
+        task.updatedAt = new Date().toISOString();
+        taskStore.set(taskId, task);
+        return;
+      }
+
       const prevContext = (task.artifacts || [])
         .map((a) => `[${a.title}]\n${a.content}`)
         .join("\n\n");
@@ -860,4 +950,312 @@ Use the existing artifacts as context. Answer directly and specifically.`,
   })();
 
   return task;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Codebase Visualizer Core Engine
+// ─────────────────────────────────────────────────────────────
+
+function sanitizeMermaid(code: string): string {
+  let clean = code.trim();
+  if (clean.startsWith("```")) {
+    const lines = clean.split("\n");
+    if (lines[0].startsWith("```")) {
+      lines.shift();
+    }
+    if (lines[lines.length - 1].startsWith("```")) {
+      lines.pop();
+    }
+    clean = lines.join("\n").trim();
+  }
+  return clean;
+}
+
+function getKrokiUrl(mermaidCode: string): string {
+  const buffer = Buffer.from(mermaidCode, "utf-8");
+  const compressed = zlib.deflateSync(buffer);
+  const base64 = compressed.toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+  return `https://kroki.io/mermaid/svg/${base64}`;
+}
+
+async function executeVisualizationLoop(
+  taskId: string,
+  preferredOwner: string,
+  preferredRepo: string,
+  branch = "main"
+) {
+  const task = taskStore.get(taskId);
+  if (!task) return;
+
+  let owner = preferredOwner;
+  let repo = preferredRepo;
+
+  // Retrieve github connected token
+  let githubAccessToken: string | null = null;
+  let githubUsername: string = owner;
+
+  try {
+    const ghProfile = await (prisma as any).userProfile.findFirst({
+      where: { githubConnected: true },
+      select: { githubToken: true, githubUsername: true },
+    });
+    githubAccessToken = ghProfile?.githubToken || null;
+    if (ghProfile?.githubUsername) githubUsername = ghProfile.githubUsername;
+    if (!owner) owner = githubUsername;
+  } catch {}
+
+  if (!githubAccessToken) {
+    setStep(task, "step_tree", "failed");
+    task.status = "failed";
+    addLog(task, "error", "GitHub Access Failed", "GitHub account is not connected.", "github");
+    taskStore.set(task.id, task);
+    return;
+  }
+
+  // If no repo was selected/found, let's list repositories and select the first one as default
+  if (!repo) {
+    try {
+      addLog(task, "tool_call", "Listing repositories", "Fetching list to identify default repo", "github", { toolName: "github_list_repositories" });
+      const repos = await github_list_repositories(owner || undefined, githubAccessToken);
+      if (repos.length > 0) {
+        repo = repos[0].name;
+        owner = repos[0].full_name.split("/")[0];
+        task.repoOwner = owner;
+        task.repoName = repo;
+        taskStore.set(task.id, task);
+        addLog(task, "success", `Default repo selected: ${owner}/${repo}`, "", "github");
+      } else {
+        throw new Error("No repositories found in your account.");
+      }
+    } catch (e: any) {
+      setStep(task, "step_tree", "failed");
+      task.status = "failed";
+      addLog(task, "error", "Failed to select repository", e.message, "github");
+      taskStore.set(task.id, task);
+      return;
+    }
+  }
+
+  // 1. Scan codebase tree
+  setStep(task, "step_tree", "running");
+  addLog(task, "tool_call", "Scanning codebase tree", `Listing files in ${owner}/${repo}`, "github", { toolName: "github_get_repository_tree" });
+  await delay(100);
+
+  let tree: any[] = [];
+  try {
+    tree = await github_get_repository_tree(owner, repo, branch);
+    addLog(task, "success", `Scanned ${tree.length} tree items`, `Successfully retrieved file hierarchy.`, "github");
+    setStep(task, "step_tree", "completed");
+  } catch (e: any) {
+    setStep(task, "step_tree", "failed");
+    task.status = "failed";
+    addLog(task, "error", "Codebase scan failed", e.message, "github");
+    taskStore.set(task.id, task);
+    return;
+  }
+
+  // 2. Planning: Choose relevant files based on user query
+  setStep(task, "step_files", "running");
+  addLog(task, "reasoning", "Analyzing visualization context", `Determining which files are relevant to "${task.userQuery.slice(0, 50)}"...`, "system");
+  await delay(100);
+
+  // Filter file tree to blobs, ignoring build/common non-code items
+  const filesList = tree.filter(f => 
+    f.type === "blob" &&
+    !f.path.includes("node_modules/") &&
+    !f.path.includes(".git/") &&
+    !f.path.includes("dist/") &&
+    !f.path.includes("build/") &&
+    !f.path.includes(".next/") &&
+    !f.path.includes(".vscode/") &&
+    !f.path.includes("package-lock.json") &&
+    !f.path.includes("yarn.lock") &&
+    !f.path.includes("pnpm-lock.yaml") &&
+    !/\.(png|jpg|jpeg|gif|ico|svg|webp|woff2?|eot|ttf|pdf|mp3|mp4|zip|tar|gz)$/i.test(f.path)
+  );
+
+  const filePaths = filesList.map(f => f.path).slice(0, 400); // limit to 400 paths for token safety
+
+  const selectPrompt = `You are a software architecture and visualization assistant.
+The user wants to generate a visual diagram for the codebase:
+USER REQUEST: "${task.userQuery}"
+
+Here is the file list of the repository (${owner}/${repo}):
+${filePaths.map(p => `- ${p}`).join("\n")}
+
+Identify up to 15 files from the list above that are most relevant to inspect to understand and build a visual diagram for the user's request.
+For example, if the request is about login flow, identify auth routes, models, login components, etc.
+Return ONLY a valid JSON array of file paths. Example:
+["src/routes/auth.js", "src/controllers/authController.ts"]
+
+Do not return markdown formatting, code blocks, or explanations.`;
+
+  let selectedPaths: string[] = [];
+  try {
+    const client = getCerebrasClient();
+    const completion = (await client.chat.completions.create({
+      model: MODEL,
+      messages: [{ role: "user", content: selectPrompt }],
+      temperature: 0.1,
+      max_tokens: 600,
+    })) as any;
+
+    let content = completion.choices[0]?.message?.content?.trim() || "";
+    // Clean up code block formatting if present
+    if (content.startsWith("```")) {
+      content = content.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+    }
+    selectedPaths = JSON.parse(content);
+    addLog(task, "success", `Selected ${selectedPaths.length} relevant files`, selectedPaths.join(", "), "system");
+  } catch (e: any) {
+    // If LLM fails or parsing fails, fallback: select first 10 files matching some keywords or just first 8 files
+    console.error("Failed to parse LLM file selection JSON:", e);
+    const qLower = task.userQuery.toLowerCase();
+    selectedPaths = filePaths.filter(p => {
+      const pLower = p.toLowerCase();
+      if (qLower.includes("auth") || qLower.includes("login") || qLower.includes("sign")) {
+        return pLower.includes("auth") || pLower.includes("login") || pLower.includes("user") || pLower.includes("session") || pLower.includes("middleware");
+      }
+      if (qLower.includes("db") || qLower.includes("database") || qLower.includes("schema") || qLower.includes("relation")) {
+        return pLower.includes("schema") || pLower.includes("model") || pLower.includes("prisma") || pLower.includes("db");
+      }
+      if (qLower.includes("payment") || qLower.includes("checkout") || qLower.includes("stripe")) {
+        return pLower.includes("payment") || pLower.includes("pay") || pLower.includes("stripe") || pLower.includes("checkout") || pLower.includes("cart");
+      }
+      return pLower.includes("route") || pLower.includes("controller") || pLower.includes("index") || pLower.includes("app") || pLower.includes("server");
+    }).slice(0, 10);
+
+    if (selectedPaths.length === 0) {
+      selectedPaths = filePaths.slice(0, 8);
+    }
+    addLog(task, "reasoning", `Heuristics fallback: selected ${selectedPaths.length} files`, selectedPaths.join(", "), "system");
+  }
+
+  // Fetch file contents
+  const fetchedFiles: Array<{ path: string; content: string }> = [];
+  for (const path of selectedPaths) {
+    try {
+      addLog(task, "tool_call", `Fetching file`, path, "github", { toolName: "github_get_file" });
+      const f = await github_get_file(owner, repo, path, branch);
+      fetchedFiles.push({ path, content: f.content });
+    } catch (err) {
+      console.warn(`Failed to fetch file content for ${path}:`, err);
+    }
+  }
+
+  if (fetchedFiles.length === 0) {
+    setStep(task, "step_files", "failed");
+    task.status = "failed";
+    addLog(task, "error", "Retrieval failed", "No relevant file contents could be retrieved from GitHub.", "github");
+    taskStore.set(task.id, task);
+    return;
+  }
+
+  addLog(task, "success", `Retrieved ${fetchedFiles.length} file contents`, "", "github");
+  setStep(task, "step_files", "completed");
+
+  // 3. Generating visual diagram
+  setStep(task, "step_mermaid", "running");
+  addLog(task, "reasoning", "Generating visual diagram", "Analyzing code structure to build Mermaid source...", "system");
+  await delay(100);
+
+  let codeEvidence = "";
+  for (const file of fetchedFiles) {
+    codeEvidence += `\n\n--- FILE: ${file.path} ---\n${file.content.slice(0, 8000)}\n`; // truncate very long files to 8000 chars for token safety
+  }
+
+  const sysPrompt = `You are an expert software visualization engine.
+The user has requested the following visual representation:
+USER REQUEST:
+${task.userQuery}
+
+Analyze the provided GitHub repository evidence and create the most appropriate visual diagram.
+
+First determine internally:
+- What exactly the user wants to understand.
+- Which diagram type best represents it.
+- Which components and relationships are supported by the provided evidence.
+
+Rules:
+- Use only evidence from the provided GitHub/repository data.
+- Do not invent components, files, services, APIs, databases, or relationships.
+- Keep the diagram focused on the user's actual question.
+- Do not include unnecessary repository details.
+- Prefer a clear and understandable diagram over a large complex diagram.
+- Use meaningful human-readable labels.
+- Use the most suitable Mermaid diagram type.
+- Return ONLY valid Mermaid source code.
+- Do not return explanations.
+- Do not use markdown code fences.
+- Do not generate ASCII art.`;
+
+  const userPrompt = `### CONNECTED REPOSITORY CONTEXT:
+Repository: ${owner}/${repo}
+Default Branch: ${branch}
+
+### RELEVANT CODE EVIDENCE:
+${codeEvidence}
+
+### USER REQUEST:
+"${task.userQuery}"
+
+Generate the diagram now:`;
+
+  let mermaidCode = "";
+  try {
+    const client = getCerebrasClient();
+    const completion = (await client.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: "system", content: sysPrompt },
+        { role: "user", content: userPrompt }
+      ],
+      temperature: 0.15,
+      max_tokens: 2000,
+    })) as any;
+
+    mermaidCode = completion.choices[0]?.message?.content?.trim() || "";
+    mermaidCode = sanitizeMermaid(mermaidCode);
+
+    addLog(task, "success", "Mermaid source code generated", "", "system");
+    setStep(task, "step_mermaid", "completed");
+  } catch (e: any) {
+    setStep(task, "step_mermaid", "failed");
+    task.status = "failed";
+    addLog(task, "error", "Diagram generation failed", e.message || "Model failed to output Mermaid", "system");
+    taskStore.set(task.id, task);
+    return;
+  }
+
+  // 4. Finalizing
+  setStep(task, "step_final", "running");
+  addLog(task, "reasoning", "Finalizing diagram layout", "Validating and preparing diagram URL", "system");
+  await delay(100);
+
+  // Generate Kroki SVG rendering URL
+  const krokiUrl = getKrokiUrl(mermaidCode);
+
+  const artifacts: Artifact[] = [{
+    id: `art_vis_${Date.now()}`,
+    title: task.userQuery.slice(0, 50) || "Codebase Visualization",
+    type: "visualization",
+    content: mermaidCode, // Store mermaid code in content
+    createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  }];
+
+  task.artifacts = artifacts;
+  task.report = `### Codebase Visualization
+The following diagram represents your codebase for the query: *"${task.userQuery}"*
+
+[Rendered Diagram](${krokiUrl})
+`;
+  task.status = "completed";
+  task.plan.forEach(s => { if (s.status !== "failed") s.status = "completed"; });
+  task.updatedAt = new Date().toISOString();
+
+  addLog(task, "success", "Visualization completed successfully", "Interactive SVG ready in Canvas.", "system");
+  taskStore.set(task.id, task);
 }

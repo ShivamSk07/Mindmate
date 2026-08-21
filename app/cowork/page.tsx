@@ -29,6 +29,7 @@ import {
   AlertCircle,
   Loader2,
   Circle,
+  Download,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -170,6 +171,17 @@ export default function CoworkPage() {
   const [copied, setCopied] = useState(false);
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
 
+  // ── Visualize states
+  const [repos, setRepos] = useState<any[]>([]);
+  const [selectedRepo, setSelectedRepo] = useState("");
+  const [activeTab, setActiveTab] = useState<"task" | "visualize">("task");
+  const [scale, setVisZoom] = useState(1);
+  const [position, setVisPan] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [krokiUrls, setKrokiUrls] = useState<{ url: string; pngUrl: string } | null>(null);
+
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const logScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -177,7 +189,43 @@ export default function CoworkPage() {
   useEffect(() => {
     fetchStatus();
     fetchHistory();
+    fetchRepos();
   }, []);
+
+  const fetchRepos = async () => {
+    try {
+      const res = await fetch("/api/cowork/github/repos");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.connected && data.repos) {
+          setRepos(data.repos);
+          if (data.repos.length > 0) {
+            setSelectedRepo(data.repos[0].full_name);
+          }
+        }
+      }
+    } catch {}
+  };
+
+  // Resolve Kroki SVG/PNG rendering URLs when visualization artifact is selected
+  useEffect(() => {
+    if (activeArtifact?.type === "visualization") {
+      fetch("/api/cowork/kroki", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mermaid: activeArtifact.content }),
+      })
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.url) setKrokiUrls(data);
+        })
+        .catch(() => {});
+    } else {
+      setKrokiUrls(null);
+    }
+    setVisZoom(1);
+    setVisPan({ x: 0, y: 0 });
+  }, [activeArtifact?.id]);
 
   // ── Polling
   useEffect(() => {
@@ -234,7 +282,7 @@ export default function CoworkPage() {
     } catch {}
   };
 
-  const handleStartTask = async (preset?: string) => {
+  const handleStartTask = async (preset?: string, isVis = false) => {
     const prompt = preset || promptInput;
     if (!prompt.trim() || isSubmitting) return;
 
@@ -245,7 +293,12 @@ export default function CoworkPage() {
       const res = await fetch("/api/cowork/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim(), branch: "main" }),
+        body: JSON.stringify({ 
+          prompt: prompt.trim(), 
+          repoName: selectedRepo, 
+          branch: "main",
+          isVisualization: isVis 
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to start");
@@ -331,6 +384,24 @@ export default function CoworkPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Repository Selector Dropdown */}
+          {repos.length > 0 && (
+            <div className="flex items-center gap-1.5 bg-zinc-900 border border-zinc-800 rounded-lg px-2 py-1 text-xs">
+              <span className="text-zinc-500 font-medium select-none">Repo:</span>
+              <select
+                value={selectedRepo}
+                onChange={(e) => setSelectedRepo(e.target.value)}
+                className="bg-transparent border-none text-zinc-200 focus:outline-none cursor-pointer pr-1 text-[11px] font-semibold max-w-[160px] truncate"
+              >
+                {repos.map((r) => (
+                  <option key={r.id} value={r.full_name} className="bg-zinc-950 text-zinc-300">
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Integration status button */}
           <button
             onClick={() => setShowIntegrationsModal(true)}
@@ -422,58 +493,142 @@ export default function CoworkPage() {
 
         {/* ── LANDING: No task selected ── */}
         {!currentTask && (
-          <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[#0a0a0a]">
-            <div className="w-full max-w-xl space-y-8">
+          <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[#0a0a0a] overflow-y-auto">
+            <div className="w-full max-w-xl space-y-8 py-6">
 
-              <div className="space-y-2">
-                <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">What do you want to accomplish?</h1>
-                <p className="text-sm text-zinc-500">
-                  CoWork runs tasks across your connected tools — GitHub, Google Drive, Gmail, Calendar, and live web search.
-                </p>
+              {/* Tab Selector */}
+              <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-900 w-full max-w-xs select-none">
+                <button
+                  onClick={() => setActiveTab("task")}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    activeTab === "task" ? "bg-zinc-900 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  Task Runner
+                </button>
+                <button
+                  onClick={() => setActiveTab("visualize")}
+                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                    activeTab === "visualize" ? "bg-zinc-900 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
+                  }`}
+                >
+                  Codebase Visualizer
+                </button>
               </div>
 
-              {/* Input */}
-              <div className="relative">
-                <textarea
-                  value={promptInput}
-                  onChange={(e) => setPromptInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      handleStartTask();
-                    }
-                  }}
-                  placeholder="Describe a task..."
-                  rows={3}
-                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-xl px-4 py-3.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none resize-none transition-colors"
-                />
-                <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                  <button
-                    onClick={() => handleStartTask()}
-                    disabled={!promptInput.trim() || isSubmitting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
-                    Run
-                  </button>
+              {activeTab === "visualize" ? (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="space-y-2">
+                    <h2 className="text-xl font-bold text-zinc-100 tracking-tight">Visualize your codebase</h2>
+                    <p className="text-xs text-zinc-500 leading-relaxed">
+                      Enter a natural language request to visualize structure, data flow, dependencies, databases, and architectural pathways.
+                    </p>
+                  </div>
+
+                  {/* Input */}
+                  <div className="relative">
+                    <textarea
+                      value={promptInput}
+                      onChange={(e) => setPromptInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleStartTask(undefined, true);
+                        }
+                      }}
+                      placeholder="What do you want to understand visually? (e.g. Visualize the login flow)"
+                      rows={3}
+                      className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-xl px-4 py-3.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none resize-none transition-colors"
+                    />
+                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                      <button
+                        onClick={() => handleStartTask(undefined, true)}
+                        disabled={!promptInput.trim() || isSubmitting}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
+                      >
+                        {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={12} fill="currentColor" />}
+                        Generate Visualization
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Suggestions */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Quick Suggestions</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: "Architecture", prompt: "Show me the architecture of this repository" },
+                        { label: "Data Flow", prompt: "Visualize how user data moves through this application" },
+                        { label: "API Flow", prompt: "Visualize all major API endpoints and where they go" },
+                        { label: "Dependencies", prompt: "Create a dependency diagram for the primary modules" },
+                        { label: "Database", prompt: "Visualize the database schema and relationships" },
+                        { label: "Explain a Feature", prompt: "Create a diagram explaining how the authentication feature works" }
+                      ].map((s, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleStartTask(s.prompt, true)}
+                          className="text-left px-3 py-2.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-between group"
+                        >
+                          <span>{s.label}</span>
+                          <span className="text-[10px] text-zinc-700 group-hover:text-zinc-400 transition-colors">→</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">What do you want to accomplish?</h1>
+                    <p className="text-sm text-zinc-500">
+                      CoWork runs tasks across your connected tools — GitHub, Google Drive, Gmail, Calendar, and live web search.
+                    </p>
+                  </div>
 
-              {/* Presets */}
-              <div className="space-y-2">
-                <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Try</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {PRESETS.map((p, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleStartTask(p)}
-                      className="text-left px-3 py-2.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 transition-all"
-                    >
-                      {p}
-                    </button>
-                  ))}
+                  {/* Input */}
+                  <div className="relative">
+                    <textarea
+                      value={promptInput}
+                      onChange={(e) => setPromptInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handleStartTask();
+                        }
+                      }}
+                      placeholder="Describe a task..."
+                      rows={3}
+                      className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-xl px-4 py-3.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none resize-none transition-colors"
+                    />
+                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                      <button
+                        onClick={() => handleStartTask()}
+                        disabled={!promptInput.trim() || isSubmitting}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
+                        Run
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Presets */}
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Try</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PRESETS.map((p, i) => (
+                        <button
+                          key={i}
+                          onClick={() => handleStartTask(p)}
+                          className="text-left px-3 py-2.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 transition-all"
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Integration status */}
               <div className="space-y-2">
@@ -673,93 +828,231 @@ export default function CoworkPage() {
               </div>
 
               {/* Canvas body */}
-              <div className="flex-1 overflow-y-auto">
-                {(activeArtifact || currentTask.report) ? (
-                  <div className="max-w-3xl mx-auto px-8 py-10">
-                    <div className="max-w-none">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          h1: ({ children }) => (
-                            <h1 className="text-xl font-bold text-zinc-100 mb-4 mt-8 first:mt-0 pb-2 border-b border-zinc-800">{children}</h1>
-                          ),
-                          h2: ({ children }) => (
-                            <h2 className="text-base font-semibold text-zinc-100 mt-7 mb-3 first:mt-0">{children}</h2>
-                          ),
-                          h3: ({ children }) => (
-                            <h3 className="text-sm font-semibold text-zinc-200 mt-5 mb-2">{children}</h3>
-                          ),
-                          p: ({ children }) => (
-                            <p className="text-sm text-zinc-400 leading-relaxed mb-4">{children}</p>
-                          ),
-                          ul: ({ children }) => (
-                            <ul className="space-y-1.5 mb-4 pl-4">{children}</ul>
-                          ),
-                          ol: ({ children }) => (
-                            <ol className="space-y-1.5 mb-4 pl-4 list-decimal">{children}</ol>
-                          ),
-                          li: ({ children }) => (
-                            <li className="text-sm text-zinc-400 leading-relaxed ml-4 list-disc">{children}</li>
-                          ),
-                          strong: ({ children }) => (
-                            <strong className="font-semibold text-zinc-200">{children}</strong>
-                          ),
-                          code: ({ children, ...props }: any) =>
-                            props.inline ? (
-                              <code className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 text-[12px] font-mono text-violet-300">
-                                {children}
-                              </code>
-                            ) : (
-                              <code className="text-[12px] font-mono text-zinc-300">{children}</code>
-                            ),
-                          pre: ({ children }) => (
-                            <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-zinc-300 my-4">
-                              {children}
-                            </pre>
-                          ),
-                          table: ({ children }) => (
-                            <div className="overflow-x-auto my-5 rounded-lg border border-zinc-800">
-                              <table className="w-full text-sm text-left">{children}</table>
-                            </div>
-                          ),
-                          th: ({ children }) => (
-                            <th className="px-4 py-2.5 text-[12px] font-semibold text-zinc-300 bg-zinc-900 border-b border-zinc-800">{children}</th>
-                          ),
-                          td: ({ children }) => (
-                            <td className="px-4 py-2.5 text-[12px] text-zinc-400 border-b border-zinc-900">{children}</td>
-                          ),
-                          blockquote: ({ children }) => (
-                            <blockquote className="border-l-2 border-zinc-700 pl-4 my-4 text-zinc-500 italic">{children}</blockquote>
-                          ),
-                          a: ({ children, href }) => (
-                            <a href={href} target="_blank" rel="noopener" className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
-                              {children}
-                            </a>
-                          ),
-                          hr: () => <hr className="border-zinc-800 my-6" />,
-                        }}
+              <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
+                {activeArtifact?.type === "visualization" ? (
+                  <div className={`flex-1 flex flex-col min-h-0 overflow-hidden bg-[#070707] relative ${isFullscreen ? "fixed inset-0 z-50 bg-black" : ""}`}>
+                    
+                    {/* Zoom, Reset, Fullscreen Controls Panel */}
+                    <div className="absolute top-4 right-4 z-10 flex items-center gap-1 bg-zinc-950/80 backdrop-blur-md border border-zinc-800 p-1.5 rounded-lg shadow-xl select-none">
+                      <button
+                        onClick={() => setVisZoom((z) => Math.min(z + 0.15, 3))}
+                        className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-400 hover:text-white transition-colors"
+                        title="Zoom In"
                       >
-                        {activeArtifact ? activeArtifact.content : currentTask.report || ""}
-                      </ReactMarkdown>
+                        <Plus size={13} />
+                      </button>
+                      <button
+                        onClick={() => setVisZoom((z) => Math.max(z - 0.15, 0.4))}
+                        className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-400 hover:text-white transition-colors"
+                        title="Zoom Out"
+                      >
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                      </button>
+                      <button
+                        onClick={() => { setVisZoom(1); setVisPan({ x: 0, y: 0 }); }}
+                        className="text-[10px] px-2 py-1.5 hover:bg-zinc-900 rounded-md text-zinc-400 hover:text-white transition-colors font-medium"
+                        title="Reset View"
+                      >
+                        Reset
+                      </button>
+                      <span className="h-4 w-px bg-zinc-800 mx-1" />
+                      <button
+                        onClick={() => setIsFullscreen(!isFullscreen)}
+                        className="p-1.5 hover:bg-zinc-900 rounded-md text-zinc-400 hover:text-white transition-colors"
+                        title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                      >
+                        {isFullscreen ? (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6m10-10h-6V4m0 6l6-6M10 14l-6 6"/></svg>
+                        ) : (
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/><path d="M15 9l6-6M9 15l-6 6"/></svg>
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Download Controls Panel */}
+                    <div className="absolute top-4 left-4 z-10 flex items-center gap-2 select-none">
+                      <button
+                        onClick={() => {
+                          if (krokiUrls?.url) {
+                            fetch(krokiUrls.url)
+                              .then((res) => res.blob())
+                              .then((blob) => {
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `${activeArtifact.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "diagram"}.svg`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                window.URL.revokeObjectURL(url);
+                              })
+                              .catch(() => window.open(krokiUrls.url, "_blank"));
+                          }
+                        }}
+                        disabled={!krokiUrls?.url}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-950/80 backdrop-blur-md border border-zinc-800 hover:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white transition-all disabled:opacity-40"
+                      >
+                        <Download size={12} />
+                        <span>Download SVG</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (krokiUrls?.pngUrl) {
+                            fetch(krokiUrls.pngUrl)
+                              .then((res) => res.blob())
+                              .then((blob) => {
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `${activeArtifact.title.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "diagram"}.png`;
+                                document.body.appendChild(a);
+                                a.click();
+                                document.body.removeChild(a);
+                                window.URL.revokeObjectURL(url);
+                              })
+                              .catch(() => window.open(krokiUrls.pngUrl, "_blank"));
+                          }
+                        }}
+                        disabled={!krokiUrls?.pngUrl}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-950/80 backdrop-blur-md border border-zinc-800 hover:border-zinc-700 rounded-lg text-xs font-semibold text-zinc-300 hover:text-white transition-all disabled:opacity-40"
+                      >
+                        <Download size={12} />
+                        <span>Download PNG</span>
+                      </button>
+                    </div>
+
+                    {/* SVG Interactive Canvas */}
+                    <div 
+                      className="flex-1 w-full h-full overflow-hidden relative cursor-grab active:cursor-grabbing select-none flex items-center justify-center"
+                      onMouseDown={(e) => {
+                        setIsDragging(true);
+                        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+                      }}
+                      onMouseMove={(e) => {
+                        if (!isDragging) return;
+                        setVisPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+                      }}
+                      onMouseUp={() => setIsDragging(false)}
+                      onMouseLeave={() => setIsDragging(false)}
+                    >
+                      {krokiUrls?.url ? (
+                        <div
+                          style={{
+                            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+                            transformOrigin: "center",
+                            transition: isDragging ? "none" : "transform 0.1s ease-out",
+                            width: "90%",
+                            height: "90%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}
+                        >
+                          <img
+                            src={krokiUrls.url}
+                            alt="Mermaid visualization"
+                            className="max-w-full max-h-full object-contain pointer-events-none"
+                            draggable={false}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-3 select-none">
+                          <Loader2 className="animate-spin text-zinc-500" size={24} />
+                          <span className="text-xs text-zinc-500">Loading visual diagram...</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-3">
-                    {currentTask.status === "running" ? (
-                      <>
-                        <Loader2 size={20} className="text-zinc-700 animate-spin" />
-                        <p className="text-sm text-zinc-600">Running task...</p>
-                      </>
-                    ) : currentTask.status === "failed" ? (
-                      <>
-                        <XCircle size={20} className="text-red-500" />
-                        <p className="text-sm text-zinc-500">Task failed. Check your integrations and try again.</p>
-                      </>
+                  <div className="flex-1 overflow-y-auto w-full h-full">
+                    {(activeArtifact || currentTask.report) ? (
+                      <div className="max-w-3xl mx-auto px-8 py-10">
+                        <div className="max-w-none">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              h1: ({ children }) => (
+                                <h1 className="text-xl font-bold text-zinc-100 mb-4 mt-8 first:mt-0 pb-2 border-b border-zinc-800">{children}</h1>
+                              ),
+                              h2: ({ children }) => (
+                                <h2 className="text-base font-semibold text-zinc-100 mt-7 mb-3 first:mt-0">{children}</h2>
+                              ),
+                              h3: ({ children }) => (
+                                <h3 className="text-sm font-semibold text-zinc-200 mt-5 mb-2">{children}</h3>
+                              ),
+                              p: ({ children }) => (
+                                <p className="text-sm text-zinc-400 leading-relaxed mb-4">{children}</p>
+                              ),
+                              ul: ({ children }) => (
+                                <ul className="space-y-1.5 mb-4 pl-4">{children}</ul>
+                              ),
+                              ol: ({ children }) => (
+                                <ol className="space-y-1.5 mb-4 pl-4 list-decimal">{children}</ol>
+                              ),
+                              li: ({ children }) => (
+                                <li className="text-sm text-zinc-400 leading-relaxed ml-4 list-disc">{children}</li>
+                              ),
+                              strong: ({ children }) => (
+                                <strong className="font-semibold text-zinc-200">{children}</strong>
+                              ),
+                              code: ({ children, ...props }: any) =>
+                                props.inline ? (
+                                  <code className="bg-zinc-900 border border-zinc-800 rounded px-1.5 py-0.5 text-[12px] font-mono text-violet-300">
+                                    {children}
+                                  </code>
+                                ) : (
+                                  <code className="text-[12px] font-mono text-zinc-300">{children}</code>
+                                ),
+                              pre: ({ children }) => (
+                                <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 overflow-x-auto text-[12px] font-mono text-zinc-300 my-4">
+                                  {children}
+                                </pre>
+                              ),
+                              table: ({ children }) => (
+                                <div className="overflow-x-auto my-5 rounded-lg border border-zinc-800">
+                                  <table className="w-full text-sm text-left">{children}</table>
+                                </div>
+                              ),
+                              th: ({ children }) => (
+                                <th className="px-4 py-2.5 text-[12px] font-semibold text-zinc-300 bg-zinc-900 border-b border-zinc-800">{children}</th>
+                              ),
+                              td: ({ children }) => (
+                                <td className="px-4 py-2.5 text-[12px] text-zinc-400 border-b border-zinc-900">{children}</td>
+                              ),
+                              blockquote: ({ children }) => (
+                                <blockquote className="border-l-2 border-zinc-700 pl-4 my-4 text-zinc-500 italic">{children}</blockquote>
+                              ),
+                              a: ({ children, href }) => (
+                                <a href={href} target="_blank" rel="noopener" className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
+                                  {children}
+                                </a>
+                              ),
+                              hr: () => <hr className="border-zinc-800 my-6" />,
+                            }}
+                          >
+                            {activeArtifact ? activeArtifact.content : currentTask.report || ""}
+                          </ReactMarkdown>
+                        </div>
+                      </div>
                     ) : (
-                      <>
-                        <FileText size={20} className="text-zinc-800" />
-                        <p className="text-sm text-zinc-600">No output yet</p>
-                      </>
+                      <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-3">
+                        {currentTask.status === "running" ? (
+                          <>
+                            <Loader2 size={20} className="text-zinc-700 animate-spin" />
+                            <p className="text-sm text-zinc-600">Running task...</p>
+                          </>
+                        ) : currentTask.status === "failed" ? (
+                          <>
+                            <XCircle size={20} className="text-red-500" />
+                            <p className="text-sm text-zinc-500">Task failed. Check your integrations and try again.</p>
+                          </>
+                        ) : (
+                          <>
+                            <FileText size={20} className="text-zinc-800" />
+                            <p className="text-sm text-zinc-600">No output yet</p>
+                          </>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

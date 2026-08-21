@@ -138,7 +138,7 @@ export async function github_get_repository(owner: string, repo: string): Promis
 
 export async function github_get_repository_tree(owner: string, repo: string, branch = "main"): Promise<GitHubFile[]> {
   const data = await githubFetch(`/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`);
-  return (data.tree || []).slice(0, 100).map((f: any) => ({
+  return (data.tree || []).slice(0, 1000).map((f: any) => ({
     path: f.path,
     mode: f.mode,
     type: f.type,

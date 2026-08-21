@@ -20,13 +20,13 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { prompt, repoName, branch } = body;
+    const { prompt, repoName, branch, isVisualization } = body;
 
     if (!prompt || !prompt.trim()) {
       return NextResponse.json({ error: "Task prompt is required" }, { status: 400 });
     }
 
-    const task = await createAndRunTask(prompt.trim(), repoName, branch || "main");
+    const task = await createAndRunTask(prompt.trim(), repoName, branch || "main", Boolean(isVisualization));
     return NextResponse.json({ task });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to create task" }, { status: 500 });
