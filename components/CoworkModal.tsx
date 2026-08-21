@@ -19,7 +19,9 @@ import {
   Layers,
   ShieldCheck,
   Code2,
-  RefreshCw
+  RefreshCw,
+  Download,
+  Loader2
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -27,6 +29,87 @@ import remarkGfm from "remark-gfm";
 interface CoworkModalProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+function MermaidToSvgModal({ code }: { code: string }) {
+  const [svgUrl, setSvgUrl] = useState<string | null>(null);
+  const [pngUrl, setPngUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetch("/api/cowork/kroki", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mermaid: code }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted && data.url) {
+          setSvgUrl(data.url);
+          setPngUrl(data.pngUrl);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => { isMounted = false; };
+  }, [code]);
+
+  if (loading) {
+    return (
+      <div className="my-3 p-4 bg-[#111113] border border-[#2c2c2e] rounded-xl flex items-center justify-center gap-2 text-xs text-zinc-400">
+        <Loader2 size={13} className="animate-spin text-[#0a84ff]" />
+        <span>Rendering Kroki SVG diagram...</span>
+      </div>
+    );
+  }
+
+  if (!svgUrl) {
+    return (
+      <pre className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono text-[#f2f2f7]">
+        {code}
+      </pre>
+    );
+  }
+
+  return (
+    <div className="my-3 bg-[#111113] border border-[#2c2c2e] rounded-xl overflow-hidden shadow-xl relative flex flex-col items-center p-3 select-none w-full">
+      <div className="w-full flex items-center justify-between border-b border-[#2c2c2e] pb-2 mb-2 px-1">
+        <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+          <Sparkles size={11} className="text-[#0a84ff]" /> Live Visual Diagram (Kroki)
+        </span>
+        <div className="flex items-center gap-1.5">
+          <a
+            href={svgUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] px-2 py-0.5 bg-[#1c1c1e] hover:bg-[#2c2c2e] border border-[#2c2c2e] text-[#e5e5ea] rounded transition-all flex items-center gap-1"
+          >
+            <Download size={10} /> SVG
+          </a>
+          {pngUrl && (
+            <a
+              href={pngUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] px-2 py-0.5 bg-[#1c1c1e] hover:bg-[#2c2c2e] border border-[#2c2c2e] text-[#e5e5ea] rounded transition-all flex items-center gap-1"
+            >
+              <Download size={10} /> PNG
+            </a>
+          )}
+        </div>
+      </div>
+      <div className="w-full flex items-center justify-center p-1 min-h-[180px]">
+        <img
+          src={svgUrl}
+          alt="Rendered Kroki Diagram"
+          className="max-w-full max-h-[400px] object-contain"
+        />
+      </div>
+    </div>
+  );
 }
 
 export function CoworkModal({ isOpen, onClose }: CoworkModalProps) {
@@ -408,16 +491,34 @@ export function CoworkModal({ isOpen, onClose }: CoworkModalProps) {
                         p: ({ children }) => <p className="mb-2 leading-relaxed text-[#d1d1d6]">{children}</p>,
                         ul: ({ children }) => <ul className="list-disc pl-5 mb-2.5 space-y-1 text-[#d1d1d6]">{children}</ul>,
                         ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 space-y-1 text-[#d1d1d6]">{children}</ol>,
-                        code: ({ children, ...props }) => (
-                          <code className="bg-[#111113] border border-[#2c2c2e] rounded px-1.5 py-0.5 text-xs font-mono text-[#0a84ff]" {...props}>
-                            {children}
-                          </code>
-                        ),
-                        pre: ({ children }) => (
-                          <pre className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono text-[#f2f2f7]">
-                            {children}
-                          </pre>
-                        ),
+                        code: ({ children, className, ...props }: any) => {
+                          const codeString = String(children || "").trim();
+                          const isMermaid = 
+                            className?.includes("language-mermaid") || 
+                            /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(codeString);
+
+                          if (!props.inline && isMermaid) {
+                            return <MermaidToSvgModal code={codeString} />;
+                          }
+
+                          return props.inline ? (
+                            <code className="bg-[#111113] border border-[#2c2c2e] rounded px-1.5 py-0.5 text-xs font-mono text-[#0a84ff]">
+                              {children}
+                            </code>
+                          ) : (
+                            <code className="text-xs font-mono text-[#f2f2f7]">{children}</code>
+                          );
+                        },
+                        pre: ({ children }: any) => {
+                          if (children?.props?.className?.includes("language-mermaid") || /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(String(children?.props?.children || "").trim())) {
+                            return <>{children}</>;
+                          }
+                          return (
+                            <pre className="bg-[#111113] border border-[#2c2c2e] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono text-[#f2f2f7]">
+                              {children}
+                            </pre>
+                          );
+                        },
                         a: ({ children, href }) => {
                           if (href?.startsWith("https://kroki.io/")) {
                             return (

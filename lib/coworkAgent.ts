@@ -710,7 +710,7 @@ Answer the user's request directly and clearly using the retrieved data below.
 Format the response with clean markdown: use headers, bullet lists, code blocks where relevant.
 Be specific, factual, and concise. Do not use filler phrases.
 If real data was retrieved, reference it directly (repo names, commit messages, email subjects, etc.).
-If no relevant data was retrieved for a tool, say so briefly.`;
+If generating a diagram or flowchart, output it directly inside a \`\`\`mermaid code block. NEVER output copy/paste instructions or advice on how to view Mermaid code in external editors, because our UI renders SVG diagrams live automatically.`;
 
   const userPrompt = `Request: "${task.userQuery}"
 
