@@ -980,18 +980,25 @@ export function sanitizeMermaid(code: string): string {
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2018\u2019]/g, "'");
 
+  // Sanitize double quotes inside arrow edge labels |label| -> replace " with '
+  clean = clean.replace(/\|([^|\n]+)\|/g, (match, labelContent) => {
+    return `|${labelContent.replace(/"/g, "'")}|`;
+  });
+
   // Auto-quote square bracket node labels: id[text] -> id["text"] if unquoted
   clean = clean.replace(/([a-zA-Z0-9_\-]+)\[([^"\]\n]+)\]/g, (match, id, text) => {
     const trimmed = text.trim();
     if (trimmed.startsWith('"') && trimmed.endsWith('"')) return match;
-    return `${id}["${trimmed.replace(/"/g, "'")}"]`;
+    const safeText = trimmed.replace(/"/g, "'");
+    return `${id}["${safeText}"]`;
   });
 
   // Auto-quote parentheses node labels: id(text) -> id("text") if unquoted
   clean = clean.replace(/([a-zA-Z0-9_\-]+)\(([^"\)\n]+)\)/g, (match, id, text) => {
     const trimmed = text.trim();
     if (trimmed.startsWith('"') && trimmed.endsWith('"')) return match;
-    return `${id}("${trimmed.replace(/"/g, "'")}")`;
+    const safeText = trimmed.replace(/"/g, "'");
+    return `${id}("${safeText}")`;
   });
 
   return clean;
