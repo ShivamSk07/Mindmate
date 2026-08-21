@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import zlib from "zlib";
+import { sanitizeMermaid } from "@/lib/coworkAgent";
 
 export async function POST(request: NextRequest) {
   try {
@@ -7,7 +8,8 @@ export async function POST(request: NextRequest) {
     if (!mermaid) {
       return NextResponse.json({ error: "Mermaid code is required" }, { status: 400 });
     }
-    const buffer = Buffer.from(mermaid, "utf-8");
+    const cleanMermaid = sanitizeMermaid(mermaid);
+    const buffer = Buffer.from(cleanMermaid, "utf-8");
     const compressed = zlib.deflateSync(buffer);
     const base64 = compressed.toString("base64")
       .replace(/\+/g, "-")

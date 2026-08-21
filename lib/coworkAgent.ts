@@ -968,18 +968,32 @@ Use the existing artifacts as context. Answer directly and specifically.`,
 // Codebase Visualizer Core Engine
 // ─────────────────────────────────────────────────────────────
 
-function sanitizeMermaid(code: string): string {
+export function sanitizeMermaid(code: string): string {
   let clean = code.trim();
-  if (clean.startsWith("```")) {
-    const lines = clean.split("\n");
-    if (lines[0].startsWith("```")) {
-      lines.shift();
-    }
-    if (lines[lines.length - 1].startsWith("```")) {
-      lines.pop();
-    }
-    clean = lines.join("\n").trim();
-  }
+
+  // Strip code fences
+  clean = clean.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+
+  // Normalize Unicode dashes, non-breaking hyphens, and quotes
+  clean = clean
+    .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, "-")
+    .replace(/[\u201C\u201D]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'");
+
+  // Auto-quote square bracket node labels: id[text] -> id["text"] if unquoted
+  clean = clean.replace(/([a-zA-Z0-9_\-]+)\[([^"\]\n]+)\]/g, (match, id, text) => {
+    const trimmed = text.trim();
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) return match;
+    return `${id}["${trimmed.replace(/"/g, "'")}"]`;
+  });
+
+  // Auto-quote parentheses node labels: id(text) -> id("text") if unquoted
+  clean = clean.replace(/([a-zA-Z0-9_\-]+)\(([^"\)\n]+)\)/g, (match, id, text) => {
+    const trimmed = text.trim();
+    if (trimmed.startsWith('"') && trimmed.endsWith('"')) return match;
+    return `${id}("${trimmed.replace(/"/g, "'")}")`;
+  });
+
   return clean;
 }
 
@@ -1198,6 +1212,7 @@ Rules:
 - Do not include unnecessary repository details.
 - Prefer a clear and understandable diagram over a large complex diagram.
 - Use meaningful human-readable labels.
+- ALWAYS wrap node label text inside double quotes, e.g. A["User (Browser)"] or B["Views (views.py)"].
 - Use the most suitable Mermaid diagram type.
 - Return ONLY valid Mermaid source code.
 - Do not return explanations.
