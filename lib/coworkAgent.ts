@@ -980,9 +980,16 @@ export function sanitizeMermaid(code: string): string {
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2018\u2019]/g, "'");
 
-  // Sanitize double quotes inside arrow edge labels |label| -> replace " with '
-  clean = clean.replace(/\|([^|\n]+)\|/g, (match, labelContent) => {
-    return `|${labelContent.replace(/"/g, "'")}|`;
+  // Sanitize special chars inside arrow edge labels |label|
+  // Parentheses, double-quotes, and forward-slashes all break Kroki's Mermaid parser
+  clean = clean.replace(/\|([^|\n]+)\|/g, (_match, labelContent: string) => {
+    const safe = labelContent
+      .replace(/"/g, "'")         // " -> '
+      .replace(/\(/g, "")         // remove (
+      .replace(/\)/g, "")         // remove )
+      .replace(/\//g, " or ")     // / -> ' or '
+      .trim();
+    return `|${safe}|`;
   });
 
   // Auto-quote square bracket node labels: id[text] -> id["text"] if unquoted
