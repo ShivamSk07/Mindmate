@@ -350,10 +350,10 @@ export default function CoworkPage() {
   };
 
   const PRESETS = [
+    "Visualize the login flow",
+    "Show me the database relationships",
     "What is my first repo?",
     "Summarize my GitHub repositories",
-    "Search latest news on AI workspace agents",
-    "What's in my Google Drive?",
   ];
 
   const connectedCount = integrations.filter((i) => i.connected).length;
@@ -496,140 +496,56 @@ export default function CoworkPage() {
           <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[#0a0a0a] overflow-y-auto">
             <div className="w-full max-w-xl space-y-8 py-6">
 
-              {/* Tab Selector */}
-              <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-900 w-full max-w-xs select-none">
-                <button
-                  onClick={() => setActiveTab("task")}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                    activeTab === "task" ? "bg-zinc-900 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  Task Runner
-                </button>
-                <button
-                  onClick={() => setActiveTab("visualize")}
-                  className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                    activeTab === "visualize" ? "bg-zinc-900 text-zinc-100 shadow-sm" : "text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  Codebase Visualizer
-                </button>
+              <div className="space-y-2">
+                <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">What do you want to accomplish?</h1>
+                <p className="text-sm text-zinc-500">
+                  CoWork runs tasks across your connected tools — GitHub, Google Drive, Gmail, Calendar, and live web search. Ask to visualize your code, database, or API flows to generate diagrams.
+                </p>
               </div>
 
-              {activeTab === "visualize" ? (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="space-y-2">
-                    <h2 className="text-xl font-bold text-zinc-100 tracking-tight">Visualize your codebase</h2>
-                    <p className="text-xs text-zinc-500 leading-relaxed">
-                      Enter a natural language request to visualize structure, data flow, dependencies, databases, and architectural pathways.
-                    </p>
-                  </div>
-
-                  {/* Input */}
-                  <div className="relative">
-                    <textarea
-                      value={promptInput}
-                      onChange={(e) => setPromptInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleStartTask(undefined, true);
-                        }
-                      }}
-                      placeholder="What do you want to understand visually? (e.g. Visualize the login flow)"
-                      rows={3}
-                      className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-xl px-4 py-3.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none resize-none transition-colors"
-                    />
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                      <button
-                        onClick={() => handleStartTask(undefined, true)}
-                        disabled={!promptInput.trim() || isSubmitting}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
-                      >
-                        {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={12} fill="currentColor" />}
-                        Generate Visualization
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Suggestions */}
-                  <div className="space-y-2">
-                    <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Quick Suggestions</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { label: "Architecture", prompt: "Show me the architecture of this repository" },
-                        { label: "Data Flow", prompt: "Visualize how user data moves through this application" },
-                        { label: "API Flow", prompt: "Visualize all major API endpoints and where they go" },
-                        { label: "Dependencies", prompt: "Create a dependency diagram for the primary modules" },
-                        { label: "Database", prompt: "Visualize the database schema and relationships" },
-                        { label: "Explain a Feature", prompt: "Create a diagram explaining how the authentication feature works" }
-                      ].map((s, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handleStartTask(s.prompt, true)}
-                          className="text-left px-3 py-2.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-between group"
-                        >
-                          <span>{s.label}</span>
-                          <span className="text-[10px] text-zinc-700 group-hover:text-zinc-400 transition-colors">→</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              {/* Input */}
+              <div className="relative">
+                <textarea
+                  value={promptInput}
+                  onChange={(e) => setPromptInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleStartTask();
+                    }
+                  }}
+                  placeholder="Describe a task or ask to visualize something (e.g. 'Visualize the login flow')"
+                  rows={3}
+                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-xl px-4 py-3.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none resize-none transition-colors"
+                />
+                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                  <button
+                    onClick={() => handleStartTask()}
+                    disabled={!promptInput.trim() || isSubmitting}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
+                  >
+                    {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
+                    Run
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">What do you want to accomplish?</h1>
-                    <p className="text-sm text-zinc-500">
-                      CoWork runs tasks across your connected tools — GitHub, Google Drive, Gmail, Calendar, and live web search.
-                    </p>
-                  </div>
+              </div>
 
-                  {/* Input */}
-                  <div className="relative">
-                    <textarea
-                      value={promptInput}
-                      onChange={(e) => setPromptInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleStartTask();
-                        }
-                      }}
-                      placeholder="Describe a task..."
-                      rows={3}
-                      className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-xl px-4 py-3.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none resize-none transition-colors"
-                    />
-                    <div className="absolute bottom-3 right-3 flex items-center gap-2">
-                      <button
-                        onClick={() => handleStartTask()}
-                        disabled={!promptInput.trim() || isSubmitting}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                      >
-                        {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
-                        Run
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Presets */}
-                  <div className="space-y-2">
-                    <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Try</p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {PRESETS.map((p, i) => (
-                        <button
-                          key={i}
-                          onClick={() => handleStartTask(p)}
-                          className="text-left px-3 py-2.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 transition-all"
-                        >
-                          {p}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              {/* Presets */}
+              <div className="space-y-2">
+                <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Try</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {PRESETS.map((p, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleStartTask(p)}
+                      className="text-left px-3 py-2.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-between group"
+                    >
+                      <span>{p}</span>
+                      <span className="text-[10px] text-zinc-700 group-hover:text-zinc-400 transition-colors">→</span>
+                    </button>
+                  ))}
                 </div>
-              )}
-
+              </div>
               {/* Integration status */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between">

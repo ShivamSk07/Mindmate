@@ -202,6 +202,15 @@ export function detectToolRequirements(userQuery: string) {
   };
 }
 
+export function isVisualizationQuery(query: string): boolean {
+  const q = query.toLowerCase().trim();
+  return (
+    /\b(visualize|visualisation|visualization|diagram|flowchart|flow-chart|sequence diagram|state diagram|class diagram|dependency graph|architecture|visual representation)\b/i.test(q) ||
+    /\b(show|create|draw|generate)\s+.*?\b(flow|relationship|relationships|connection|connections|journey|overview|architecture|dependency|dependencies|endpoints)\b/i.test(q) ||
+    /\b(show|explain)\b.*?\b(visually|visual)\b/i.test(q)
+  );
+}
+
 // ─────────────────────────────────────────────────────────────
 // Task creation
 // ─────────────────────────────────────────────────────────────
@@ -212,6 +221,7 @@ export async function createAndRunTask(
   preferredBranch = "main",
   isVisualization = false
 ): Promise<CoworkTask> {
+  const isVis = isVisualization || isVisualizationQuery(userQuery);
   const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const now = new Date().toISOString();
 
@@ -240,7 +250,7 @@ export async function createAndRunTask(
   // Build dynamic plan steps strictly based on requested tools or visualization
   let initialPlan: PlanStep[] = [];
 
-  if (isVisualization) {
+  if (isVis) {
     initialPlan = [
       { id: "step_init", title: "Analyzing request", status: "completed" },
       { id: "step_tree", title: "Scanning repository structure", status: "waiting" },
@@ -292,7 +302,7 @@ export async function createAndRunTask(
   taskStore.set(taskId, initialTask);
 
   // Run agent loop asynchronously
-  if (isVisualization) {
+  if (isVis) {
     executeVisualizationLoop(taskId, owner, repo, preferredBranch).catch((err) => {
       console.error(`Visualization task ${taskId} failed:`, err);
       const t = taskStore.get(taskId);
