@@ -44,6 +44,12 @@ export default async function HomePage() {
             >
               Privacy Policy
             </Link>
+            <Link
+              href="/terms"
+              className="text-xs font-medium text-zinc-400 hover:text-zinc-200 transition-colors hidden sm:block"
+            >
+              Terms of Service
+            </Link>
             {user ? (
               <Link
                 href="/cowork"
@@ -225,6 +231,9 @@ export default async function HomePage() {
           <div className="flex items-center gap-6">
             <Link href="/privacy" className="hover:text-zinc-300 transition-colors">
               Privacy Policy
+            </Link>
+            <Link href="/terms" className="hover:text-zinc-300 transition-colors">
+              Terms of Service
             </Link>
             <Link href="/cowork" className="hover:text-zinc-300 transition-colors">
               CoWork

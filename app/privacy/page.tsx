@@ -119,8 +119,8 @@ export default function PrivacyPage() {
               If you have any questions about this Privacy Policy or your data, please contact us at:
             </p>
             <div className="mt-3 p-4 bg-white/5 border border-white/10 rounded-xl">
-              <p className="text-white font-medium">Clarity Support</p>
-              <p className="text-violet-400">support@theclarity.vercel.app</p>
+              <p className="text-white font-medium">Clarity Developer Support</p>
+              <p className="text-violet-400">skfatmosphere@gmail.com</p>
               <p className="text-gray-400 text-sm mt-1">https://theclarity.vercel.app</p>
             </div>
           </section>
@@ -128,9 +128,13 @@ export default function PrivacyPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-16 pt-8 border-t border-white/10 text-center text-gray-500 text-sm">
+        <div className="mt-16 pt-8 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-gray-500 text-sm gap-4">
           <p>© 2026 Clarity AI Workspace. All rights reserved.</p>
-          <a href="/cowork" className="text-violet-400 hover:underline mt-2 inline-block">← Back to CoWork</a>
+          <div className="flex gap-4">
+            <a href="/" className="text-violet-400 hover:underline">Home</a>
+            <a href="/terms" className="text-violet-400 hover:underline">Terms of Service</a>
+            <a href="/cowork" className="text-violet-400 hover:underline">CoWork</a>
+          </div>
         </div>
       </div>
     </main>
