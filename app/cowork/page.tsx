@@ -34,8 +34,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import IntegrationsModal from "@/components/IntegrationsModal";
-import MermaidViewer from "@/components/MermaidViewer";
+import MermaidViewer, { isDiagramCode } from "@/components/MermaidViewer";
 
 interface IntegrationItem {
   id: string;
@@ -918,11 +917,9 @@ export default function CoworkPage() {
                               ),
                                code: ({ children, className, ...props }: any) => {
                                  const codeString = String(children || "").trim();
-                                 const isMermaid = 
-                                   className?.includes("language-mermaid") || 
-                                   /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(codeString);
+                                 const isDiagram = isDiagramCode(className, codeString);
 
-                                 if (!props.inline && isMermaid) {
+                                 if (!props.inline && isDiagram) {
                                    return <MermaidToSvg code={codeString} />;
                                  }
 
@@ -935,7 +932,9 @@ export default function CoworkPage() {
                                  );
                                },
                                pre: ({ children }: any) => {
-                                 if (children?.props?.className?.includes("language-mermaid") || /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(String(children?.props?.children || "").trim())) {
+                                 const childCode = String(children?.props?.children || "").trim();
+                                 const childClass = children?.props?.className || "";
+                                 if (isDiagramCode(childClass, childCode)) {
                                    return <>{children}</>;
                                  }
                                  return (

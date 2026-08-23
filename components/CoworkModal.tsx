@@ -24,8 +24,7 @@ import {
   Loader2
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import MermaidViewer from "./MermaidViewer";
+import MermaidViewer, { isDiagramCode } from "./MermaidViewer";
 
 interface CoworkModalProps {
   isOpen: boolean;
@@ -417,11 +416,9 @@ export function CoworkModal({ isOpen, onClose }: CoworkModalProps) {
                         ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 space-y-1 text-[#d1d1d6]">{children}</ol>,
                         code: ({ children, className, ...props }: any) => {
                           const codeString = String(children || "").trim();
-                          const isMermaid = 
-                            className?.includes("language-mermaid") || 
-                            /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(codeString);
+                          const isDiagram = isDiagramCode(className, codeString);
 
-                          if (!props.inline && isMermaid) {
+                          if (!props.inline && isDiagram) {
                             return <MermaidToSvgModal code={codeString} />;
                           }
 
@@ -434,7 +431,9 @@ export function CoworkModal({ isOpen, onClose }: CoworkModalProps) {
                           );
                         },
                         pre: ({ children }: any) => {
-                          if (children?.props?.className?.includes("language-mermaid") || /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(String(children?.props?.children || "").trim())) {
+                          const childCode = String(children?.props?.children || "").trim();
+                          const childClass = children?.props?.className || "";
+                          if (isDiagramCode(childClass, childCode)) {
                             return <>{children}</>;
                           }
                           return (

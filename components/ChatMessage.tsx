@@ -6,7 +6,7 @@ import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Vol
 import Link from "next/link";
 import type { Message } from "@/types";
 import { useState, useEffect } from "react";
-import MermaidViewer from "./MermaidViewer";
+import MermaidViewer, { isDiagramCode } from "./MermaidViewer";
 
 interface ChatMessageProps {
   message: Message;
@@ -188,11 +188,9 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                               ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 space-y-1 text-[#cbd5e1]">{children}</ol>,
                               code: ({ children, className, ...props }: any) => {
                                 const codeString = String(children || "").trim();
-                                const isMermaid =
-                                  className?.includes("language-mermaid") ||
-                                  /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(codeString);
+                                const isDiagram = isDiagramCode(className, codeString);
 
-                                if (!props.inline && isMermaid) {
+                                if (!props.inline && isDiagram) {
                                   return <MermaidViewer code={codeString} />;
                                 }
 
@@ -206,12 +204,9 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                                 );
                               },
                               pre: ({ children }: any) => {
-                                if (
-                                  children?.props?.className?.includes("language-mermaid") ||
-                                  /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(
-                                    String(children?.props?.children || "").trim()
-                                  )
-                                ) {
+                                const childCode = String(children?.props?.children || "").trim();
+                                const childClass = children?.props?.className || "";
+                                if (isDiagramCode(childClass, childCode)) {
                                   return <>{children}</>;
                                 }
                                 return (

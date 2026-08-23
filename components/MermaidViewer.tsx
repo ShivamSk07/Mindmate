@@ -74,12 +74,23 @@ export function cleanMermaidCode(rawCode: string): string {
     `|${label.replace(/"/g, "'").replace(/<[^>]+>/g, "")}|`
   );
 
-  // Auto-detect graph header
+  // Auto-detect graph header (stripping comments first)
+  const strippedComments = clean.replace(/^%%[^\n]*\n?/gm, "").trim();
   const hasHeader =
-    /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(clean);
+    /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(strippedComments);
   if (!hasHeader) clean = `flowchart TD\n  ${clean}`;
 
   return clean;
+}
+
+// ─── Helper to detect if code block is a diagram ─────────────────────────────
+export function isDiagramCode(className?: string, rawCode?: string): boolean {
+  if (!rawCode) return false;
+  if (className && /language-(mermaid|diagram|flowchart|sequence|gantt|classDiagram)/i.test(className)) {
+    return true;
+  }
+  const clean = rawCode.trim().replace(/^```[a-zA-Z0-9_-]*\n?/i, "").replace(/\n?```$/i, "").replace(/^%%[^\n]*\n?/gm, "").trim();
+  return /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/i.test(clean);
 }
 
 // ─── Fallback render URLs (internal, not exposed to user) ────────────────────
