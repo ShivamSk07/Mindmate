@@ -31,10 +31,11 @@ export default async function HomePage() {
       <header className="sticky top-0 z-50 border-b border-[#1c1c1e] bg-[#0c0c0f]/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-              <Sparkles size={18} className="text-white" />
-            </div>
-            <span className="text-xl font-bold tracking-tight text-white">Clarity</span>
+            <img
+              src="/img/branding.png"
+              alt="Clarity Logo"
+              className="h-8 w-auto object-contain brightness-0 invert"
+            />
           </div>
 
           <div className="flex items-center gap-4">
@@ -224,8 +225,12 @@ export default async function HomePage() {
       {/* ── Footer ──────────────────────────────────────────────────── */}
       <footer className="py-8 bg-[#09090c] text-xs text-zinc-500">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-zinc-300">Clarity</span>
+          <div className="flex items-center gap-3">
+            <img
+              src="/img/branding.png"
+              alt="Clarity"
+              className="h-6 w-auto object-contain brightness-0 invert opacity-80"
+            />
             <span>— Autonomous AI Agentic Workspace</span>
           </div>
           <div className="flex items-center gap-6">

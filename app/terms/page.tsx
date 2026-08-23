@@ -14,10 +14,11 @@ export default function TermsPage() {
         {/* Header */}
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-lg font-bold shadow-lg shadow-indigo-500/20">
-              <Sparkles size={18} className="text-white" />
-            </div>
-            <span className="text-xl font-semibold text-white">Clarity</span>
+            <img
+              src="/img/branding.png"
+              alt="Clarity Logo"
+              className="h-9 w-auto object-contain brightness-0 invert"
+            />
           </div>
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3 tracking-tight">Terms of Service</h1>
           <p className="text-zinc-400 text-xs">Last updated: August 23, 2026</p>

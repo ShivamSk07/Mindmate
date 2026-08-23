@@ -12,10 +12,11 @@ export default function PrivacyPage() {
         {/* Header */}
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-lg font-bold">
-              C
-            </div>
-            <span className="text-xl font-semibold text-white">Clarity</span>
+            <img
+              src="/img/branding.png"
+              alt="Clarity Logo"
+              className="h-9 w-auto object-contain brightness-0 invert"
+            />
           </div>
           <h1 className="text-4xl font-bold text-white mb-3">Privacy Policy</h1>
           <p className="text-gray-400 text-sm">Last updated: August 12, 2026</p>
