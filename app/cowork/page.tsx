@@ -35,6 +35,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import IntegrationsModal from "@/components/IntegrationsModal";
+import MermaidViewer from "@/components/MermaidViewer";
 
 interface IntegrationItem {
   id: string;
@@ -159,84 +160,7 @@ function LogDot({ type, category }: { type: string; category?: string }) {
 }
 
 function MermaidToSvg({ code }: { code: string }) {
-  const [svgUrl, setSvgUrl] = useState<string | null>(null);
-  const [pngUrl, setPngUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-    fetch("/api/cowork/kroki", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mermaid: code }),
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (isMounted && data.url) {
-          setSvgUrl(data.url);
-          setPngUrl(data.pngUrl);
-        }
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
-    return () => { isMounted = false; };
-  }, [code]);
-
-  if (loading) {
-    return (
-      <div className="my-4 p-6 bg-zinc-950 border border-zinc-800 rounded-xl flex items-center justify-center gap-2 text-xs text-zinc-500">
-        <Loader2 size={14} className="animate-spin text-violet-400" />
-        <span>Rendering Kroki SVG diagram...</span>
-      </div>
-    );
-  }
-
-  if (!svgUrl) {
-    return (
-      <pre className="bg-zinc-950 border border-zinc-800 rounded-lg p-4 text-[12px] font-mono text-zinc-300 my-4 overflow-x-auto">
-        {code}
-      </pre>
-    );
-  }
-
-  return (
-    <div className="my-4 bg-[#070707] border border-zinc-800 rounded-xl overflow-hidden shadow-2xl relative flex flex-col items-center p-4 select-none w-full">
-      <div className="w-full flex items-center justify-between border-b border-zinc-800/80 pb-2 mb-3 px-1">
-        <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-          <Sparkles size={12} className="text-violet-400" /> Live Visual Diagram (Kroki)
-        </span>
-        <div className="flex items-center gap-2">
-          <a
-            href={svgUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] px-2 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white rounded-md transition-all flex items-center gap-1"
-          >
-            <Download size={11} /> SVG
-          </a>
-          {pngUrl && (
-            <a
-              href={pngUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[11px] px-2 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white rounded-md transition-all flex items-center gap-1"
-            >
-              <Download size={11} /> PNG
-            </a>
-          )}
-        </div>
-      </div>
-      <div className="w-full flex items-center justify-center p-2 min-h-[220px]">
-        <img
-          src={svgUrl}
-          alt="Rendered Kroki Diagram"
-          className="max-w-full max-h-[500px] object-contain"
-        />
-      </div>
-    </div>
-  );
+  return <MermaidViewer code={code} />;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

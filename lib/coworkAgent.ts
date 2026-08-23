@@ -710,7 +710,11 @@ Answer the user's request directly and clearly using the retrieved data below.
 Format the response with clean markdown: use headers, bullet lists, code blocks where relevant.
 Be specific, factual, and concise. Do not use filler phrases.
 If real data was retrieved, reference it directly (repo names, commit messages, email subjects, etc.).
-If generating a diagram or flowchart, output it directly inside a \`\`\`mermaid code block. NEVER output copy/paste instructions or advice on how to view Mermaid code in external editors, because our UI renders SVG diagrams live automatically.`;
+
+CRITICAL FORMATTING RULES:
+- STRICT PROHIBITION: NEVER output ASCII art diagrams, text boxes, ascii arrows (+---+, | |, -->), or unicode box-drawing diagrams (┌───┐, │ │, └───┘).
+- When explaining architecture, workflows, sequence diagrams, flowcharts, data flows, database schemas, or relationship maps, ALWAYS output valid Mermaid syntax inside a \`\`\`mermaid code block.
+- Our frontend UI automatically compiles and renders \`\`\`mermaid code blocks into interactive live SVG diagrams in real-time. NEVER output copy/paste instructions or advice on external editors.`;
 
   const userPrompt = `Request: "${task.userQuery}"
 
@@ -901,7 +905,9 @@ Generate the updated Mermaid diagram now:`;
         task.report = `### Codebase Visualization (Updated)
 The following diagram represents your codebase for the updated query: *"${followupQuery}"*
 
-[Rendered Diagram](${newKroki})
+\`\`\`mermaid
+${newMermaid}
+\`\`\`
 `;
         task.status = "completed";
         addLog(task, "success", "Visualization updated", "New SVG generated.", "system");
@@ -969,16 +975,24 @@ Use the existing artifacts as context. Answer directly and specifically.`,
 // ─────────────────────────────────────────────────────────────
 
 export function sanitizeMermaid(code: string): string {
+  if (!code) return "";
   let clean = code.trim();
 
   // Strip code fences
-  clean = clean.replace(/^```[a-z]*\n?/i, "").replace(/\n?```$/i, "").trim();
+  clean = clean.replace(/^```[a-zA-Z0-9_-]*\n?/i, "").replace(/\n?```$/i, "").trim();
 
   // Normalize Unicode dashes, non-breaking hyphens, and smart quotes
   clean = clean
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, "-")
     .replace(/[\u201C\u201D]/g, '"')
-    .replace(/[\u2018\u2019]/g, "'");
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/\u00A0/g, " ");
+
+  // Fix common arrow typos: -- > to -->, == > to ==>
+  clean = clean
+    .replace(/--\s+>/g, "-->")
+    .replace(/==\s+>/g, "==>")
+    .replace(/\.-\s+>/g, "-.->");
 
   // Fix double quotes and angle brackets inside pipe link labels: |label "foo"| -> |label 'foo'|
   clean = clean.replace(/\|([^|\n\r]+)\|/g, (_, label) => {
@@ -1015,17 +1029,45 @@ export function sanitizeMermaid(code: string): string {
     return `${id}{"${trimmed.replace(/"/g, "'")}"}`;
   });
 
+  // Default to graph TD if missing diagram header
+  const hasHeader = /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(clean);
+  if (!hasHeader) {
+    clean = `graph TD\n  ${clean}`;
+  }
+
   return clean;
 }
 
-function getKrokiUrl(mermaidCode: string): string {
-  const buffer = Buffer.from(mermaidCode, "utf-8");
-  const compressed = zlib.deflateSync(buffer);
-  const base64 = compressed.toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-  return `https://kroki.io/mermaid/svg/${base64}`;
+export function getMermaidInkUrls(mermaidCode: string): { svgUrl: string; pngUrl: string } {
+  try {
+    const clean = sanitizeMermaid(mermaidCode);
+    const obj = {
+      code: clean,
+      mermaid: { theme: "dark" }
+    };
+    const b64 = Buffer.from(JSON.stringify(obj)).toString("base64");
+    return {
+      svgUrl: `https://mermaid.ink/svg/${b64}`,
+      pngUrl: `https://mermaid.ink/img/${b64}`,
+    };
+  } catch {
+    return { svgUrl: "", pngUrl: "" };
+  }
+}
+
+export function getKrokiUrl(mermaidCode: string): string {
+  try {
+    const clean = sanitizeMermaid(mermaidCode);
+    const buffer = Buffer.from(clean, "utf-8");
+    const compressed = zlib.deflateSync(buffer, { level: 9 });
+    const base64 = compressed.toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
+    return `https://kroki.io/mermaid/svg/${base64}`;
+  } catch {
+    return "";
+  }
 }
 
 async function executeVisualizationLoop(
@@ -1299,7 +1341,9 @@ Generate the diagram now:`;
   task.report = `### Codebase Visualization
 The following diagram represents your codebase for the query: *"${task.userQuery}"*
 
-[Rendered Diagram](${krokiUrl})
+\`\`\`mermaid
+${mermaidCode}
+\`\`\`
 `;
   task.status = "completed";
   task.plan.forEach(s => { if (s.status !== "failed") s.status = "completed"; });

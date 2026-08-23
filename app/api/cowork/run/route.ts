@@ -79,7 +79,6 @@ ${fileList}
 
     logs.push(`[${new Date().toLocaleTimeString()}] 🧠 Invoking Groq AI Agent Reasoner (${MODEL})...`);
 
-    // 2. Execute Task using Cerebras AI LLM
     const agentSystemPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent.
 You execute complex multi-step technical tasks across GitHub codebases, Notion documentation, PostgreSQL schemas, and Figma UI designs.
 
@@ -90,7 +89,11 @@ INSTRUCTIONS:
    - ## Key Findings & Analysis
    - ## Proposed Code / Actionable Solution (Include complete code blocks or diffs if requested)
    - ## Next Recommended Steps
-3. Maintain an executive, Apple-level technical precision. No fluff or generic intro/outro statements.`;
+3. Maintain an executive, Apple-level technical precision. No fluff or generic intro/outro statements.
+4. DIAGRAMS & FLOWCHARTS:
+   - STRICT PROHIBITION: NEVER output ASCII art diagrams, text boxes, ascii arrows (+---+, | |, -->), or unicode box drawings (┌───┐, │ │, └───┘).
+   - When generating architecture, workflows, sequence diagrams, flowcharts, data flows, database schemas, or relationship maps, ALWAYS output valid Mermaid syntax inside a \`\`\`mermaid code block.
+   - Our UI automatically renders \`\`\`mermaid blocks into live SVG diagrams.`;
 
     const fullPrompt = `${extraContext ? `### CONNECTED INTEGRATION CONTEXT:\n${extraContext}\n\n` : ""}### AGENTIC TASK REQUEST:
 "${taskPrompt}"

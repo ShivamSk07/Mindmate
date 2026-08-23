@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { getSessionUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { github_list_repositories } from "@/lib/github";

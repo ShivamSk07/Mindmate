@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 import { getSessionUser } from "@/lib/auth";
 import { listMCPServers, registerMCPServer, discoverMCPTools } from "@/lib/mcp";
 

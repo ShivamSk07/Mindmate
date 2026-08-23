@@ -6,6 +6,7 @@ import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Vol
 import Link from "next/link";
 import type { Message } from "@/types";
 import { useState, useEffect } from "react";
+import MermaidViewer from "./MermaidViewer";
 
 interface ChatMessageProps {
   message: Message;
@@ -185,19 +186,40 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                               p: ({ children }) => <p className="mb-2.5 last:mb-0 leading-relaxed text-[#cbd5e1]">{children}</p>,
                               ul: ({ children }) => <ul className="list-disc pl-5 mb-2.5 space-y-1 text-[#cbd5e1]">{children}</ul>,
                               ol: ({ children }) => <ol className="list-decimal pl-5 mb-2.5 space-y-1 text-[#cbd5e1]">{children}</ol>,
-                              code: ({ children, ...props }) => (
-                                <code
-                                  className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] rounded px-1.5 py-0.5 text-xs font-mono text-[#a5b4fc]"
-                                  {...props}
-                                >
-                                  {children}
-                                </code>
-                              ),
-                              pre: ({ children }) => (
-                                <pre className="bg-[#050508]/85 border border-[rgba(255,255,255,0.04)] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono shadow-inner">
-                                  {children}
-                                </pre>
-                              ),
+                              code: ({ children, className, ...props }: any) => {
+                                const codeString = String(children || "").trim();
+                                const isMermaid =
+                                  className?.includes("language-mermaid") ||
+                                  /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(codeString);
+
+                                if (!props.inline && isMermaid) {
+                                  return <MermaidViewer code={codeString} />;
+                                }
+
+                                return (
+                                  <code
+                                    className="bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] rounded px-1.5 py-0.5 text-xs font-mono text-[#a5b4fc]"
+                                    {...props}
+                                  >
+                                    {children}
+                                  </code>
+                                );
+                              },
+                              pre: ({ children }: any) => {
+                                if (
+                                  children?.props?.className?.includes("language-mermaid") ||
+                                  /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram|erDiagram|pie|gitGraph)\b/i.test(
+                                    String(children?.props?.children || "").trim()
+                                  )
+                                ) {
+                                  return <>{children}</>;
+                                }
+                                return (
+                                  <pre className="bg-[#050508]/85 border border-[rgba(255,255,255,0.04)] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono shadow-inner">
+                                    {children}
+                                  </pre>
+                                );
+                              },
                             }}
                           >
                             {part.content}
