@@ -388,9 +388,9 @@ export default function ChatPage() {
       {/* Main chat area — Apple Workspace */}
       <main className="flex-grow flex flex-col min-w-0 h-full relative bg-[#000000] border-l border-[#222226]">
         
-        {/* Chat Toolbar Header — Apple macOS Style */}
+        {/* Chat Toolbar Header — Refined Dark Glass Style */}
         <header
-          className="h-14 px-4 flex items-center justify-between z-20 relative flex-shrink-0 gap-2 bg-[#111113]/90 backdrop-blur-md border-b border-[#222226]"
+          className="h-14 px-4 flex items-center justify-between z-20 relative flex-shrink-0 gap-2 bg-[#09090d]/75 backdrop-blur-2xl border-b border-white/[0.06] shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
         >
 
           {/* Left: Menu + Expand Desktop + Persona Selector */}
@@ -518,13 +518,13 @@ export default function ChatPage() {
 
           {/* Right: Tools (Desktop) */}
           <div className="flex items-center gap-2 text-[#94a3b8]">
-            {/* Clarity CoWork Page Link — Matte Monochrome Design */}
+            {/* Clarity CoWork Page Link — Dark Glass Style */}
             <Link
               href="/cowork"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#1c1c1e] hover:bg-[#2c2c2e] border border-[#2c2c2e] transition-all active:scale-95"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.08] backdrop-blur-md shadow-sm transition-all active:scale-95"
               title="Clarity CoWork — Dedicated Agentic Workspace"
             >
-              <Briefcase size={14} className="text-[#a1a1aa]" />
+              <Briefcase size={14} className="text-zinc-300" />
               <span className="hidden sm:inline font-sans">Clarity CoWork</span>
             </Link>
 

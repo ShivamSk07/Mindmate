@@ -195,10 +195,10 @@ export function ChatWindow({
         <div className="w-full max-w-3xl flex flex-col">
           <div className="flex-1">
 
-            {/* Welcome Screen — Apple Minimalist Design */}
+            {/* Welcome Screen — Refined Dark Glass Design */}
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center min-h-[calc(100dvh-220px)] text-center px-4 relative">
-                <div className="w-16 h-16 rounded-[20px] bg-[#1c1c1e] border border-[#2c2c2e] shadow-xl flex items-center justify-center p-3 mb-5">
+                <div className="w-16 h-16 rounded-[22px] bg-white/[0.04] backdrop-blur-2xl border border-white/[0.08] shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)] flex items-center justify-center p-3 mb-5">
                   <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain opacity-95" />
                 </div>
 

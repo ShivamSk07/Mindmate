@@ -219,16 +219,16 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
           </div>
         )}
 
-        {/* Input Box — Apple Capsule Style */}
+        {/* Input Box — Refined Dark Glass Capsule Style */}
         <div
-          className="flex items-end gap-2 rounded-[24px] px-4 py-2.5 bg-[#1c1c1e] border border-[#2c2c2e] shadow-lg transition-all focus-within:border-[#3a3a3c]"
+          className="flex items-end gap-2 rounded-[24px] px-4 py-2.5 bg-[#0e0e14]/75 backdrop-blur-2xl border border-white/[0.09] shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all focus-within:border-white/[0.18] focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]"
         >
           {/* File Attachment */}
           <button
             type="button"
             onClick={triggerFileInput}
             disabled={isUploading || !sessionId}
-            className="p-1.5 rounded-full text-[#8e8e93] hover:text-white hover:bg-[#2c2c2e] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed mb-0.5"
+            className="p-1.5 rounded-full text-[#8e8e93] hover:text-white hover:bg-white/[0.08] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed mb-0.5"
             title="Attach Document (PDF, DOCX, CSV, Image)"
           >
             <Paperclip size={16} />

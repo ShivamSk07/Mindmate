@@ -116,10 +116,10 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
     <div className="flex flex-col mb-5 w-full group animate-fade-in break-words">
 
       {isUser ? (
-        /* ── USER: right-aligned pill bubble (Sleek Obsidian style) ── */
+        /* ── USER: right-aligned pill bubble (Refined Dark Glass) ── */
         <div className="flex justify-end w-full">
           <div className="max-w-[80%] md:max-w-[72%]">
-            <div className="bg-[#18181b] border border-[#27272a] rounded-[18px] rounded-tr-[4px] px-4 py-3 text-sm text-[#f4f4f5] leading-relaxed break-words shadow-sm">
+            <div className="bg-white/[0.06] backdrop-blur-xl border border-white/[0.08] rounded-[20px] rounded-tr-[4px] px-4 py-3 text-sm text-[#f4f4f5] leading-relaxed break-words shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)]">
               <p className="whitespace-pre-wrap break-words">{cleanContent}</p>
             </div>
             <div className="flex justify-end mt-1 pr-1">
@@ -135,7 +135,7 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
 
           {/* AI name + timestamp */}
           <div className="flex items-center gap-2 text-xs text-[#94a3b8] mb-2">
-            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-[#18181b] border border-[#27272a]">
+            <div className="w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-white/[0.05] border border-white/[0.08] backdrop-blur-md">
               <img src={botAvatar} alt={assistantName} className="w-full h-full object-cover" />
             </div>
             <span className="font-semibold text-[11px] text-white">{assistantName}</span>
@@ -150,7 +150,7 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
 
             {/* Thinking accordion */}
             {thinkingContent && (
-              <div className="w-full max-w-2xl bg-[#121215] border border-[#27272a] rounded-xl p-3">
+              <div className="w-full max-w-2xl bg-black/30 backdrop-blur-lg border border-white/[0.06] rounded-xl p-3 shadow-inner">
                 <details className="group" open={!cleanContent}>
                   <summary className="flex items-center justify-between text-[10px] font-bold text-[#71717a] cursor-pointer list-none select-none uppercase tracking-wider">
                     <span className="flex items-center gap-2">

@@ -199,16 +199,16 @@ export function Sidebar({
         />
       )}
 
-      {/* Sidebar Panel — Apple macOS Finder/Messages Style */}
+      {/* Sidebar Panel — Apple macOS Dark Glass Style */}
       <aside
-        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[280px] bg-[#111113] border-r border-[#222226] flex flex-col transition-all duration-300 ease-out lg:h-full ${
+        className={`fixed lg:relative inset-y-0 left-0 z-40 w-[280px] bg-[#0b0b0f]/80 backdrop-blur-2xl border-r border-white/[0.06] flex flex-col transition-all duration-300 ease-out lg:h-full shadow-[4px_0_24px_rgba(0,0,0,0.4)] ${
           isOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         {/* Header Logo + Collapse button */}
-        <div className="px-5 py-4 flex items-center justify-between border-b border-[rgba(255,255,255,0.04)]">
+        <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
           <div className="flex items-center gap-2.5 tracking-tight text-white">
-            <img src="/img/branding.png" alt="Clarity" className="h-6 object-contain" />
+            <img src="/img/branding.png" alt="Clarity" className="h-6 object-contain brightness-0 invert opacity-90" />
           </div>
           <div className="flex items-center gap-1">
             {/* Desktop collapse button */}
