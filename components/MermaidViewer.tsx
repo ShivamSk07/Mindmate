@@ -50,52 +50,94 @@ export function cleanMermaidCode(rawCode: string): string {
   if (!rawCode) return "";
   let clean = rawCode.trim();
 
-  // Strip markdown code fences
+  // 1. Strip markdown fences and language tags
   clean = clean.replace(/^```[a-zA-Z0-9_-]*\n?/i, "").replace(/\n?```$/i, "").trim();
 
-  // Remove HTML tags that break diagram parser
+  // 2. Remove HTML tags (<br/>, <b>, etc.)
   clean = clean.replace(/<br\s*\/?>/gi, " ");
   clean = clean.replace(/<[^>]+>/g, "");
 
-  // Normalize unicode dashes, smart quotes, non-breaking spaces
+  // 3. Normalize quotes, dashes, spaces
   clean = clean
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, "-")
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/\u00A0/g, " ");
 
-  // Fix arrow typos
+  // 4. Fix arrows
   clean = clean.replace(/--\s+>/g, "-->").replace(/==\s+>/g, "==>").replace(/\.-\s+>/g, ".->");
 
-  // Fix pipe labels
-  clean = clean.replace(/\|([^|\n\r]+)\|/g, (_, label) =>
-    `|${label.replace(/"/g, "'").replace(/<[^>]+>/g, "").trim()}|`
-  );
-
-  // Fix unquoted node labels with parentheses or special chars:
-  // 1. Cylinder: id[(text)] -> id[("text")]
-  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\[\(\s*(?!"|\()([^\]\r\n]*?)\s*\)\]/g, '$1[("$2")]');
-  // 2. Stadium: id([text]) -> id(["text"])
-  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\(\[\s*(?!"|\()([^\]\r\n]*?)\s*\]\)/g, '$1(["$2"])');
-  // 3. Subroutine: id[[text]] -> id[["text"]]
-  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\[\[\s*(?!"|\[)([^\]\r\n]*?)\s*\]\]/g, '$1[["$2"]]');
-  // 4. Circle: id((text)) -> id(("text"))
-  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\(\(\s*(?!"|\()([^)\r\n]*?)\s*\)\)/g, '$1(("$2"))');
-  // 5. Hexagon: id{{text}} -> id{{"text"}}
-  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\{\{\s*(?!"|\{)([^}\r\n]*?)\s*\}\}/g, '$1{{"$2"}}');
-  // 6. Rhombus: id{text} -> id{"text"}
-  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\{\s*(?!"|\{)([^}\r\n]*?)\s*\}/g, '$1{"$2"}');
-  // 7. Rectangle: id[text] -> id["text"]
-  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\[\s*(?!"|\[|\()([^\]\r\n]*?)\s*\]/g, (match, id, text) => {
-    if (text.startsWith('"') && text.endsWith('"')) return match;
-    const safeText = text.replace(/"/g, "'");
-    return `${id}["${safeText}"]`;
+  // 5. Fix pipe labels (|...|) - strip double quotes and HTML inside pipes
+  clean = clean.replace(/\|([^|\n\r]+)\|/g, (_, label) => {
+    const safeLabel = label.replace(/["<>]/g, "").trim();
+    return `|${safeLabel}|`;
   });
 
-  // Auto-detect graph header (stripping comments first)
+  // 6. Clean node definitions line by line for maximum reliability:
+  const lines = clean.split("\n");
+  const processedLines = lines.map((line) => {
+    let l = line;
+    const trimmed = l.trim();
+
+    // Skip comments and directives
+    if (
+      trimmed.startsWith("%%") ||
+      trimmed.startsWith("classDef") ||
+      trimmed.startsWith("class ") ||
+      trimmed.startsWith("style ")
+    ) {
+      return l;
+    }
+
+    // Process nodes with cylinder: id[(text)] -> id[("text")]
+    l = l.replace(/([a-zA-Z0-9_-]+)\[\(\s*(?!"|\()([^\]\r\n]*?)\s*\)\]/g, (_, id, text) => {
+      return `${id}[("${text.replace(/["\\]/g, "'").trim()}")]`;
+    });
+
+    // Process nodes with stadium: id([text]) -> id(["text"])
+    l = l.replace(/([a-zA-Z0-9_-]+)\(\[\s*(?!"|\()([^\]\r\n]*?)\s*\]\)/g, (_, id, text) => {
+      return `${id}(["${text.replace(/["\\]/g, "'").trim()}"])`;
+    });
+
+    // Process nodes with subroutine: id[[text]] -> id[["text"]]
+    l = l.replace(/([a-zA-Z0-9_-]+)\[\[\s*(?!"|\[)([^\]\r\n]*?)\s*\]\]/g, (_, id, text) => {
+      return `${id}[["${text.replace(/["\\]/g, "'").trim()}"]]`;
+    });
+
+    // Process nodes with double circle: id((text)) -> id(("text"))
+    l = l.replace(/([a-zA-Z0-9_-]+)\(\(\s*(?!"|\()([^)\r\n]*?)\s*\)\)/g, (_, id, text) => {
+      return `${id}(("${text.replace(/["\\]/g, "'").trim()}"))`;
+    });
+
+    // Process nodes with hexagon: id{{text}} -> id{{"text"}}
+    l = l.replace(/([a-zA-Z0-9_-]+)\{\{\s*(?!"|\{)([^}\r\n]*?)\s*\}\}/g, (_, id, text) => {
+      return `${id}{{"${text.replace(/["\\]/g, "'").trim()}"}}`;
+    });
+
+    // Process nodes with rhombus: id{text} -> id{"text"}
+    l = l.replace(/([a-zA-Z0-9_-]+)\{\s*(?!"|\{)([^}\r\n]*?)\s*\}/g, (_, id, text) => {
+      return `${id}{"${text.replace(/["\\]/g, "'").trim()}"}`;
+    });
+
+    // Process standard rectangle nodes: id[text] -> id["text"]
+    l = l.replace(/([a-zA-Z0-9_-]+)\[\s*(?!"|\[|\()([^\]\r\n]*?)\s*\]/g, (_, id, text) => {
+      if (text.startsWith('"') && text.endsWith('"')) {
+        return `${id}[${text}]`;
+      }
+      return `${id}["${text.replace(/["\\]/g, "'").trim()}"]`;
+    });
+
+    return l;
+  });
+
+  clean = processedLines.join("\n");
+
+  // 7. Auto-detect graph header (stripping comments first)
   const strippedComments = clean.replace(/^%%[^\n]*\n?/gm, "").trim();
   const hasHeader =
-    /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(strippedComments);
+    /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(
+      strippedComments
+    );
   if (!hasHeader) clean = `flowchart TD\n  ${clean}`;
 
   return clean;
@@ -104,14 +146,24 @@ export function cleanMermaidCode(rawCode: string): string {
 // ─── Helper to detect if code block is a diagram ─────────────────────────────
 export function isDiagramCode(className?: string, rawCode?: string): boolean {
   if (!rawCode) return false;
-  if (className && /language-(mermaid|diagram|flowchart|sequence|gantt|classDiagram)/i.test(className)) {
+  if (
+    className &&
+    /language-(mermaid|diagram|flowchart|sequence|gantt|classDiagram)/i.test(className)
+  ) {
     return true;
   }
-  const clean = rawCode.trim().replace(/^```[a-zA-Z0-9_-]*\n?/i, "").replace(/\n?```$/i, "").replace(/^%%[^\n]*\n?/gm, "").trim();
-  return /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/i.test(clean);
+  const clean = rawCode
+    .trim()
+    .replace(/^```[a-zA-Z0-9_-]*\n?/i, "")
+    .replace(/\n?```$/i, "")
+    .replace(/^%%[^\n]*\n?/gm, "")
+    .trim();
+  return /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/i.test(
+    clean
+  );
 }
 
-// ─── Fallback render URLs (internal, not exposed to user) ────────────────────
+// ─── Fallback render URLs ─────────────────────────────────────────────────────
 export function getMermaidInkUrls(diagramCode: string): { svgUrl: string; pngUrl: string } {
   try {
     const clean = cleanMermaidCode(diagramCode);
@@ -142,7 +194,7 @@ export function MermaidViewer({
   enableFullscreen = true,
 }: MermaidViewerProps) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [fallbackImageUrl, setFallbackImageUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -164,30 +216,37 @@ export function MermaidViewer({
     let isMounted = true;
     initRenderer();
     setLoading(true);
-    setError(null);
     setSvgContent(null);
+    setFallbackImageUrl(null);
     setScale(1);
     setOffset({ x: 0, y: 0 });
 
     (async () => {
       try {
         const { svg } = await mermaid.render(uniqueIdRef.current, cleanCode);
-        if (isMounted) { setSvgContent(svg); setLoading(false); }
-      } catch (e: any) {
+        if (isMounted) {
+          setSvgContent(svg);
+          setLoading(false);
+        }
+      } catch (clientErr: any) {
+        // Attempt fallback SVG fetch
         if (fallbackUrls.svgUrl) {
           try {
             const res = await fetch(fallbackUrls.svgUrl);
             if (res.ok) {
               const svg = await res.text();
               if (isMounted && svg.includes("<svg")) {
-                setSvgContent(svg); setLoading(false); return;
+                setSvgContent(svg);
+                setLoading(false);
+                return;
               }
             }
           } catch {}
         }
+
+        // Direct image fallback — renders 100% reliably in <img> tag without CORS
         if (isMounted) {
-          const msg = (e?.message || "").replace(/Parse error on line \d+:\s*/g, "");
-          setError(msg.length > 140 ? msg.slice(0, 140) + "…" : msg || "Could not render diagram");
+          setFallbackImageUrl(fallbackUrls.svgUrl || fallbackUrls.pngUrl);
           setLoading(false);
         }
       }
@@ -200,35 +259,49 @@ export function MermaidViewer({
   }, [cleanCode]);
 
   // ── Pan handlers ─────────────────────────────────────────────────────────
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!svgContent) return;
-    e.preventDefault();
-    setIsDragging(true);
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
-    offsetStartRef.current = { ...offset };
-  }, [svgContent, offset]);
+  const hasContent = !!(svgContent || fallbackImageUrl);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setOffset({
-      x: offsetStartRef.current.x + (e.clientX - dragStartRef.current.x),
-      y: offsetStartRef.current.y + (e.clientY - dragStartRef.current.y),
-    });
-  }, [isDragging]);
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      if (!hasContent) return;
+      e.preventDefault();
+      setIsDragging(true);
+      dragStartRef.current = { x: e.clientX, y: e.clientY };
+      offsetStartRef.current = { ...offset };
+    },
+    [hasContent, offset]
+  );
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      if (!isDragging) return;
+      setOffset({
+        x: offsetStartRef.current.x + (e.clientX - dragStartRef.current.x),
+        y: offsetStartRef.current.y + (e.clientY - dragStartRef.current.y),
+      });
+    },
+    [isDragging]
+  );
 
   const handleMouseUp = useCallback(() => setIsDragging(false), []);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (!svgContent) return;
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -0.08 : 0.08;
-    setScale((p) => Math.min(3, Math.max(0.25, p + delta)));
-  }, [svgContent]);
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      if (!hasContent) return;
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? -0.08 : 0.08;
+      setScale((p) => Math.min(3, Math.max(0.25, p + delta)));
+    },
+    [hasContent]
+  );
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const zoomIn = () => setScale((p) => Math.min(3, p + 0.15));
   const zoomOut = () => setScale((p) => Math.max(0.25, p - 0.15));
-  const resetView = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
+  const resetView = () => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(cleanCode);
@@ -243,7 +316,9 @@ export function MermaidViewer({
         href: URL.createObjectURL(blob),
         download: `clarity-diagram-${Date.now()}.svg`,
       });
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     } else if (fallbackUrls.svgUrl) {
       window.open(fallbackUrls.svgUrl, "_blank");
     }
@@ -253,22 +328,20 @@ export function MermaidViewer({
     if (fallbackUrls.pngUrl) window.open(fallbackUrls.pngUrl, "_blank");
   };
 
-  const dragCursor = svgContent
-    ? (isDragging ? "cursor-grabbing" : "cursor-grab")
-    : "";
+  const dragCursor = hasContent ? (isDragging ? "cursor-grabbing" : "cursor-grab") : "";
 
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <div
       className={`my-3 flex flex-col rounded-[14px] overflow-hidden border border-[#2c2c2e] select-none
-        ${isFullscreen
-          ? "fixed inset-3 z-[9999] bg-[#111113]"
-          : `bg-[#111113] ${className}`
+        ${
+          isFullscreen
+            ? "fixed inset-3 z-[9999] bg-[#111113]"
+            : `bg-[#111113] ${className}`
         }`}
     >
       {/* ── Toolbar ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-[#222226] shrink-0 bg-[#111113]">
-
         {/* Left: Title */}
         <div className="flex items-center gap-2">
           <Sparkles size={12} className="text-[#8e8e93]" />
@@ -277,9 +350,8 @@ export function MermaidViewer({
 
         {/* Right: Controls */}
         <div className="flex items-center gap-1">
-
           {/* Zoom Controls */}
-          {svgContent && (
+          {hasContent && (
             <div className="flex items-center bg-[#1c1c1e] rounded-[8px] p-0.5 gap-0.5">
               <button
                 onClick={zoomOut}
@@ -306,10 +378,10 @@ export function MermaidViewer({
           )}
 
           {/* Divider */}
-          {svgContent && <div className="w-px h-3.5 bg-[#2c2c2e] mx-0.5" />}
+          {hasContent && <div className="w-px h-3.5 bg-[#2c2c2e] mx-0.5" />}
 
           {/* Downloads */}
-          {svgContent && (
+          {hasContent && (
             <>
               <button
                 onClick={handleDownloadSvg}
@@ -334,9 +406,13 @@ export function MermaidViewer({
           {/* Copy */}
           <button
             onClick={handleCopy}
-            title="Copy source"
+            title="Copy diagram source"
             className={`flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-medium transition-all
-              ${copied ? "text-[#30d158]" : "text-[#636366] hover:text-[#f2f2f7] hover:bg-[#1c1c1e]"}`}
+              ${
+                copied
+                  ? "text-[#30d158]"
+                  : "text-[#636366] hover:text-[#f2f2f7] hover:bg-[#1c1c1e]"
+              }`}
           >
             {copied ? <Check size={10} /> : <Copy size={10} />}
             <span>{copied ? "Copied" : "Copy"}</span>
@@ -375,32 +451,38 @@ export function MermaidViewer({
           </div>
         )}
 
-        {/* Error state */}
-        {!loading && error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6">
-            <span className="text-[12px] font-medium text-[#8e8e93]">Could not render diagram</span>
-            <p className="text-[11px] text-[#636366] max-w-sm text-center leading-relaxed">{error}</p>
-          </div>
-        )}
-
-        {/* Diagram */}
-        {!loading && !error && svgContent && (
-          <div className="absolute inset-0 flex items-center justify-center">
+        {/* Diagram Render */}
+        {!loading && (
+          <div className="absolute inset-0 flex items-center justify-center p-4">
             <div
               style={{
                 transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
                 transformOrigin: "center center",
                 transition: isDragging ? "none" : "transform 0.06s ease-out",
                 pointerEvents: "none",
+                maxWidth: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
-              dangerouslySetInnerHTML={{ __html: svgContent }}
-            />
+            >
+              {svgContent ? (
+                <div dangerouslySetInnerHTML={{ __html: svgContent }} />
+              ) : fallbackImageUrl ? (
+                <img
+                  src={fallbackImageUrl}
+                  alt={title}
+                  className="max-w-full max-h-[460px] object-contain rounded select-none"
+                  draggable={false}
+                />
+              ) : null}
+            </div>
           </div>
         )}
       </div>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      {svgContent && !loading && (
+      {hasContent && !loading && (
         <div className="flex items-center justify-between px-3 py-1 border-t border-[#222226] shrink-0 bg-[#111113]">
           <span className="text-[10px] text-[#3a3a3c]">Scroll to zoom · Drag to pan</span>
           <button
