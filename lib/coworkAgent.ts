@@ -978,62 +978,95 @@ export function sanitizeMermaid(code: string): string {
   if (!code) return "";
   let clean = code.trim();
 
-  // Strip code fences
+  // 1. Strip markdown fences and language tags
   clean = clean.replace(/^```[a-zA-Z0-9_-]*\n?/i, "").replace(/\n?```$/i, "").trim();
 
-  // Normalize Unicode dashes, non-breaking hyphens, and smart quotes
+  // 2. Remove HTML tags (<br/>, <b>, etc.)
+  clean = clean.replace(/<br\s*\/?>/gi, " ");
+  clean = clean.replace(/<[^>]+>/g, "");
+
+  // 3. Normalize quotes, dashes, spaces
   clean = clean
     .replace(/[\u2010\u2011\u2012\u2013\u2014\u2015]/g, "-")
     .replace(/[\u201C\u201D]/g, '"')
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/\u00A0/g, " ");
 
-  // Fix common arrow typos: -- > to -->, == > to ==>
-  clean = clean
-    .replace(/--\s+>/g, "-->")
-    .replace(/==\s+>/g, "==>")
-    .replace(/\.-\s+>/g, "-.->");
+  // 4. Fix arrows
+  clean = clean.replace(/--\s+>/g, "-->").replace(/==\s+>/g, "==>").replace(/\.-\s+>/g, ".->");
 
-  // Fix double quotes and angle brackets inside pipe link labels: |label "foo"| -> |label 'foo'|
+  // 5. Fix pipe labels (|...|) - strip double quotes and HTML inside pipes
   clean = clean.replace(/\|([^|\n\r]+)\|/g, (_, label) => {
-    return `|${label.replace(/"/g, "'").replace(/[<]/g, "&lt;").replace(/[>]/g, "&gt;")}|`;
+    const safeLabel = label.replace(/["<>]/g, "").trim();
+    return `|${safeLabel}|`;
   });
 
-  // Auto-quote square bracket node labels: id[text] -> id["text"]
-  clean = clean.replace(/([a-zA-Z0-9_\-]+)\[([^"\]\n]+)\]/g, (match, id, text) => {
-    const trimmed = text.trim();
-    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-      const inner = trimmed.slice(1, -1).replace(/"/g, "'");
-      return `${id}["${inner}"]`;
+  // 6. Clean node definitions line by line for maximum reliability:
+  const lines = clean.split("\n");
+  const processedLines = lines.map((line) => {
+    let l = line;
+    const trimmed = l.trim();
+
+    // Skip comments and directives
+    if (
+      trimmed.startsWith("%%") ||
+      trimmed.startsWith("classDef") ||
+      trimmed.startsWith("class ") ||
+      trimmed.startsWith("style ")
+    ) {
+      return l;
     }
-    return `${id}["${trimmed.replace(/"/g, "'")}"]`;
+
+    // Process nodes with cylinder: id[(text)] -> id[("text")]
+    l = l.replace(/([a-zA-Z0-9_-]+)\[\(\s*(?!"|\()([^\]\r\n]*?)\s*\)\]/g, (_, id, text) => {
+      return `${id}[("${text.replace(/["\\]/g, "'").trim()}")]`;
+    });
+
+    // Process nodes with stadium: id([text]) -> id(["text"])
+    l = l.replace(/([a-zA-Z0-9_-]+)\(\[\s*(?!"|\()([^\]\r\n]*?)\s*\]\)/g, (_, id, text) => {
+      return `${id}(["${text.replace(/["\\]/g, "'").trim()}"])`;
+    });
+
+    // Process nodes with subroutine: id[[text]] -> id[["text"]]
+    l = l.replace(/([a-zA-Z0-9_-]+)\[\[\s*(?!"|\[)([^\]\r\n]*?)\s*\]\]/g, (_, id, text) => {
+      return `${id}[["${text.replace(/["\\]/g, "'").trim()}"]]`;
+    });
+
+    // Process nodes with double circle: id((text)) -> id(("text"))
+    l = l.replace(/([a-zA-Z0-9_-]+)\(\(\s*(?!"|\()([^)\r\n]*?)\s*\)\)/g, (_, id, text) => {
+      return `${id}(("${text.replace(/["\\]/g, "'").trim()}"))`;
+    });
+
+    // Process nodes with hexagon: id{{text}} -> id{{"text"}}
+    l = l.replace(/([a-zA-Z0-9_-]+)\{\{\s*(?!"|\{)([^}\r\n]*?)\s*\}\}/g, (_, id, text) => {
+      return `${id}{{"${text.replace(/["\\]/g, "'").trim()}"}}`;
+    });
+
+    // Process nodes with rhombus: id{text} -> id{"text"}
+    l = l.replace(/([a-zA-Z0-9_-]+)\{\s*(?!"|\{)([^}\r\n]*?)\s*\}/g, (_, id, text) => {
+      return `${id}{"${text.replace(/["\\]/g, "'").trim()}"}`;
+    });
+
+    // Process standard rectangle nodes: id[text] -> id["text"]
+    l = l.replace(/([a-zA-Z0-9_-]+)\[\s*(?!"|\[|\()([^\]\r\n]*?)\s*\]/g, (_, id, text) => {
+      if (text.startsWith('"') && text.endsWith('"')) {
+        return `${id}[${text}]`;
+      }
+      return `${id}["${text.replace(/["\\]/g, "'").trim()}"]`;
+    });
+
+    return l;
   });
 
-  // Auto-quote parentheses node labels: id(text) -> id("text")
-  clean = clean.replace(/([a-zA-Z0-9_\-]+)\(([^"\)\n]+)\)/g, (match, id, text) => {
-    const trimmed = text.trim();
-    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-      const inner = trimmed.slice(1, -1).replace(/"/g, "'");
-      return `${id}("${inner}")`;
-    }
-    return `${id}("${trimmed.replace(/"/g, "'")}")`;
-  });
+  clean = processedLines.join("\n");
 
-  // Auto-quote curly bracket node labels: id{text} -> id{"text"}
-  clean = clean.replace(/([a-zA-Z0-9_\-]+)\{([^"\}\n]+)\}/g, (match, id, text) => {
-    const trimmed = text.trim();
-    if (trimmed.startsWith('"') && trimmed.endsWith('"')) {
-      const inner = trimmed.slice(1, -1).replace(/"/g, "'");
-      return `${id}{"${inner}"}`;
-    }
-    return `${id}{"${trimmed.replace(/"/g, "'")}"}`;
-  });
-
-  // Default to graph TD if missing diagram header
-  const hasHeader = /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(clean);
-  if (!hasHeader) {
-    clean = `graph TD\n  ${clean}`;
-  }
+  // 7. Auto-detect graph header (stripping comments first)
+  const strippedComments = clean.replace(/^%%[^\n]*\n?/gm, "").trim();
+  const hasHeader =
+    /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(
+      strippedComments
+    );
+  if (!hasHeader) clean = `flowchart TD\n  ${clean}`;
 
   return clean;
 }
