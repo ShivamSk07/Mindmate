@@ -5,6 +5,7 @@ import { generateStreamResponse, getCerebrasClient, MODEL } from "@/lib/cerebras
 import { searchWeb } from "@/lib/search";
 import { needsWebSearch, extractSearchQuery, detectSearchIntentWithAI } from "@/lib/intent";
 import { buildNormalPrompt, buildSearchAugmentedPrompt } from "@/lib/prompts";
+import { generateFluxImage, isImageGenerationRequest } from "@/lib/imageGen";
 
 // Helper function to extract and update memory in the background
 async function extractAndUpdateMemory(userId: string, userMessage: string, assistantReply: string) {
@@ -180,9 +181,42 @@ export async function POST(request: NextRequest) {
       content: m.content
     }));
 
-    // 4. Intercept Slash Commands
+    // 4. Intercept Image Generation & Slash Commands
     let userQuery = message.trim();
     let finalForceSearch = force_search;
+
+    const imageReq = isImageGenerationRequest(userQuery);
+    if (imageReq.isImage && imageReq.prompt) {
+      const imgResult = await generateFluxImage(imageReq.prompt);
+      const assistantText = `Here is your generated image for: **"${imageReq.prompt}"**\n\n[Widget: image url="${imgResult.imageUrl}" prompt="${imgResult.prompt}" model="${imgResult.model}"]\n\n*Generated with ${imgResult.model} (1024x1024 HD)*`;
+
+      // Save assistant message to database
+      await prisma.message.create({
+        data: {
+          role: "assistant",
+          content: assistantText,
+          sessionId: conv.id,
+        },
+      });
+
+      // Stream instant response
+      const encoder = new TextEncoder();
+      const customStream = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: assistantText })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, conversation_id: conv.id })}\n\n`));
+          controller.close();
+        },
+      });
+
+      return new Response(customStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+        },
+      });
+    }
 
     if (userQuery.startsWith("/summarize")) {
       userQuery = "Summarize our conversation so far in concise bullet points. Focus on key topics discussed.";

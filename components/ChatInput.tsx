@@ -30,6 +30,8 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
   const [slashIndex, setSlashIndex] = useState(0);
 
   const slashCommands = [
+    { name: "/image", desc: "Generate FLUX.1 HD AI image" },
+    { name: "/imagine", desc: "Create photo with FLUX.1 AI" },
     { name: "/summarize", desc: "Summarize conversation history" },
     { name: "/rewrite", desc: "Rewrite, refine, and polish text" },
     { name: "/research", desc: "Force deep search on a topic" },
