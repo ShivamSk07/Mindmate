@@ -889,7 +889,7 @@ Generate the updated Mermaid diagram now:`;
         task.messages.push({
           id: `msg_ai_${Date.now()}`,
           sender: "agent",
-          content: `Diagram updated successfully: [Rendered Diagram](${newKroki})`,
+          content: `Diagram updated successfully.\n\`\`\`diagram\n${newMermaid}\n\`\`\`\n`,
           timestamp: replyTime,
         });
 
@@ -1248,7 +1248,7 @@ Do not return markdown formatting, code blocks, or explanations.`;
 
   // 3. Generating visual diagram
   setStep(task, "step_mermaid", "running");
-  addLog(task, "reasoning", "Generating visual diagram", "Analyzing code structure to build Mermaid source...", "system");
+  addLog(task, "reasoning", "Generating visual diagram", "Analyzing code structure and relationships...", "system");
   await delay(100);
 
   let codeEvidence = "";
@@ -1311,12 +1311,12 @@ Generate the diagram now:`;
     mermaidCode = completion.choices[0]?.message?.content?.trim() || "";
     mermaidCode = sanitizeMermaid(mermaidCode);
 
-    addLog(task, "success", "Mermaid source code generated", "", "system");
+    addLog(task, "success", "Visual diagram generated", "", "system");
     setStep(task, "step_mermaid", "completed");
   } catch (e: any) {
     setStep(task, "step_mermaid", "failed");
     task.status = "failed";
-    addLog(task, "error", "Diagram generation failed", e.message || "Model failed to output Mermaid", "system");
+    addLog(task, "error", "Diagram generation failed", e.message || "Failed to generate diagram", "system");
     taskStore.set(task.id, task);
     return;
   }

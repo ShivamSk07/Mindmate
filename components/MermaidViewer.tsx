@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Sparkles,
   Download,
@@ -14,46 +14,50 @@ import {
   Maximize2,
   Minimize2,
   Loader2,
-  AlertTriangle
 } from "lucide-react";
 import mermaid from "mermaid";
 
-// Initialize mermaid with custom dark theme configurations
-let isMermaidInitialized = false;
-function initMermaid() {
-  if (typeof window === "undefined" || isMermaidInitialized) return;
+// ─── Renderer Init ───────────────────────────────────────────────────────────
+let isRendererInitialized = false;
+function initRenderer() {
+  if (typeof window === "undefined" || isRendererInitialized) return;
   mermaid.initialize({
     startOnLoad: false,
     theme: "dark",
     securityLevel: "loose",
-    fontFamily: "inherit",
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', Inter, sans-serif",
     themeVariables: {
       darkMode: true,
-      background: "#09090b",
-      primaryColor: "#1e1b4b",
-      primaryTextColor: "#f4f4f5",
-      primaryBorderColor: "#6366f1",
-      lineColor: "#818cf8",
-      secondaryColor: "#18181b",
-      tertiaryColor: "#121215",
-      edgeLabelBackground: "#18181b",
-      nodeBorder: "#4f46e5",
-      mainBkg: "#0f0f12",
-      clusterBkg: "#131318",
-      clusterBorder: "#27272a",
-      titleColor: "#e0e7ff"
-    }
+      background: "#111113",
+      primaryColor: "#1c1c1e",
+      primaryTextColor: "#f2f2f7",
+      primaryBorderColor: "#3a3a3c",
+      lineColor: "#636366",
+      secondaryColor: "#1c1c1e",
+      tertiaryColor: "#111113",
+      edgeLabelBackground: "#1c1c1e",
+      nodeBorder: "#3a3a3c",
+      mainBkg: "#1c1c1e",
+      clusterBkg: "#111113",
+      clusterBorder: "#2c2c2e",
+      titleColor: "#f2f2f7",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif",
+    },
   });
-  isMermaidInitialized = true;
+  isRendererInitialized = true;
 }
 
-// Clean and sanitize Mermaid syntax
+// ─── Sanitizer ───────────────────────────────────────────────────────────────
 export function cleanMermaidCode(rawCode: string): string {
   if (!rawCode) return "";
   let clean = rawCode.trim();
 
   // Strip markdown code fences
   clean = clean.replace(/^```[a-zA-Z0-9_-]*\n?/i, "").replace(/\n?```$/i, "").trim();
+
+  // Remove HTML tags that break diagram parser
+  clean = clean.replace(/<br\s*\/?>/gi, " ");
+  clean = clean.replace(/<[^>]+>/g, "");
 
   // Normalize unicode dashes, smart quotes, non-breaking spaces
   clean = clean
@@ -62,47 +66,38 @@ export function cleanMermaidCode(rawCode: string): string {
     .replace(/[\u2018\u2019]/g, "'")
     .replace(/\u00A0/g, " ");
 
-  // Fix common arrow typos: -- > to -->, == > to ==>
-  clean = clean
-    .replace(/--\s+>/g, "-->")
-    .replace(/==\s+>/g, "==>")
-    .replace(/\.-\s+>/g, "-.->");
+  // Fix arrow typos
+  clean = clean.replace(/--\s+>/g, "-->").replace(/==\s+>/g, "==>").replace(/\.-\s+>/g, ".->");
 
-  // Fix pipe labels with double quotes: |label "foo"| -> |label 'foo'|
-  clean = clean.replace(/\|([^|\n\r]+)\|/g, (_, label) => {
-    return `|${label.replace(/"/g, "'").replace(/</g, "&lt;").replace(/>/g, "&gt;")}|`;
-  });
+  // Fix pipe labels
+  clean = clean.replace(/\|([^|\n\r]+)\|/g, (_, label) =>
+    `|${label.replace(/"/g, "'").replace(/<[^>]+>/g, "")}|`
+  );
 
-  // Check if diagram has a header. If not, default to graph TD
-  const hasHeader = /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(clean);
-  if (!hasHeader) {
-    clean = `graph TD\n  ${clean}`;
-  }
+  // Auto-detect graph header
+  const hasHeader =
+    /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(clean);
+  if (!hasHeader) clean = `flowchart TD\n  ${clean}`;
 
   return clean;
 }
 
-// Generate fast, reliable fallback URLs (mermaid.ink)
-export function getMermaidInkUrls(mermaidCode: string): { svgUrl: string; pngUrl: string } {
+// ─── Fallback render URLs (internal, not exposed to user) ────────────────────
+export function getMermaidInkUrls(diagramCode: string): { svgUrl: string; pngUrl: string } {
   try {
-    const clean = cleanMermaidCode(mermaidCode);
-    const obj = {
-      code: clean,
-      mermaid: { theme: "dark" }
-    };
-    const b64 = typeof window !== "undefined"
-      ? btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
-      : Buffer.from(JSON.stringify(obj)).toString("base64");
-
-    return {
-      svgUrl: `https://mermaid.ink/svg/${b64}`,
-      pngUrl: `https://mermaid.ink/img/${b64}`
-    };
+    const clean = cleanMermaidCode(diagramCode);
+    const obj = { code: clean, mermaid: { theme: "dark" } };
+    const b64 =
+      typeof window !== "undefined"
+        ? btoa(unescape(encodeURIComponent(JSON.stringify(obj))))
+        : Buffer.from(JSON.stringify(obj)).toString("base64");
+    return { svgUrl: `https://mermaid.ink/svg/${b64}`, pngUrl: `https://mermaid.ink/img/${b64}` };
   } catch {
     return { svgUrl: "", pngUrl: "" };
   }
 }
 
+// ─── Props ────────────────────────────────────────────────────────────────────
 interface MermaidViewerProps {
   code: string;
   title?: string;
@@ -110,78 +105,102 @@ interface MermaidViewerProps {
   enableFullscreen?: boolean;
 }
 
+// ─── Component ────────────────────────────────────────────────────────────────
 export function MermaidViewer({
   code,
-  title = "Live Visual Diagram",
+  title = "Visual Diagram",
   className = "",
-  enableFullscreen = true
+  enableFullscreen = true,
 }: MermaidViewerProps) {
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"diagram" | "source">("diagram");
   const [copied, setCopied] = useState(false);
-  const [scale, setScale] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const uniqueIdRef = useRef(`mermaid_${Math.random().toString(36).slice(2, 9)}`);
+
+  // Zoom + Pan
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const offsetStartRef = useRef({ x: 0, y: 0 });
+  const canvasRef = useRef<HTMLDivElement>(null);
+  const uniqueIdRef = useRef(`clarity_diagram_${Math.random().toString(36).slice(2, 9)}`);
 
   const cleanCode = cleanMermaidCode(code);
   const fallbackUrls = getMermaidInkUrls(cleanCode);
 
+  // ── Render ──────────────────────────────────────────────────────────────
   useEffect(() => {
     let isMounted = true;
-    initMermaid();
+    initRenderer();
+    setLoading(true);
+    setError(null);
+    setSvgContent(null);
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
 
-    async function renderDiagram() {
-      setLoading(true);
-      setError(null);
-
+    (async () => {
       try {
-        const id = uniqueIdRef.current;
-        // Attempt native client-side rendering
-        const { svg } = await mermaid.render(id, cleanCode);
-        if (isMounted) {
-          setSvgContent(svg);
-          setError(null);
-          setLoading(false);
-        }
-      } catch (clientErr: any) {
-        console.warn("[MermaidViewer] Client render issue, trying fallback service:", clientErr);
-        // Attempt fallback fetch from mermaid.ink
+        const { svg } = await mermaid.render(uniqueIdRef.current, cleanCode);
+        if (isMounted) { setSvgContent(svg); setLoading(false); }
+      } catch (e: any) {
         if (fallbackUrls.svgUrl) {
           try {
             const res = await fetch(fallbackUrls.svgUrl);
             if (res.ok) {
-              const fallbackSvg = await res.text();
-              if (isMounted && fallbackSvg.includes("<svg")) {
-                setSvgContent(fallbackSvg);
-                setError(null);
-                setLoading(false);
-                return;
+              const svg = await res.text();
+              if (isMounted && svg.includes("<svg")) {
+                setSvgContent(svg); setLoading(false); return;
               }
             }
-          } catch (fetchErr) {
-            console.error("[MermaidViewer] Fallback fetch failed:", fetchErr);
-          }
+          } catch {}
         }
-
         if (isMounted) {
-          setError(clientErr?.message || "Diagram syntax could not be rendered");
+          const msg = (e?.message || "").replace(/Parse error on line \d+:\s*/g, "");
+          setError(msg.length > 140 ? msg.slice(0, 140) + "…" : msg || "Could not render diagram");
           setLoading(false);
         }
       }
-    }
-
-    renderDiagram();
+    })();
 
     return () => {
       isMounted = false;
-      // Clean up any stray error elements created by mermaid
-      const stray = document.getElementById(`d${uniqueIdRef.current}`);
-      if (stray) stray.remove();
+      document.getElementById(`d${uniqueIdRef.current}`)?.remove();
     };
   }, [cleanCode]);
+
+  // ── Pan handlers ─────────────────────────────────────────────────────────
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (viewMode !== "diagram" || !svgContent) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    offsetStartRef.current = { ...offset };
+  }, [viewMode, svgContent, offset]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setOffset({
+      x: offsetStartRef.current.x + (e.clientX - dragStartRef.current.x),
+      y: offsetStartRef.current.y + (e.clientY - dragStartRef.current.y),
+    });
+  }, [isDragging]);
+
+  const handleMouseUp = useCallback(() => setIsDragging(false), []);
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    if (viewMode !== "diagram" || !svgContent) return;
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -0.08 : 0.08;
+    setScale((p) => Math.min(3, Math.max(0.25, p + delta)));
+  }, [viewMode, svgContent]);
+
+  // ── Actions ──────────────────────────────────────────────────────────────
+  const zoomIn = () => setScale((p) => Math.min(3, p + 0.15));
+  const zoomOut = () => setScale((p) => Math.max(0.25, p - 0.15));
+  const resetView = () => { setScale(1); setOffset({ x: 0, y: 0 }); };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(cleanCode);
@@ -191,223 +210,226 @@ export function MermaidViewer({
 
   const handleDownloadSvg = () => {
     if (svgContent) {
-      const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `diagram-${Date.now()}.svg`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      const blob = new Blob([svgContent], { type: "image/svg+xml" });
+      const a = Object.assign(document.createElement("a"), {
+        href: URL.createObjectURL(blob),
+        download: `clarity-diagram-${Date.now()}.svg`,
+      });
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
     } else if (fallbackUrls.svgUrl) {
       window.open(fallbackUrls.svgUrl, "_blank");
     }
   };
 
   const handleDownloadPng = () => {
-    if (fallbackUrls.pngUrl) {
-      window.open(fallbackUrls.pngUrl, "_blank");
-    } else if (svgContent) {
-      // Create canvas and export PNG
-      const svgBlob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
-      const URLObj = window.URL || window.webkitURL || window;
-      const blobURL = URLObj.createObjectURL(svgBlob);
-      const image = new Image();
-      image.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = image.width || 1200;
-        canvas.height = image.height || 800;
-        const context = canvas.getContext("2d");
-        if (context) {
-          context.fillStyle = "#09090b";
-          context.fillRect(0, 0, canvas.width, canvas.height);
-          context.drawImage(image, 0, 0);
-          const png = canvas.toDataURL("image/png");
-          const a = document.createElement("a");
-          a.download = `diagram-${Date.now()}.png`;
-          a.href = png;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-        }
-        URLObj.revokeObjectURL(blobURL);
-      };
-      image.src = blobURL;
-    }
+    if (fallbackUrls.pngUrl) window.open(fallbackUrls.pngUrl, "_blank");
   };
 
-  const zoomIn = () => setScale((prev) => Math.min(prev + 0.15, 2.5));
-  const zoomOut = () => setScale((prev) => Math.max(prev - 0.15, 0.5));
-  const resetZoom = () => setScale(1);
+  const dragCursor = viewMode === "diagram" && svgContent
+    ? (isDragging ? "cursor-grabbing" : "cursor-grab")
+    : "";
 
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div
-      className={`my-4 bg-[#0a0a0d] border border-[#27272a] rounded-2xl overflow-hidden shadow-2xl transition-all ${
-        isFullscreen
-          ? "fixed inset-4 z-50 flex flex-col bg-[#09090b]/98 backdrop-blur-xl border-zinc-700 shadow-2xl"
-          : className
-      }`}
+      className={`my-3 flex flex-col rounded-[14px] overflow-hidden border border-[#2c2c2e] select-none
+        ${isFullscreen
+          ? "fixed inset-3 z-[9999] bg-[#111113]"
+          : `bg-[#111113] ${className}`
+        }`}
     >
-      {/* Header Toolbar */}
-      <div className="flex items-center justify-between px-3.5 py-2.5 bg-[#121216] border-b border-[#27272a] select-none text-xs">
+      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-[#222226] shrink-0 bg-[#111113]">
+
+        {/* Left: Title */}
         <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 font-semibold text-zinc-300">
-            <Sparkles size={13} className="text-violet-400" />
-            <span className="tracking-wide text-[11px] uppercase text-zinc-400">{title}</span>
-          </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-300 border border-violet-500/20 font-medium">
-            Mermaid SVG
-          </span>
+          <Sparkles size={12} className="text-[#8e8e93]" />
+          <span className="text-[12px] font-medium text-[#8e8e93] tracking-tight">{title}</span>
         </div>
 
-        {/* Action Controls */}
-        <div className="flex items-center gap-1.5">
-          {/* Toggle View */}
-          <div className="flex items-center bg-[#18181e] border border-[#27272a] rounded-lg p-0.5">
+        {/* Right: Controls */}
+        <div className="flex items-center gap-1">
+
+          {/* View Toggle */}
+          <div className="flex items-center bg-[#1c1c1e] rounded-[8px] p-0.5 gap-0.5">
             <button
               onClick={() => setViewMode("diagram")}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                viewMode === "diagram"
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-              title="View Diagram"
+              title="Diagram"
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium transition-all duration-100
+                ${viewMode === "diagram"
+                  ? "bg-[#2c2c2e] text-[#f2f2f7]"
+                  : "text-[#636366] hover:text-[#8e8e93]"
+                }`}
             >
-              <Eye size={11} />
+              <Eye size={10} />
               <span>Diagram</span>
             </button>
             <button
               onClick={() => setViewMode("source")}
-              className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
-                viewMode === "source"
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200"
-              }`}
-              title="View Mermaid Code"
+              title="Source"
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium transition-all duration-100
+                ${viewMode === "source"
+                  ? "bg-[#2c2c2e] text-[#f2f2f7]"
+                  : "text-[#636366] hover:text-[#8e8e93]"
+                }`}
             >
-              <Code2 size={11} />
+              <Code2 size={10} />
               <span>Code</span>
             </button>
           </div>
 
+          {/* Zoom — only when diagram rendered */}
           {viewMode === "diagram" && svgContent && (
-            <>
-              {/* Zoom Controls */}
-              <div className="hidden sm:flex items-center bg-[#18181e] border border-[#27272a] rounded-lg p-0.5">
-                <button
-                  onClick={zoomOut}
-                  className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded"
-                  title="Zoom Out"
-                >
-                  <ZoomOut size={12} />
-                </button>
-                <button
-                  onClick={resetZoom}
-                  className="px-1.5 py-0.5 text-[10px] font-mono text-zinc-400 hover:text-white hover:bg-zinc-800 rounded"
-                  title="Reset Zoom"
-                >
-                  {Math.round(scale * 100)}%
-                </button>
-                <button
-                  onClick={zoomIn}
-                  className="p-1 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded"
-                  title="Zoom In"
-                >
-                  <ZoomIn size={12} />
-                </button>
-              </div>
+            <div className="flex items-center bg-[#1c1c1e] rounded-[8px] p-0.5 gap-0.5">
+              <button
+                onClick={zoomOut}
+                title="Zoom out"
+                className="p-1 rounded-[6px] text-[#636366] hover:text-[#f2f2f7] hover:bg-[#2c2c2e] transition-all"
+              >
+                <ZoomOut size={11} />
+              </button>
+              <button
+                onClick={resetView}
+                title="Reset view"
+                className="px-1.5 py-0.5 rounded-[6px] text-[10px] font-mono text-[#636366] hover:text-[#f2f2f7] hover:bg-[#2c2c2e] transition-all min-w-[34px] text-center"
+              >
+                {Math.round(scale * 100)}%
+              </button>
+              <button
+                onClick={zoomIn}
+                title="Zoom in"
+                className="p-1 rounded-[6px] text-[#636366] hover:text-[#f2f2f7] hover:bg-[#2c2c2e] transition-all"
+              >
+                <ZoomIn size={11} />
+              </button>
+            </div>
+          )}
 
-              {/* Downloads */}
+          {/* Divider */}
+          <div className="w-px h-3.5 bg-[#2c2c2e] mx-0.5" />
+
+          {/* Downloads */}
+          {svgContent && viewMode === "diagram" && (
+            <>
               <button
                 onClick={handleDownloadSvg}
-                className="flex items-center gap-1 px-2 py-1 bg-[#18181e] hover:bg-[#27272a] border border-[#27272a] text-zinc-300 hover:text-white rounded-lg text-[11px] font-medium transition-all"
                 title="Download SVG"
+                className="flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-medium text-[#636366] hover:text-[#f2f2f7] hover:bg-[#1c1c1e] transition-all"
               >
-                <Download size={11} />
-                <span className="hidden sm:inline">SVG</span>
+                <Download size={10} />
+                <span>SVG</span>
               </button>
-
               <button
                 onClick={handleDownloadPng}
-                className="flex items-center gap-1 px-2 py-1 bg-[#18181e] hover:bg-[#27272a] border border-[#27272a] text-zinc-300 hover:text-white rounded-lg text-[11px] font-medium transition-all"
                 title="Download PNG"
+                className="flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-medium text-[#636366] hover:text-[#f2f2f7] hover:bg-[#1c1c1e] transition-all"
               >
-                <Download size={11} />
-                <span className="hidden sm:inline">PNG</span>
+                <Download size={10} />
+                <span>PNG</span>
               </button>
+              <div className="w-px h-3.5 bg-[#2c2c2e] mx-0.5" />
             </>
           )}
 
-          {/* Copy code button */}
+          {/* Copy */}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2 py-1 bg-[#18181e] hover:bg-[#27272a] border border-[#27272a] text-zinc-300 hover:text-white rounded-lg text-[11px] font-medium transition-all"
-            title="Copy Mermaid Source"
+            title="Copy source"
+            className={`flex items-center gap-1 px-2 py-1 rounded-[8px] text-[11px] font-medium transition-all
+              ${copied ? "text-[#30d158]" : "text-[#636366] hover:text-[#f2f2f7] hover:bg-[#1c1c1e]"}`}
           >
-            {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-            <span className="hidden sm:inline">{copied ? "Copied" : "Copy"}</span>
+            {copied ? <Check size={10} /> : <Copy size={10} />}
+            <span>{copied ? "Copied" : "Copy"}</span>
           </button>
 
-          {/* Fullscreen button */}
+          {/* Fullscreen */}
           {enableFullscreen && (
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-1.5 bg-[#18181e] hover:bg-[#27272a] border border-[#27272a] text-zinc-300 hover:text-white rounded-lg text-[11px] transition-all"
-              title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              className="p-1 rounded-[8px] text-[#636366] hover:text-[#f2f2f7] hover:bg-[#1c1c1e] transition-all"
             >
-              {isFullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+              {isFullscreen ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
             </button>
           )}
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* ── Canvas ──────────────────────────────────────────────────────── */}
       <div
-        ref={containerRef}
-        className={`w-full overflow-auto bg-[#070709] transition-all ${
-          isFullscreen ? "flex-1 flex items-center justify-center p-6 min-h-0" : "p-4 min-h-[180px]"
-        }`}
+        ref={canvasRef}
+        className={`relative overflow-hidden bg-[#0a0a0b] flex-1 ${dragCursor}
+          ${isFullscreen ? "min-h-0" : "min-h-[220px] max-h-[500px]"}`}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
+        style={{ userSelect: "none" }}
       >
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-2 text-zinc-400">
-            <Loader2 size={18} className="animate-spin text-violet-400" />
-            <span className="text-xs">Rendering live diagram...</span>
+        {/* Loading */}
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center gap-2">
+            <Loader2 size={14} className="animate-spin text-[#636366]" />
+            <span className="text-[11px] text-[#636366]">Rendering…</span>
           </div>
-        ) : viewMode === "source" ? (
-          <div className="w-full">
-            <pre className="p-4 bg-[#0d0d11] border border-[#27272a] rounded-xl text-xs font-mono text-zinc-300 overflow-x-auto leading-relaxed whitespace-pre">
+        )}
+
+        {/* Source view */}
+        {!loading && viewMode === "source" && (
+          <div className="absolute inset-0 overflow-auto p-4">
+            <pre
+              className="text-[12px] font-mono text-[#8e8e93] leading-relaxed whitespace-pre bg-transparent"
+              style={{ fontFamily: "'JetBrains Mono', 'SF Mono', monospace" }}
+            >
               {cleanCode}
             </pre>
           </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-            <div className="flex items-center gap-2 text-amber-400 text-xs font-semibold mb-2">
-              <AlertTriangle size={15} />
-              <span>Diagram Rendering Notice</span>
-            </div>
-            <p className="text-xs text-zinc-400 max-w-md mb-4">
-              {error}
-            </p>
-            <pre className="p-3 bg-[#111115] border border-[#27272a] rounded-lg text-[11px] font-mono text-zinc-300 text-left max-w-full overflow-x-auto">
-              {cleanCode}
-            </pre>
+        )}
+
+        {/* Error state */}
+        {!loading && viewMode === "diagram" && error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6">
+            <span className="text-[12px] font-medium text-[#8e8e93]">Could not render diagram</span>
+            <p className="text-[11px] text-[#636366] max-w-sm text-center leading-relaxed">{error}</p>
+            <button
+              onClick={() => setViewMode("source")}
+              className="text-[11px] px-3 py-1 rounded-[8px] bg-[#1c1c1e] border border-[#2c2c2e] text-[#8e8e93] hover:text-[#f2f2f7] transition-all"
+            >
+              View source
+            </button>
           </div>
-        ) : svgContent ? (
-          <div
-            className="flex items-center justify-center w-full min-h-[160px] overflow-auto transition-transform"
-            style={{
-              transform: `scale(${scale})`,
-              transformOrigin: "center center"
-            }}
-            dangerouslySetInnerHTML={{ __html: svgContent }}
-          />
-        ) : (
-          <div className="flex items-center justify-center py-8 text-xs text-zinc-500">
-            No diagram output
+        )}
+
+        {/* Diagram */}
+        {!loading && viewMode === "diagram" && !error && svgContent && (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div
+              style={{
+                transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+                transformOrigin: "center center",
+                transition: isDragging ? "none" : "transform 0.06s ease-out",
+                pointerEvents: "none",
+              }}
+              dangerouslySetInnerHTML={{ __html: svgContent }}
+            />
           </div>
         )}
       </div>
+
+      {/* ── Footer ──────────────────────────────────────────────────────── */}
+      {viewMode === "diagram" && svgContent && !loading && (
+        <div className="flex items-center justify-between px-3 py-1 border-t border-[#222226] shrink-0 bg-[#111113]">
+          <span className="text-[10px] text-[#3a3a3c]">Scroll to zoom · Drag to pan</span>
+          <button
+            onClick={resetView}
+            className="flex items-center gap-1 text-[10px] text-[#3a3a3c] hover:text-[#636366] transition-colors"
+          >
+            <RotateCcw size={9} />
+            <span>Reset</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }
