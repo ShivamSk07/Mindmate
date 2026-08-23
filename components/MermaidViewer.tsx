@@ -6,8 +6,6 @@ import {
   Download,
   Copy,
   Check,
-  Code2,
-  Eye,
   ZoomIn,
   ZoomOut,
   RotateCcw,
@@ -71,8 +69,28 @@ export function cleanMermaidCode(rawCode: string): string {
 
   // Fix pipe labels
   clean = clean.replace(/\|([^|\n\r]+)\|/g, (_, label) =>
-    `|${label.replace(/"/g, "'").replace(/<[^>]+>/g, "")}|`
+    `|${label.replace(/"/g, "'").replace(/<[^>]+>/g, "").trim()}|`
   );
+
+  // Fix unquoted node labels with parentheses or special chars:
+  // 1. Cylinder: id[(text)] -> id[("text")]
+  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\[\(\s*(?!"|\()([^\]\r\n]*?)\s*\)\]/g, '$1[("$2")]');
+  // 2. Stadium: id([text]) -> id(["text"])
+  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\(\[\s*(?!"|\()([^\]\r\n]*?)\s*\]\)/g, '$1(["$2"])');
+  // 3. Subroutine: id[[text]] -> id[["text"]]
+  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\[\[\s*(?!"|\[)([^\]\r\n]*?)\s*\]\]/g, '$1[["$2"]]');
+  // 4. Circle: id((text)) -> id(("text"))
+  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\(\(\s*(?!"|\()([^)\r\n]*?)\s*\)\)/g, '$1(("$2"))');
+  // 5. Hexagon: id{{text}} -> id{{"text"}}
+  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\{\{\s*(?!"|\{)([^}\r\n]*?)\s*\}\}/g, '$1{{"$2"}}');
+  // 6. Rhombus: id{text} -> id{"text"}
+  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\{\s*(?!"|\{)([^}\r\n]*?)\s*\}/g, '$1{"$2"}');
+  // 7. Rectangle: id[text] -> id["text"]
+  clean = clean.replace(/(\b[a-zA-Z0-9_-]+)\[\s*(?!"|\[|\()([^\]\r\n]*?)\s*\]/g, (match, id, text) => {
+    if (text.startsWith('"') && text.endsWith('"')) return match;
+    const safeText = text.replace(/"/g, "'");
+    return `${id}["${safeText}"]`;
+  });
 
   // Auto-detect graph header (stripping comments first)
   const strippedComments = clean.replace(/^%%[^\n]*\n?/gm, "").trim();
@@ -126,7 +144,6 @@ export function MermaidViewer({
   const [svgContent, setSvgContent] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<"diagram" | "source">("diagram");
   const [copied, setCopied] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -184,12 +201,12 @@ export function MermaidViewer({
 
   // ── Pan handlers ─────────────────────────────────────────────────────────
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (viewMode !== "diagram" || !svgContent) return;
+    if (!svgContent) return;
     e.preventDefault();
     setIsDragging(true);
     dragStartRef.current = { x: e.clientX, y: e.clientY };
     offsetStartRef.current = { ...offset };
-  }, [viewMode, svgContent, offset]);
+  }, [svgContent, offset]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!isDragging) return;
@@ -202,11 +219,11 @@ export function MermaidViewer({
   const handleMouseUp = useCallback(() => setIsDragging(false), []);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (viewMode !== "diagram" || !svgContent) return;
+    if (!svgContent) return;
     e.preventDefault();
     const delta = e.deltaY > 0 ? -0.08 : 0.08;
     setScale((p) => Math.min(3, Math.max(0.25, p + delta)));
-  }, [viewMode, svgContent]);
+  }, [svgContent]);
 
   // ── Actions ──────────────────────────────────────────────────────────────
   const zoomIn = () => setScale((p) => Math.min(3, p + 0.15));
@@ -236,7 +253,7 @@ export function MermaidViewer({
     if (fallbackUrls.pngUrl) window.open(fallbackUrls.pngUrl, "_blank");
   };
 
-  const dragCursor = viewMode === "diagram" && svgContent
+  const dragCursor = svgContent
     ? (isDragging ? "cursor-grabbing" : "cursor-grab")
     : "";
 
@@ -261,36 +278,8 @@ export function MermaidViewer({
         {/* Right: Controls */}
         <div className="flex items-center gap-1">
 
-          {/* View Toggle */}
-          <div className="flex items-center bg-[#1c1c1e] rounded-[8px] p-0.5 gap-0.5">
-            <button
-              onClick={() => setViewMode("diagram")}
-              title="Diagram"
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium transition-all duration-100
-                ${viewMode === "diagram"
-                  ? "bg-[#2c2c2e] text-[#f2f2f7]"
-                  : "text-[#636366] hover:text-[#8e8e93]"
-                }`}
-            >
-              <Eye size={10} />
-              <span>Diagram</span>
-            </button>
-            <button
-              onClick={() => setViewMode("source")}
-              title="Source"
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[11px] font-medium transition-all duration-100
-                ${viewMode === "source"
-                  ? "bg-[#2c2c2e] text-[#f2f2f7]"
-                  : "text-[#636366] hover:text-[#8e8e93]"
-                }`}
-            >
-              <Code2 size={10} />
-              <span>Code</span>
-            </button>
-          </div>
-
-          {/* Zoom — only when diagram rendered */}
-          {viewMode === "diagram" && svgContent && (
+          {/* Zoom Controls */}
+          {svgContent && (
             <div className="flex items-center bg-[#1c1c1e] rounded-[8px] p-0.5 gap-0.5">
               <button
                 onClick={zoomOut}
@@ -301,7 +290,7 @@ export function MermaidViewer({
               </button>
               <button
                 onClick={resetView}
-                title="Reset view"
+                title="Reset"
                 className="px-1.5 py-0.5 rounded-[6px] text-[10px] font-mono text-[#636366] hover:text-[#f2f2f7] hover:bg-[#2c2c2e] transition-all min-w-[34px] text-center"
               >
                 {Math.round(scale * 100)}%
@@ -317,10 +306,10 @@ export function MermaidViewer({
           )}
 
           {/* Divider */}
-          <div className="w-px h-3.5 bg-[#2c2c2e] mx-0.5" />
+          {svgContent && <div className="w-px h-3.5 bg-[#2c2c2e] mx-0.5" />}
 
           {/* Downloads */}
-          {svgContent && viewMode === "diagram" && (
+          {svgContent && (
             <>
               <button
                 onClick={handleDownloadSvg}
@@ -386,34 +375,16 @@ export function MermaidViewer({
           </div>
         )}
 
-        {/* Source view */}
-        {!loading && viewMode === "source" && (
-          <div className="absolute inset-0 overflow-auto p-4">
-            <pre
-              className="text-[12px] font-mono text-[#8e8e93] leading-relaxed whitespace-pre bg-transparent"
-              style={{ fontFamily: "'JetBrains Mono', 'SF Mono', monospace" }}
-            >
-              {cleanCode}
-            </pre>
-          </div>
-        )}
-
         {/* Error state */}
-        {!loading && viewMode === "diagram" && error && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6">
+        {!loading && error && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6">
             <span className="text-[12px] font-medium text-[#8e8e93]">Could not render diagram</span>
             <p className="text-[11px] text-[#636366] max-w-sm text-center leading-relaxed">{error}</p>
-            <button
-              onClick={() => setViewMode("source")}
-              className="text-[11px] px-3 py-1 rounded-[8px] bg-[#1c1c1e] border border-[#2c2c2e] text-[#8e8e93] hover:text-[#f2f2f7] transition-all"
-            >
-              View source
-            </button>
           </div>
         )}
 
         {/* Diagram */}
-        {!loading && viewMode === "diagram" && !error && svgContent && (
+        {!loading && !error && svgContent && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div
               style={{
@@ -429,7 +400,7 @@ export function MermaidViewer({
       </div>
 
       {/* ── Footer ──────────────────────────────────────────────────────── */}
-      {viewMode === "diagram" && svgContent && !loading && (
+      {svgContent && !loading && (
         <div className="flex items-center justify-between px-3 py-1 border-t border-[#222226] shrink-0 bg-[#111113]">
           <span className="text-[10px] text-[#3a3a3c]">Scroll to zoom · Drag to pan</span>
           <button
