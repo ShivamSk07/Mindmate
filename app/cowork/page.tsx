@@ -34,6 +34,7 @@ import {
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import IntegrationsModal from "@/components/IntegrationsModal";
 import MermaidViewer, { isDiagramCode } from "@/components/MermaidViewer";
 
 interface IntegrationItem {
