@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import type { Message } from "@/types";
-import { Sparkles, CornerDownLeft, Copy, Check } from "lucide-react";
+import { Sparkles, CornerDownLeft, Copy, Check, HelpCircle, CheckCircle2, Languages, ArrowRight } from "lucide-react";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -27,6 +27,59 @@ interface ChatWindowProps {
   activeFolder: string | null;
   sessionId?: string;
   onExtractNewChat?: (selectedText: string) => void;
+}
+
+/**
+ * Intelligent contextual next-step suggestion generator
+ */
+function getPredictiveFollowUps(lastAssistantMsg: string, lastUserMsg: string): string[] {
+  const content = (lastAssistantMsg + " " + lastUserMsg).toLowerCase();
+
+  if (content.includes("error") || content.includes("bug") || content.includes("exception") || content.includes("fail") || content.includes("issue")) {
+    return [
+      "What else could cause this issue?",
+      "Show how to write a test to prevent this",
+      "What are the best practices to handle this safely?"
+    ];
+  }
+
+  if (content.includes("function") || content.includes("class") || content.includes("const ") || content.includes("import ") || content.includes("component") || content.includes("api") || content.includes("code")) {
+    return [
+      "Show a complete working code example",
+      "What are the common edge cases and pitfalls?",
+      "How can we optimize performance here?"
+    ];
+  }
+
+  if (content.includes("resume") || content.includes("pdf") || content.includes("document") || content.includes("review") || content.includes("cv")) {
+    return [
+      "Suggest 3 high-impact improvements",
+      "What are the main strengths and weaknesses?",
+      "Format key takeaways into actionable steps"
+    ];
+  }
+
+  if (content.includes("compare") || content.includes("difference") || content.includes("vs") || content.includes("which is better")) {
+    return [
+      "Give a summary comparison table",
+      "Which one should I choose for production?",
+      "Can you provide a benchmark comparison?"
+    ];
+  }
+
+  if (content.includes("plan") || content.includes("step") || content.includes("how to") || content.includes("guide") || content.includes("strategy")) {
+    return [
+      "Break down the first step in detail",
+      "What are the biggest risks to watch out for?",
+      "Can you provide a timeline estimation?"
+    ];
+  }
+
+  return [
+    "Can you give a practical real-world example?",
+    "Explain this in 3 concise bullet points",
+    "What are the pros and cons to consider?"
+  ];
 }
 
 export function ChatWindow({
@@ -66,7 +119,7 @@ export function ChatWindow({
             selectedTextRef.current = text;
             setSelectedText(text);
 
-            const popoverWidth = 270;
+            const popoverWidth = 360;
             const popoverHeight = 44;
 
             let top = rect.top - popoverHeight - 8;
@@ -115,26 +168,28 @@ export function ChatWindow({
     }
   };
 
-  const handleInsertToInput = () => {
+  const handleQuickAsk = (actionType: "explain" | "simplify" | "factcheck" | "translate" | "newchat" | "sendtoinput") => {
     const targetText = selectedTextRef.current || selectedText;
-    if (targetText) {
-      setInjectedInputText(targetText);
-      setSelectedText("");
-      setSelectionPos(null);
-      selectedTextRef.current = "";
-      window.getSelection()?.removeAllRanges();
-      setTimeout(() => setInjectedInputText(""), 100);
-    }
-  };
+    if (!targetText) return;
 
-  const handleCreateNewChatWithSelection = () => {
-    const targetText = selectedTextRef.current || selectedText;
-    if (targetText && onExtractNewChat) {
+    setSelectedText("");
+    setSelectionPos(null);
+    selectedTextRef.current = "";
+    window.getSelection()?.removeAllRanges();
+
+    if (actionType === "explain") {
+      onSend(`Explain this specifically:\n\n"${targetText}"`);
+    } else if (actionType === "simplify") {
+      onSend(`Simplify this and explain in plain, clear terms:\n\n"${targetText}"`);
+    } else if (actionType === "factcheck") {
+      onSend(`Fact-check and verify if this claim or statement is accurate:\n\n"${targetText}"`, true);
+    } else if (actionType === "translate") {
+      onSend(`Translate this text into Hindi:\n\n"${targetText}"`);
+    } else if (actionType === "newchat" && onExtractNewChat) {
       onExtractNewChat(targetText);
-      setSelectedText("");
-      setSelectionPos(null);
-      selectedTextRef.current = "";
-      window.getSelection()?.removeAllRanges();
+    } else if (actionType === "sendtoinput") {
+      setInjectedInputText(targetText);
+      setTimeout(() => setInjectedInputText(""), 100);
     }
   };
 
@@ -143,7 +198,7 @@ export function ChatWindow({
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] main-chat overflow-hidden relative">
 
-      {/* Floating Selection Extraction Action Bar */}
+      {/* Floating Selection Instant Ask Popover — Minimalist Dark Theme */}
       {selectedText && selectionPos && (
         <div
           id="selection-action-popover"
@@ -152,47 +207,50 @@ export function ChatWindow({
             e.preventDefault();
             e.stopPropagation();
           }}
-          className="fixed z-50 flex items-center gap-1 p-1 bg-[#09090b] text-white border border-[#27272a] rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.8)] animate-fade-in"
+          className="fixed z-50 flex items-center gap-1 p-1 bg-[#0c0c0e] text-zinc-200 border border-zinc-800 rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.85)] animate-fade-in text-xs select-none"
         >
-          {onExtractNewChat && (
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleCreateNewChatWithSelection();
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-[#18181b] hover:bg-[#27272a] border border-[#27272a] transition-all active:scale-95"
-              title="Create New Chat with Selected Paragraph"
-            >
-              <Sparkles size={13} className="text-white" />
-              <span>New Chat</span>
-            </button>
-          )}
-
           <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleInsertToInput();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-300 hover:text-white hover:bg-[#18181b] transition-all active:scale-95"
-            title="Insert into Input"
+            onClick={() => handleQuickAsk("explain")}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95"
+            title="Explain selected text"
           >
-            <CornerDownLeft size={13} className="text-emerald-400" />
-            <span>Send to Input</span>
+            <HelpCircle size={13} className="text-zinc-400" />
+            <span className="font-medium">Explain</span>
           </button>
 
           <button
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              handleCopySelection();
-            }}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-[#18181b] transition-all"
-            title="Copy Text"
+            onClick={() => handleQuickAsk("simplify")}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95"
+            title="Simplify in plain terms"
+          >
+            <Sparkles size={13} className="text-zinc-400" />
+            <span className="font-medium">Simplify</span>
+          </button>
+
+          <button
+            onClick={() => handleQuickAsk("factcheck")}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95"
+            title="Fact check this statement"
+          >
+            <CheckCircle2 size={13} className="text-zinc-400" />
+            <span className="font-medium">Fact Check</span>
+          </button>
+
+          <button
+            onClick={() => handleQuickAsk("translate")}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95"
+            title="Translate to Hindi"
+          >
+            <Languages size={13} className="text-zinc-400" />
+            <span className="font-medium">Translate</span>
+          </button>
+
+          <div className="w-[1px] h-4 bg-zinc-800 mx-0.5" />
+
+          <button
+            onClick={handleCopySelection}
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/90 transition-all"
+            title="Copy text"
           >
             {copiedSelection ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}
           </button>
@@ -239,6 +297,31 @@ export function ChatWindow({
                 />
               ))}
             </div>
+
+            {/* Predictive Follow-Up Suggestions — Minimalist Dark Theme */}
+            {!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && messages[messages.length - 1]?.content && (
+              <div className="flex flex-col gap-2 mt-4 mb-3 animate-fade-in pl-1">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                  <Sparkles size={11} className="text-zinc-500" />
+                  <span>Suggested Next Steps</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {getPredictiveFollowUps(
+                    messages[messages.length - 1]?.content || "",
+                    messages.length > 1 ? messages[messages.length - 2]?.content || "" : ""
+                  ).map((suggestion, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => onSend(suggestion)}
+                      className="group flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0e0e11] hover:bg-[#18181c] border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all active:scale-95 shadow-none"
+                    >
+                      <span className="font-normal">{suggestion}</span>
+                      <ArrowRight size={11} className="text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Loading Indicator — ONLY show when response has not started streaming yet */}
             {isLoading && (!messages.length || messages[messages.length - 1]?.role === "user" || !messages[messages.length - 1]?.content) && (
