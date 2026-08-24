@@ -74,10 +74,52 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
   const basePrompt = cleanPrompt || rawPrompt.trim();
   const prompt = enhancePrompt(basePrompt);
 
+  const siliconKey = process.env.SILICONFLOW_API_KEY || "";
   const togetherKey = process.env.TOGETHER_API_KEY || "";
   const falKey = process.env.FAL_KEY || process.env.FAL_API_KEY || "";
 
-  // 1. Together AI (paid key required)
+  // 1. SiliconFlow (FLUX.1 Studio Ultra-HD)
+  if (siliconKey) {
+    try {
+      // Normalize dimensions to SiliconFlow supported resolutions
+      let imageSize = "1024x1024";
+      if (width > height) imageSize = "1024x768";
+      else if (height > width) imageSize = "768x1024";
+
+      const res = await fetch("https://api.siliconflow.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${siliconKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "black-forest-labs/FLUX.1-schnell",
+          prompt,
+          image_size: imageSize,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const imgUrl = data.images?.[0]?.url;
+        if (imgUrl) {
+          return {
+            success: true,
+            imageUrl: imgUrl,
+            prompt: basePrompt,
+            model: "FLUX.1 Schnell (SiliconFlow Ultra-HD)",
+            source: "huggingface",
+          };
+        }
+      } else {
+        console.warn("[SiliconFlow Response Status]:", res.status);
+      }
+    } catch (e) {
+      console.warn("[SiliconFlow Image Gen Fallback]:", e);
+    }
+  }
+
+  // 2. Together AI (paid key required)
   if (togetherKey) {
     try {
       const res = await fetch("https://api.together.xyz/v1/images/generations", {
