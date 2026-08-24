@@ -158,24 +158,25 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
     }
   }
 
-  // 4. Free High-Resolution Pollinations FLUX Engine (Clean Unenhanced Direct FLUX.1)
+  // 4. Free High-Resolution Midjourney v6 & SDXL Engine (Sharp, Vibrant, Non-Blurry)
   const seed = Math.floor(Math.random() * 1000000);
   const lower = prompt.toLowerCase();
 
-  let selectedModel = requestedModel || "flux";
+  // Default to Midjourney v6 for sharp cinematic focus and no blur
+  let selectedModel = requestedModel || "midjourney";
   if (!requestedModel) {
     if (lower.includes("anime") || lower.includes("manga") || lower.includes("chibi")) {
       selectedModel = "flux-anime";
     } else if (lower.includes("3d") || lower.includes("render") || lower.includes("pixar") || lower.includes("cgi")) {
       selectedModel = "flux-3d";
-    } else if (lower.includes("fast") || lower.includes("quick") || lower.includes("turbo")) {
+    } else if (lower.includes("fast") || lower.includes("quick") || lower.includes("turbo") || lower.includes("sdxl")) {
       selectedModel = "turbo";
-    } else if (lower.includes("cinematic") || lower.includes("midjourney") || lower.includes("artistic")) {
-      selectedModel = "midjourney";
+    } else if (lower.includes("flux")) {
+      selectedModel = "flux";
     }
   }
 
-  // Direct clean FLUX.1 render URL (without prompt distortion params)
+  // Direct clean render URL (high definition 1024x1024)
   const serverlessUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(
     prompt
   )}?model=${encodeURIComponent(selectedModel)}&width=1024&height=1024&nologo=true&private=true&seed=${seed}`;
