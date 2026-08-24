@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
     const imageReq = isImageGenerationRequest(userQuery);
     if (imageReq.isImage && imageReq.prompt) {
       const imgResult = await generateFluxImage(imageReq.prompt);
-      const assistantText = `Here is your generated image for: **"${imageReq.prompt}"**\n\n[Widget: image url="${imgResult.imageUrl}" prompt="${imgResult.prompt}" model="${imgResult.model}"]\n\n*Generated with ${imgResult.model} (1024x1024 HD)*`;
+      const assistantText = `[Widget: image url="${imgResult.imageUrl}" prompt="${imgResult.prompt}"]`;
 
       // Save assistant message to database
       await prisma.message.create({

@@ -227,60 +227,33 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                       return (
                         <div key={index} className="w-full">
                           {(part.widgetType === "image" || part.widgetType === "flux") && (
-                            <div className="w-full max-w-xl rounded-2xl overflow-hidden border border-white/[0.08] bg-[#0c0c10]/80 backdrop-blur-2xl p-3 my-3 shadow-[0_12px_40px_rgba(0,0,0,0.6)] animate-fade-in flex flex-col gap-2.5">
-                              {/* Header */}
-                              <div className="flex items-center justify-between px-1">
-                                <div className="flex items-center gap-1.5">
-                                  <Sparkles size={13} className="text-violet-400" />
-                                  <span className="text-[11px] font-semibold text-zinc-200">
-                                    {part.props.model || "FLUX.1-schnell HD"}
-                                  </span>
-                                </div>
-                                <span className="text-[10px] font-mono text-zinc-500 bg-white/[0.04] border border-white/[0.06] rounded-md px-2 py-0.5">
-                                  1024 × 1024
-                                </span>
-                              </div>
-
-                              {/* Image Display */}
-                              <div className="relative w-full rounded-xl overflow-hidden bg-black/40 border border-white/[0.05] group/img flex items-center justify-center">
-                                <img
-                                  src={part.props.url}
-                                  alt={part.props.prompt || "Generated Image"}
-                                  className="w-full h-auto max-h-[460px] object-contain rounded-xl transition-transform duration-300 group-hover/img:scale-[1.01]"
-                                  loading="lazy"
-                                />
-                              </div>
-
-                              {/* Footer Actions */}
-                              <div className="flex items-center justify-between gap-2 pt-1">
-                                <p className="text-[11px] text-zinc-400 truncate flex-1 font-sans italic" title={part.props.prompt}>
-                                  &ldquo;{part.props.prompt}&rdquo;
-                                </p>
-                                <div className="flex items-center gap-1.5 shrink-0">
+                            <div className="relative my-2 w-full max-w-xl group/img">
+                              <img
+                                src={part.props.url}
+                                alt={part.props.prompt || "Generated Image"}
+                                className="w-full h-auto max-h-[500px] object-contain rounded-xl shadow-md transition-transform duration-200"
+                                loading="lazy"
+                              />
+                              <div className="absolute bottom-3 right-3 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center gap-1.5 bg-black/70 backdrop-blur-md p-1.5 rounded-lg border border-white/10 shadow-lg">
+                                {part.props.prompt && (
                                   <button
-                                    onClick={() => {
-                                      if (part.props.prompt) {
-                                        navigator.clipboard.writeText(part.props.prompt);
-                                      }
-                                    }}
-                                    className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-zinc-300 hover:text-white transition-all text-xs flex items-center gap-1"
+                                    onClick={() => navigator.clipboard.writeText(part.props.prompt)}
+                                    className="p-1.5 rounded-md hover:bg-white/10 text-zinc-300 hover:text-white transition-colors"
                                     title="Copy Prompt"
                                   >
-                                    <Copy size={11} />
-                                    <span className="text-[10px]">Prompt</span>
+                                    <Copy size={13} />
                                   </button>
-                                  <a
-                                    href={part.props.url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    download={`flux-image-${Date.now()}.png`}
-                                    className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/20 transition-all active:scale-95"
-                                    title="Download HD Image"
-                                  >
-                                    <Download size={11} />
-                                    <span className="text-[10px] font-semibold">Download</span>
-                                  </a>
-                                </div>
+                                )}
+                                <a
+                                  href={part.props.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  download={`image-${Date.now()}.png`}
+                                  className="p-1.5 rounded-md hover:bg-white/10 text-zinc-300 hover:text-white transition-colors"
+                                  title="Download Image"
+                                >
+                                  <Download size={13} />
+                                </a>
                               </div>
                             </div>
                           )}
