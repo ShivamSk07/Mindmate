@@ -12,8 +12,44 @@ export interface GeneratedImageResult {
  * Enhanced FLUX.1 Image Generation Engine
  * Supports Hugging Face Inference Router with zero-fail serverless fallbacks.
  */
+/**
+ * Extracts requested aspect ratio and computes optimal HD pixel dimensions.
+ */
+function resolveDimensions(prompt: string): { width: number; height: number; cleanPrompt: string } {
+  let clean = prompt;
+  const lower = prompt.toLowerCase();
+
+  // Explicit aspect ratio parameters: --ar 16:9, --ar 9:16, 16:9, 9:16, etc.
+  const arMatch = clean.match(/--ar\s*(\d+:\d+)/i) || clean.match(/\b(16:9|9:16|4:3|3:4|21:9|1:1)\b/i);
+  if (arMatch) {
+    clean = clean.replace(/--ar\s*\d+:\d+/gi, "").replace(/\b(16:9|9:16|4:3|3:4|21:9|1:1)\b/gi, "").trim();
+    const ratio = arMatch[1];
+    if (ratio === "16:9") return { width: 1280, height: 720, cleanPrompt: clean };
+    if (ratio === "9:16") return { width: 720, height: 1280, cleanPrompt: clean };
+    if (ratio === "4:3") return { width: 1152, height: 864, cleanPrompt: clean };
+    if (ratio === "3:4") return { width: 864, height: 1152, cleanPrompt: clean };
+    if (ratio === "21:9") return { width: 1344, height: 576, cleanPrompt: clean };
+    if (ratio === "1:1") return { width: 1024, height: 1024, cleanPrompt: clean };
+  }
+
+  // Keyword heuristic detection
+  if (lower.includes("landscape") || lower.includes("wallpaper") || lower.includes("widescreen") || lower.includes("banner") || lower.includes("horizontal")) {
+    return { width: 1280, height: 720, cleanPrompt: clean };
+  }
+  if (lower.includes("portrait") || lower.includes("vertical") || lower.includes("mobile") || lower.includes("story") || lower.includes("phone wallpaper")) {
+    return { width: 720, height: 1280, cleanPrompt: clean };
+  }
+  if (lower.includes("ultrawide") || lower.includes("cinematic panorama")) {
+    return { width: 1344, height: 576, cleanPrompt: clean };
+  }
+
+  // Default: Crystal Clear HD Square
+  return { width: 1024, height: 1024, cleanPrompt: clean };
+}
+
 export async function generateFluxImage(rawPrompt: string, requestedModel?: string): Promise<GeneratedImageResult> {
-  const prompt = rawPrompt.trim();
+  const { width, height, cleanPrompt } = resolveDimensions(rawPrompt.trim());
+  const prompt = cleanPrompt || rawPrompt.trim();
 
   const togetherKey = process.env.TOGETHER_API_KEY || "";
   const falKey = process.env.FAL_KEY || process.env.FAL_API_KEY || "";
@@ -32,8 +68,8 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
         body: JSON.stringify({
           model: "black-forest-labs/FLUX.1-schnell",
           prompt: prompt,
-          width: 1024,
-          height: 1024,
+          width: width,
+          height: height,
           steps: 4,
           n: 1,
           response_format: "b64_json",
@@ -69,7 +105,7 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
         },
         body: JSON.stringify({
           prompt: prompt,
-          image_size: "square_hd",
+          image_size: { width, height },
           num_inference_steps: 4,
         }),
       });
@@ -176,10 +212,10 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
     }
   }
 
-  // Direct clean render URL (high definition 1024x1024)
+  // Direct clean render URL with dynamic aspect ratio width & height
   const serverlessUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(
     prompt
-  )}?model=${encodeURIComponent(selectedModel)}&width=1024&height=1024&nologo=true&private=true&seed=${seed}`;
+  )}?model=${encodeURIComponent(selectedModel)}&width=${width}&height=${height}&nologo=true&private=true&seed=${seed}`;
 
   return {
     success: true,
