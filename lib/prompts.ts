@@ -122,3 +122,61 @@ INSTRUCTION: Answer the user's question directly and accurately using the real-t
     { role: "user", content: augmentedUserMessage },
   ];
 }
+
+export function buildDocumentAndUrlAugmentedPrompt(
+  userQuery: string,
+  options: {
+    document?: { name: string; content: string };
+    scrapedUrls?: Array<{ url: string; title: string; content: string }>;
+    searchResults?: SearchResult[];
+    chatHistory?: Message[];
+    personaName?: string;
+    personaPrompt?: string;
+    memoryVault?: string;
+  }
+): Message[] {
+  const {
+    document,
+    scrapedUrls = [],
+    searchResults = [],
+    chatHistory = [],
+    personaName = "Clarity",
+    personaPrompt = "Friendly and supportive assistant.",
+    memoryVault = "",
+  } = options;
+
+  const systemPrompt = buildSystemPrompt(personaName, personaPrompt, memoryVault);
+
+  let extraContext = "";
+
+  if (document && document.content.trim()) {
+    extraContext += `\n\n### ATTACHED DOCUMENT: "${document.name}"\n\`\`\`\n${document.content.trim().slice(0, 18000)}\n\`\`\`\nINSTRUCTION: The user has attached the document above. Read, analyze, review, explain, find errors/mistakes, or extract information from it strictly according to the user's prompt.\n`;
+  }
+
+  if (scrapedUrls.length > 0) {
+    const urlBlocks = scrapedUrls
+      .map(
+        (u, i) =>
+          `[Link ${i + 1}: ${u.title || "Page"}] (${u.url})\n\`\`\`\n${u.content.trim().slice(0, 4500)}\n\`\`\``
+      )
+      .join("\n\n");
+    extraContext += `\n\n### LIVE WEBPAGE CONTENT EXTRACTED FROM LINK(S):\n${urlBlocks}\nINSTRUCTION: The user provided live web link(s). Use the extracted page content above to answer questions, analyze profiles (e.g. LinkedIn, GitHub), or summarize articles accurately.\n`;
+  }
+
+  if (searchResults.length > 0) {
+    const searchContext = searchResults
+      .map((r, i) => `[Source ${i + 1}] ${r.title}\nSummary: ${r.snippet}`)
+      .join("\n\n");
+    extraContext += `\n\n### REAL-TIME WEB SEARCH DATA:\n${searchContext}\n`;
+  }
+
+  const finalUserContent = extraContext
+    ? `${userQuery}\n${extraContext}`
+    : userQuery;
+
+  return [
+    { role: "system", content: systemPrompt },
+    ...chatHistory.slice(-5),
+    { role: "user", content: finalUserContent },
+  ];
+}

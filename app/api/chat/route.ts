@@ -4,8 +4,10 @@ import { prisma } from "@/lib/db";
 import { generateStreamResponse, getCerebrasClient, MODEL } from "@/lib/cerebras";
 import { searchWeb } from "@/lib/search";
 import { needsWebSearch, extractSearchQuery, detectSearchIntentWithAI } from "@/lib/intent";
-import { buildNormalPrompt, buildSearchAugmentedPrompt } from "@/lib/prompts";
+import { buildNormalPrompt, buildSearchAugmentedPrompt, buildDocumentAndUrlAugmentedPrompt } from "@/lib/prompts";
 import { generateFluxImage, isImageGenerationRequest } from "@/lib/imageGen";
+import { extractUrlsFromText, scrapeUrlContent } from "@/lib/scraper";
+import { runAutoCleanupIfNeeded } from "@/lib/cleanup";
 
 // Helper function to extract and update memory in the background
 async function extractAndUpdateMemory(userId: string, userMessage: string, assistantReply: string) {
@@ -110,11 +112,26 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { message, conversation_id, persona_id, folder, force_search, mode, tone, length } = body;
+    const {
+      message,
+      conversation_id,
+      persona_id,
+      folder,
+      force_search,
+      mode,
+      tone,
+      length,
+      document_content,
+      document_name,
+      document_id,
+    } = body;
 
     if (!message?.trim()) {
       return NextResponse.json({ error: "Message cannot be empty" }, { status: 400 });
     }
+
+    // Trigger auto cleanup of expired documents (2 min TTL) in background
+    runAutoCleanupIfNeeded().catch(() => {});
 
     let conv;
     // 1. Get or Create Session (Instant without blocking LLM call)
@@ -242,14 +259,61 @@ export async function POST(request: NextRequest) {
     const personaName = conv.activePersona?.name || "Clarity";
     const personaPrompt = conv.activePersona?.systemPrompt || "Friendly and supportive assistant.";
 
-    // 5. Autonomous Real-Time Web Search Trigger (AI + Heuristic)
+    // 5. Document Context Resolution
+    let attachedDocument: { name: string; content: string } | undefined = undefined;
+    if (document_content && document_content.trim()) {
+      attachedDocument = {
+        name: document_name || "Uploaded Document",
+        content: document_content.trim(),
+      };
+    } else {
+      // Check if session has a recently uploaded document
+      try {
+        const latestDoc = await prisma.document.findFirst({
+          where: { sessionId: conv.id },
+          orderBy: { createdAt: "desc" },
+        });
+        if (latestDoc && latestDoc.content) {
+          attachedDocument = {
+            name: latestDoc.filename,
+            content: latestDoc.content,
+          };
+        }
+      } catch (docErr) {
+        console.warn("[Document lookup fallback]:", docErr);
+      }
+    }
+
+    // 6. Live Web Link / URL Detection & Scraping (e.g. LinkedIn, GitHub, Websites, Articles)
+    const detectedUrls = extractUrlsFromText(userQuery);
+    const scrapedUrlsData: Array<{ url: string; title: string; content: string }> = [];
+
+    if (detectedUrls.length > 0) {
+      console.log(`[Live Link Scraper Triggered for ${detectedUrls.length} URL(s)]`);
+      const scrapePromises = detectedUrls.slice(0, 3).map(u => scrapeUrlContent(u, 6000));
+      const scrapedResults = await Promise.all(scrapePromises);
+
+      for (const res of scrapedResults) {
+        if (res.success && res.content) {
+          scrapedUrlsData.push(res);
+          sources.push({
+            title: res.title || res.url,
+            url: res.url,
+          });
+          searched = true;
+        }
+      }
+    }
+
+    // 7. Autonomous Real-Time Web Search Trigger (AI + Heuristic)
     let searchDecision = { needsSearch: false, searchQuery: userQuery };
     if (finalForceSearch) {
       searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
-    } else {
+    } else if (detectedUrls.length === 0 && !attachedDocument) {
       searchDecision = await detectSearchIntentWithAI(userQuery);
     }
 
+    let searchResults: any[] = [];
     if (searchDecision.needsSearch) {
       console.log(`[Autonomous AI Search Triggered]: "${searchDecision.searchQuery}"`);
 
@@ -270,25 +334,24 @@ export async function POST(request: NextRequest) {
 
       if (results.length > 0) {
         searched = true;
-        sources = results.map(r => ({ title: r.title, url: r.url }));
-        queryMessages = buildSearchAugmentedPrompt(
-          userQuery,
-          results,
-          chatHistory,
-          personaName,
-          personaPrompt,
-          memoryVault
-        );
-      } else {
-        // No results even after retry — build a normal prompt but inject instruction to be honest
-        queryMessages = buildNormalPrompt(
-          userQuery,
-          chatHistory,
-          personaName,
-          personaPrompt,
-          memoryVault
-        );
+        searchResults = results;
+        for (const r of results) {
+          sources.push({ title: r.title, url: r.url });
+        }
       }
+    }
+
+    // 8. Build Unified Augmented Prompt
+    if (attachedDocument || scrapedUrlsData.length > 0 || searchResults.length > 0) {
+      queryMessages = buildDocumentAndUrlAugmentedPrompt(userQuery, {
+        document: attachedDocument,
+        scrapedUrls: scrapedUrlsData,
+        searchResults: searchResults,
+        chatHistory,
+        personaName,
+        personaPrompt,
+        memoryVault,
+      });
     } else {
       queryMessages = buildNormalPrompt(
         userQuery,

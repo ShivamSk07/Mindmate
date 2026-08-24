@@ -4,7 +4,16 @@ import { useState, useRef, KeyboardEvent, useEffect } from "react";
 import { Send, Square, Globe, Wand2, Paperclip, Radio } from "lucide-react";
 
 interface ChatInputProps {
-  onSend: (message: string, forceSearch?: boolean, mode?: string, tone?: string, length?: string) => void;
+  onSend: (
+    message: string,
+    forceSearch?: boolean,
+    mode?: string,
+    tone?: string,
+    length?: string,
+    documentContent?: string,
+    documentName?: string,
+    documentId?: string
+  ) => void;
   onStop: () => void;
   isLoading: boolean;
   disabled?: boolean;
@@ -21,7 +30,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
     }
   }, [injectedText]);
 
-  const [attachedFile, setAttachedFile] = useState<{ id: string; name: string; type: string } | null>(null);
+  const [attachedFile, setAttachedFile] = useState<{ id?: string; name: string; content?: string; type: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -51,9 +60,20 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
 
   const handleSend = (forceSearch = false) => {
     const trimmed = input.trim();
-    if (!trimmed || isLoading) return;
-    onSend(trimmed, forceSearch);
+    if ((!trimmed && !attachedFile) || isLoading) return;
+    const finalMsg = trimmed || (attachedFile ? `Please analyze and summarize this attached document: ${attachedFile.name}` : "");
+    onSend(
+      finalMsg,
+      forceSearch,
+      undefined,
+      undefined,
+      undefined,
+      attachedFile?.content,
+      attachedFile?.name,
+      attachedFile?.id
+    );
     setInput("");
+    setAttachedFile(null);
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
@@ -113,15 +133,13 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (!sessionId) {
-      alert("Start a chat first before uploading files.");
-      return;
-    }
 
     setIsUploading(true);
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("sessionId", sessionId);
+    if (sessionId) {
+      formData.append("sessionId", sessionId);
+    }
 
     try {
       const res = await fetch("/api/upload", {
@@ -130,14 +148,15 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "Upload failed");
       }
 
       const data = await res.json();
       setAttachedFile({
-        id: data.documentId,
+        id: data.documentId || undefined,
         name: data.filename,
+        content: data.textContent,
         type: file.type,
       });
     } catch (err: any) {
@@ -229,7 +248,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
           <button
             type="button"
             onClick={triggerFileInput}
-            disabled={isUploading || !sessionId}
+            disabled={isUploading || disabled}
             className="p-1.5 rounded-full text-[#8e8e93] hover:text-white hover:bg-white/[0.08] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed mb-0.5"
             title="Attach Document (PDF, DOCX, CSV, Image)"
           >

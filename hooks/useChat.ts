@@ -17,7 +17,10 @@ export function useChat(initialSessionId?: string) {
     forceSearch?: boolean,
     mode?: string,
     tone?: string,
-    length?: string
+    length?: string,
+    documentContent?: string,
+    documentName?: string,
+    documentId?: string
   ) => {
     if (!content.trim() || isLoading) return;
 
@@ -49,6 +52,9 @@ export function useChat(initialSessionId?: string) {
           mode: mode || "normal",
           tone: tone || "friendly",
           length: length || "medium",
+          document_content: documentContent,
+          document_name: documentName,
+          document_id: documentId,
         }),
         signal: abortControllerRef.current.signal,
       });

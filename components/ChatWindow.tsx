@@ -9,7 +9,16 @@ import { Sparkles, CornerDownLeft, Copy, Check } from "lucide-react";
 interface ChatWindowProps {
   messages: Message[];
   isLoading: boolean;
-  onSend: (message: string, forceSearch?: boolean, mode?: string, tone?: string, length?: string) => void;
+  onSend: (
+    message: string,
+    forceSearch?: boolean,
+    mode?: string,
+    tone?: string,
+    length?: string,
+    documentContent?: string,
+    documentName?: string,
+    documentId?: string
+  ) => void;
   onStop: () => void;
   error?: string | null;
   username: string;

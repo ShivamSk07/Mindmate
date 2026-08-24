@@ -282,8 +282,28 @@ export default function ChatPage() {
   };
 
   // 4. Send Message Wrapper
-  const handleSendMessage = (text: string, forceSearch?: boolean, mode?: string, tone?: string, length?: string) => {
-    sendMessage(text, activePersona?.id, activeFolder, forceSearch, mode, tone, length);
+  const handleSendMessage = (
+    text: string,
+    forceSearch?: boolean,
+    mode?: string,
+    tone?: string,
+    length?: string,
+    documentContent?: string,
+    documentName?: string,
+    documentId?: string
+  ) => {
+    sendMessage(
+      text,
+      activePersona?.id,
+      activeFolder,
+      forceSearch,
+      mode,
+      tone,
+      length,
+      documentContent,
+      documentName,
+      documentId
+    );
   };
 
   // 5. Memory Management
