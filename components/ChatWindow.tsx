@@ -30,48 +30,63 @@ interface ChatWindowProps {
 }
 
 /**
- * Intelligent contextual next-step suggestion generator
+ * Intelligent contextual next-step suggestion generator tightly coupled to conversation context
  */
 function getPredictiveFollowUps(lastAssistantMsg: string, lastUserMsg: string): string[] {
-  const content = (lastAssistantMsg + " " + lastUserMsg).toLowerCase();
+  const combined = (lastAssistantMsg + " " + lastUserMsg).toLowerCase();
+  
+  // Clean last user query to extract topic keywords
+  const cleanTopic = lastUserMsg
+    .replace(/^\[Attachment:[^\]]+\]\s*/i, "")
+    .replace(/^(can you|please|explain|how to|what is|tell me about|write a|show me|help with)\s+/i, "")
+    .trim()
+    .slice(0, 45);
 
-  if (content.includes("error") || content.includes("bug") || content.includes("exception") || content.includes("fail") || content.includes("issue")) {
+  if (combined.includes("```") || combined.includes("function") || combined.includes("const ") || combined.includes("import ") || combined.includes("code") || combined.includes("class ")) {
     return [
-      "What else could cause this issue?",
-      "Show how to write a test to prevent this",
-      "What are the best practices to handle this safely?"
-    ];
-  }
-
-  if (content.includes("function") || content.includes("class") || content.includes("const ") || content.includes("import ") || content.includes("component") || content.includes("api") || content.includes("code")) {
-    return [
-      "Show a complete working code example",
+      cleanTopic ? `Show step-by-step implementation for ${cleanTopic}` : "Show a complete working code example",
       "What are the common edge cases and pitfalls?",
       "How can we optimize performance here?"
     ];
   }
 
-  if (content.includes("resume") || content.includes("pdf") || content.includes("document") || content.includes("review") || content.includes("cv")) {
+  if (combined.includes("error") || combined.includes("bug") || combined.includes("exception") || combined.includes("failed") || combined.includes("crash")) {
     return [
-      "Suggest 3 high-impact improvements",
-      "What are the main strengths and weaknesses?",
-      "Format key takeaways into actionable steps"
+      "What other root causes could trigger this?",
+      "Show how to write a test case to prevent this",
+      "What are the best practices to handle this safely?"
     ];
   }
 
-  if (content.includes("compare") || content.includes("difference") || content.includes("vs") || content.includes("which is better")) {
+  if (combined.includes("resume") || combined.includes("cv") || combined.includes("pdf") || combined.includes("document") || combined.includes("mistake") || combined.includes("review")) {
     return [
-      "Give a summary comparison table",
-      "Which one should I choose for production?",
-      "Can you provide a benchmark comparison?"
+      "Suggest 3 high-impact phrasing improvements",
+      "What are the top 3 strengths and weaknesses?",
+      "Format key takeaways into actionable checklist"
     ];
   }
 
-  if (content.includes("plan") || content.includes("step") || content.includes("how to") || content.includes("guide") || content.includes("strategy")) {
+  if (combined.includes("compare") || combined.includes("vs") || combined.includes("difference") || combined.includes("better")) {
     return [
-      "Break down the first step in detail",
+      "Provide a clear comparison summary table",
+      "Which option is best for production use?",
+      "What are the trade-offs of each approach?"
+    ];
+  }
+
+  if (combined.includes("step") || combined.includes("guide") || combined.includes("how to") || combined.includes("plan") || combined.includes("roadmap")) {
+    return [
+      "Break down Step 1 into detailed sub-tasks",
       "What are the biggest risks to watch out for?",
-      "Can you provide a timeline estimation?"
+      "Can you provide a time and effort estimate?"
+    ];
+  }
+
+  if (cleanTopic && cleanTopic.length > 4) {
+    return [
+      `Can you give a real-world example of ${cleanTopic}?`,
+      `Explain key takeaways of ${cleanTopic} in 3 bullet points`,
+      `What are the pros and cons of ${cleanTopic}?`
     ];
   }
 
@@ -119,7 +134,7 @@ export function ChatWindow({
             selectedTextRef.current = text;
             setSelectedText(text);
 
-            const popoverWidth = 360;
+            const popoverWidth = 480;
             const popoverHeight = 44;
 
             let top = rect.top - popoverHeight - 8;
@@ -207,11 +222,11 @@ export function ChatWindow({
             e.preventDefault();
             e.stopPropagation();
           }}
-          className="fixed z-50 flex items-center gap-1 p-1 bg-[#0c0c0e] text-zinc-200 border border-zinc-800 rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.85)] animate-fade-in text-xs select-none"
+          className="fixed z-50 flex items-center gap-1 p-1 bg-[#0c0c0e] text-zinc-200 border border-zinc-800 rounded-2xl shadow-[0_12px_36px_rgba(0,0,0,0.85)] animate-fade-in text-xs select-none max-w-[95vw] overflow-x-auto scrollbar-none"
         >
           <button
             onClick={() => handleQuickAsk("explain")}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95 flex-shrink-0"
             title="Explain selected text"
           >
             <HelpCircle size={13} className="text-zinc-400" />
@@ -220,7 +235,7 @@ export function ChatWindow({
 
           <button
             onClick={() => handleQuickAsk("simplify")}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95 flex-shrink-0"
             title="Simplify in plain terms"
           >
             <Sparkles size={13} className="text-zinc-400" />
@@ -229,7 +244,7 @@ export function ChatWindow({
 
           <button
             onClick={() => handleQuickAsk("factcheck")}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95 flex-shrink-0"
             title="Fact check this statement"
           >
             <CheckCircle2 size={13} className="text-zinc-400" />
@@ -238,18 +253,42 @@ export function ChatWindow({
 
           <button
             onClick={() => handleQuickAsk("translate")}
-            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95"
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95 flex-shrink-0"
             title="Translate to Hindi"
           >
             <Languages size={13} className="text-zinc-400" />
             <span className="font-medium">Translate</span>
           </button>
 
-          <div className="w-[1px] h-4 bg-zinc-800 mx-0.5" />
+          <div className="w-[1px] h-4 bg-zinc-800 mx-0.5 flex-shrink-0" />
+
+          {/* Send to Input */}
+          <button
+            onClick={() => handleQuickAsk("sendtoinput")}
+            className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95 flex-shrink-0"
+            title="Insert text into chat input"
+          >
+            <CornerDownLeft size={13} className="text-zinc-400" />
+            <span className="font-medium">Input</span>
+          </button>
+
+          {/* New Chat with Selection */}
+          {onExtractNewChat && (
+            <button
+              onClick={() => handleQuickAsk("newchat")}
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 text-zinc-300 hover:text-white transition-all active:scale-95 flex-shrink-0"
+              title="Start a new chat with selected text"
+            >
+              <Sparkles size={13} className="text-zinc-400" />
+              <span className="font-medium">New Chat</span>
+            </button>
+          )}
+
+          <div className="w-[1px] h-4 bg-zinc-800 mx-0.5 flex-shrink-0" />
 
           <button
             onClick={handleCopySelection}
-            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/90 transition-all"
+            className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-zinc-800/90 transition-all flex-shrink-0"
             title="Copy text"
           >
             {copiedSelection ? <Check size={13} className="text-green-400" /> : <Copy size={13} />}

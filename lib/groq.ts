@@ -3,8 +3,8 @@ import Groq from "groq-sdk";
 export const MODEL = "openai/gpt-oss-120b";
 export const FALLBACK_MODELS = [
   "openai/gpt-oss-120b",
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
+  "openai/gpt-oss-20b",
+  "qwen/qwen3.6-27b",
 ];
 
 export const MAINTENANCE_MESSAGE =

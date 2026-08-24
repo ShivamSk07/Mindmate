@@ -305,12 +305,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Autonomous Real-Time Web Search Trigger (AI + Heuristic)
+    // 7. Autonomous Real-Time Web Search Trigger (Instant Fast Heuristic)
     let searchDecision = { needsSearch: false, searchQuery: userQuery };
     if (finalForceSearch) {
       searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
-    } else if (detectedUrls.length === 0 && !attachedDocument) {
-      searchDecision = await detectSearchIntentWithAI(userQuery);
+    } else if (detectedUrls.length === 0 && !attachedDocument && needsWebSearch(userQuery)) {
+      searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
     }
 
     let searchResults: any[] = [];
