@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
       textContent = buffer.toString("utf-8");
     } else if (extension === "pdf") {
       try {
-        // pdf-parse@1.1.1 exports a simple async function: pdfParse(buffer) => { text, numpages, ... }
-        const pdfParse = require("pdf-parse");
+        // Direct require of lib/pdf-parse.js prevents Next.js/Webpack from triggering debug file ENOENT check
+        const pdfParse = require("pdf-parse/lib/pdf-parse.js");
         const parsed = await pdfParse(buffer);
         textContent = parsed.text || "";
       } catch (err: any) {
