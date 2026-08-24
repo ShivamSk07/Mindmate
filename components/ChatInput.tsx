@@ -60,10 +60,19 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
 
   const handleSend = (forceSearch = false) => {
     const trimmed = input.trim();
-    if ((!trimmed && !attachedFile) || isLoading) return;
-    const finalMsg = trimmed || (attachedFile ? `Please analyze and summarize this attached document: ${attachedFile.name}` : "");
+    if ((!trimmed && !attachedFile) || isLoading || isUploading) return;
+    
+    let messageToSend = trimmed;
+    if (attachedFile) {
+      if (trimmed) {
+        messageToSend = `[Attachment: ${attachedFile.name}]\n\n${trimmed}`;
+      } else {
+        messageToSend = `[Attachment: ${attachedFile.name}]\n\nPlease analyze and review this attached document.`;
+      }
+    }
+
     onSend(
-      finalMsg,
+      messageToSend,
       forceSearch,
       undefined,
       undefined,
@@ -213,47 +222,48 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
           </div>
         )}
 
-        {/* Attachment & Upload Indicator */}
-        {(isUploading || attachedFile) && (
-          <div className="flex items-center gap-2 bg-[#121215] border border-[#27272a] rounded-xl px-3 py-1.5 self-start shadow-sm">
-            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">File:</span>
-            {isUploading ? (
-              <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-                <span className="w-1.5 h-1.5 bg-zinc-400 rounded-full" />
-                <span className="text-[10px] font-medium font-mono text-zinc-300">Parsing document...</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-zinc-200 font-mono truncate max-w-[200px]">
-                  📎 {attachedFile?.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setAttachedFile(null)}
-                  className="text-zinc-500 hover:text-white text-xs font-bold px-1 transition-colors"
-                  title="Remove attachment"
-                >
-                  ✕
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Input Box — Refined Dark Glass Capsule Style */}
         <div
-          className="flex items-end gap-2 rounded-[24px] px-4 py-2.5 bg-[#0e0e14]/75 backdrop-blur-2xl border border-white/[0.09] shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all focus-within:border-white/[0.18] focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]"
+          className="flex flex-col gap-2 rounded-[24px] px-4 py-2.5 bg-[#0e0e14]/75 backdrop-blur-2xl border border-white/[0.09] shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all focus-within:border-white/[0.18] focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]"
         >
-          {/* File Attachment */}
-          <button
-            type="button"
-            onClick={triggerFileInput}
-            disabled={isUploading || disabled}
-            className="p-1.5 rounded-full text-[#8e8e93] hover:text-white hover:bg-white/[0.08] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed mb-0.5"
-            title="Attach Document (PDF, DOCX, CSV, Image)"
-          >
-            <Paperclip size={16} />
-          </button>
+          {/* File Attachment Chip Inside Capsule */}
+          {(isUploading || attachedFile) && (
+            <div className="flex items-center gap-2 bg-white/[0.06] border border-white/10 rounded-xl px-3 py-1.5 self-start animate-fade-in shadow-inner">
+              <Paperclip size={13} className="text-indigo-400 flex-shrink-0" />
+              {isUploading ? (
+                <div className="flex items-center gap-1.5 text-xs text-zinc-300">
+                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
+                  <span className="text-[10px] font-medium font-mono text-zinc-300">Reading file...</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-zinc-200 font-mono truncate max-w-[240px]">
+                    {attachedFile?.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setAttachedFile(null)}
+                    className="text-zinc-400 hover:text-white text-xs font-bold px-1 py-0.5 rounded-full hover:bg-white/10 transition-colors"
+                    title="Remove attachment"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2 w-full">
+            {/* File Attachment */}
+            <button
+              type="button"
+              onClick={triggerFileInput}
+              disabled={isUploading || disabled}
+              className="p-1.5 rounded-full text-[#8e8e93] hover:text-white hover:bg-white/[0.08] transition-all flex-shrink-0 disabled:opacity-30 disabled:cursor-not-allowed mb-0.5"
+              title="Attach Document (PDF, DOCX, CSV, Image)"
+            >
+              <Paperclip size={16} />
+            </button>
           <input
             type="file"
             ref={fileInputRef}
@@ -318,6 +328,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
             )}
           </div>
         </div>
+      </div>
 
         {/* Footer — both mobile and desktop */}
         <div className="text-center text-[10px] text-zinc-500 tracking-wider font-medium">

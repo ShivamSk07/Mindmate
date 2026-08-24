@@ -2,7 +2,7 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Volume2, VolumeX, Github, ArrowRight, Download, Sparkles, Maximize2 } from "lucide-react";
+import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Volume2, VolumeX, Github, ArrowRight, Download, Sparkles, Maximize2, Paperclip } from "lucide-react";
 import Link from "next/link";
 import type { Message } from "@/types";
 import { useState, useEffect } from "react";
@@ -120,7 +120,25 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
         <div className="flex justify-end w-full">
           <div className="max-w-[80%] md:max-w-[72%]">
             <div className="bg-white/[0.06] backdrop-blur-xl border border-white/[0.08] rounded-[20px] rounded-tr-[4px] px-4 py-3 text-sm text-[#f4f4f5] leading-relaxed break-words shadow-[0_4px_20px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.06)]">
-              <p className="whitespace-pre-wrap break-words">{cleanContent}</p>
+              {(() => {
+                const attachMatch = cleanContent.match(/^\[Attachment:\s*([^\]]+)\]\n*/i);
+                if (attachMatch) {
+                  const filename = attachMatch[1];
+                  const promptText = cleanContent.replace(/^\[Attachment:\s*([^\]]+)\]\n*/i, "").trim();
+                  return (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-white/[0.08] border border-white/10 w-fit">
+                        <Paperclip size={13} className="text-indigo-400 flex-shrink-0" />
+                        <span className="text-xs font-semibold text-zinc-200 truncate max-w-[240px]">
+                          {filename}
+                        </span>
+                      </div>
+                      {promptText && <p className="whitespace-pre-wrap break-words">{promptText}</p>}
+                    </div>
+                  );
+                }
+                return <p className="whitespace-pre-wrap break-words">{cleanContent}</p>;
+              })()}
             </div>
             <div className="flex justify-end mt-1 pr-1">
               <span className="text-[10px] text-zinc-500">

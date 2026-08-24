@@ -38,12 +38,20 @@ export async function POST(request: NextRequest) {
       textContent = buffer.toString("utf-8");
     } else if (extension === "pdf") {
       try {
-        const pdfParse = require("pdf-parse");
-        const parsed = await pdfParse(buffer);
-        textContent = parsed.text || "";
-      } catch (err) {
+        const pdfModule = require("pdf-parse");
+        if (typeof pdfModule === "function") {
+          const parsed = await pdfModule(buffer);
+          textContent = parsed.text || "";
+        } else if (pdfModule && pdfModule.PDFParse) {
+          const parser = new pdfModule.PDFParse({ data: buffer });
+          const parsed = await parser.getText();
+          textContent = parsed?.text || "";
+        } else {
+          textContent = buffer.toString("utf-8");
+        }
+      } catch (err: any) {
         console.error("PDF Parsing error:", err);
-        return NextResponse.json({ error: "Failed to parse PDF document" }, { status: 500 });
+        return NextResponse.json({ error: `Failed to parse PDF document: ${err?.message || ""}` }, { status: 500 });
       }
     } else if (extension === "docx") {
       try {
