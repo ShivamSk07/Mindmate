@@ -14,10 +14,86 @@ export interface GeneratedImageResult {
  */
 export async function generateFluxImage(rawPrompt: string, requestedModel?: string): Promise<GeneratedImageResult> {
   const prompt = rawPrompt.trim();
-  const token = process.env.HUGGINGFACE_API_KEY || "";
 
-  // 1. Attempt Hugging Face Serverless Router (FLUX.1-dev or FLUX.1-schnell) if token is available
-  if (token) {
+  const togetherKey = process.env.TOGETHER_API_KEY || "";
+  const falKey = process.env.FAL_KEY || process.env.FAL_API_KEY || "";
+  const replicateKey = process.env.REPLICATE_API_KEY || "";
+  const hfToken = process.env.HUGGINGFACE_API_KEY || "";
+
+  // 1. Attempt Together AI (Ultra Studio Quality FLUX.1)
+  if (togetherKey) {
+    try {
+      const res = await fetch("https://api.together.xyz/v1/images/generations", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${togetherKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "black-forest-labs/FLUX.1-schnell",
+          prompt: prompt,
+          width: 1024,
+          height: 1024,
+          steps: 4,
+          n: 1,
+          response_format: "b64_json",
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const b64 = data.data?.[0]?.b64_json;
+        if (b64) {
+          return {
+            success: true,
+            imageUrl: `data:image/jpeg;base64,${b64}`,
+            prompt,
+            model: "FLUX.1 Schnell (Together AI)",
+            source: "huggingface",
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("[Together AI Image Gen Fallback]:", e);
+    }
+  }
+
+  // 2. Attempt Fal.ai (Studio Quality FLUX.1)
+  if (falKey) {
+    try {
+      const res = await fetch("https://fal.run/fal-ai/flux/schnell", {
+        method: "POST",
+        headers: {
+          Authorization: `Key ${falKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          prompt: prompt,
+          image_size: "square_hd",
+          num_inference_steps: 4,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const imgUrl = data.images?.[0]?.url;
+        if (imgUrl) {
+          return {
+            success: true,
+            imageUrl: imgUrl,
+            prompt,
+            model: "FLUX.1 Schnell (Fal.ai)",
+            source: "huggingface",
+          };
+        }
+      }
+    } catch (e) {
+      console.warn("[Fal.ai Image Gen Fallback]:", e);
+    }
+  }
+
+  // 3. Attempt Hugging Face Serverless Router (Official Uncompressed FLUX.1 Dev / Schnell)
+  if (hfToken) {
     const hfModels = [
       "black-forest-labs/FLUX.1-dev",
       "stabilityai/stable-diffusion-3.5-large",
@@ -34,7 +110,7 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
               path: `/hf-inference/models/${hfModel}`,
               method: "POST",
               headers: {
-                Authorization: `Bearer ${token}`,
+                Authorization: `Bearer ${hfToken}`,
                 "Content-Type": "application/json",
                 "Content-Length": Buffer.byteLength(postData),
               },
@@ -81,18 +157,13 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
     }
   }
 
-  // 2. High-Quality Free Serverless Fallbacks with Pollinations (FLUX.1 Dev / Realism & SD 3.5)
+  // 4. Free High-Resolution Pollinations FLUX Engine (Clean Unenhanced Direct FLUX.1)
   const seed = Math.floor(Math.random() * 1000000);
   const lower = prompt.toLowerCase();
 
-  // Smart model selector based on user intent
-  let selectedModel = requestedModel || "flux-realism";
+  let selectedModel = requestedModel || "flux";
   if (!requestedModel) {
-    if (lower.includes("sd3") || lower.includes("stable diffusion 3") || lower.includes("sd 3.5")) {
-      selectedModel = "stablediffusion-3.5";
-    } else if (lower.includes("dev") || lower.includes("pro") || lower.includes("detail")) {
-      selectedModel = "flux-pro";
-    } else if (lower.includes("anime") || lower.includes("manga") || lower.includes("chibi")) {
+    if (lower.includes("anime") || lower.includes("manga") || lower.includes("chibi")) {
       selectedModel = "flux-anime";
     } else if (lower.includes("3d") || lower.includes("render") || lower.includes("pixar") || lower.includes("cgi")) {
       selectedModel = "flux-3d";
@@ -103,29 +174,16 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
     }
   }
 
-  // Generate Pollinations URL with enhance=true for LLM prompt optimization and nologo=true
+  // Direct clean FLUX.1 render URL (without prompt distortion params)
   const serverlessUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(
     prompt
-  )}?model=${encodeURIComponent(selectedModel)}&width=1024&height=1024&enhance=true&nologo=true&seed=${seed}`;
-
-  const modelDisplayName =
-    selectedModel === "flux-realism"
-      ? "FLUX.1 Realism HD (Free)"
-      : selectedModel === "midjourney"
-      ? "Midjourney Style v6 (Free)"
-      : selectedModel === "flux-anime"
-      ? "FLUX Anime (Free)"
-      : selectedModel === "flux-3d"
-      ? "FLUX 3D Render (Free)"
-      : selectedModel === "turbo"
-      ? "SDXL Turbo (Free)"
-      : "FLUX.1 HD (Free)";
+  )}?model=${encodeURIComponent(selectedModel)}&width=1024&height=1024&nologo=true&private=true&seed=${seed}`;
 
   return {
     success: true,
     imageUrl: serverlessUrl,
     prompt,
-    model: modelDisplayName,
+    model: selectedModel,
     source: "serverless",
   };
 }
