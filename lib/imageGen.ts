@@ -126,6 +126,7 @@ export async function generateFluxImage(rawPrompt: string, requestedModel?: stri
                   const mime = res.headers["content-type"] || "image/jpeg";
                   resolve(`data:${mime};base64,${base64}`);
                 } else {
+                  console.warn(`[HuggingFace API Error ${hfModel}]: status ${res.statusCode}`, buffer.toString().slice(0, 200));
                   resolve(null);
                 }
               });
