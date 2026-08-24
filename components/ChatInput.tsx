@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
-import { Send, Square, Globe, Wand2, Paperclip, Radio } from "lucide-react";
+import { Send, Square, Globe, Wand2, Paperclip, Radio, FileText } from "lucide-react";
 
 interface ChatInputProps {
   onSend: (
@@ -226,24 +226,24 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
         <div
           className="flex flex-col gap-2 rounded-[24px] px-4 py-2.5 bg-[#0e0e14]/75 backdrop-blur-2xl border border-white/[0.09] shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all focus-within:border-white/[0.18] focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]"
         >
-          {/* File Attachment Chip Inside Capsule */}
+          {/* File Attachment Chip Inside Capsule — Minimalist Dark Style */}
           {(isUploading || attachedFile) && (
-            <div className="flex items-center gap-2 bg-white/[0.06] border border-white/10 rounded-xl px-3 py-1.5 self-start animate-fade-in shadow-inner">
-              <Paperclip size={13} className="text-indigo-400 flex-shrink-0" />
+            <div className="flex items-center gap-2 bg-[#121215] border border-zinc-800 rounded-xl px-3 py-1.5 self-start animate-fade-in shadow-none">
+              <FileText size={13} className="text-zinc-400 flex-shrink-0" />
               {isUploading ? (
-                <div className="flex items-center gap-1.5 text-xs text-zinc-300">
-                  <span className="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-pulse" />
-                  <span className="text-[10px] font-medium font-mono text-zinc-300">Reading file...</span>
+                <div className="flex items-center gap-2 text-xs text-zinc-300">
+                  <div className="w-3 h-3 border-2 border-zinc-600 border-t-zinc-200 rounded-full animate-spin flex-shrink-0" />
+                  <span className="text-[11px] font-medium text-zinc-300">Reading file...</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-zinc-200 font-mono truncate max-w-[240px]">
+                  <span className="text-[11px] font-medium text-zinc-200 truncate max-w-[240px]">
                     {attachedFile?.name}
                   </span>
                   <button
                     type="button"
                     onClick={() => setAttachedFile(null)}
-                    className="text-zinc-400 hover:text-white text-xs font-bold px-1 py-0.5 rounded-full hover:bg-white/10 transition-colors"
+                    className="text-zinc-400 hover:text-white text-xs font-bold px-1 py-0.5 rounded-full hover:bg-zinc-800 transition-colors ml-0.5"
                     title="Remove attachment"
                   >
                     ✕

@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Sidebar, type SidebarSession } from "@/components/Sidebar";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useChat } from "@/hooks/useChat";
-import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, PanelLeftOpen, Lock, GitMerge, Briefcase } from "lucide-react";
+import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, PanelLeftOpen, Lock, GitMerge, Briefcase, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Message } from "@/types";
@@ -538,14 +538,15 @@ export default function ChatPage() {
 
           {/* Right: Tools (Desktop) */}
           <div className="flex items-center gap-2 text-[#94a3b8]">
-            {/* Clarity CoWork Page Link — Dark Glass Style */}
+            {/* Try CoWork Button — Sleek Minimalist Dark Style with Arrow */}
             <Link
               href="/cowork"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.08] backdrop-blur-md shadow-sm transition-all active:scale-95"
-              title="Clarity CoWork — Dedicated Agentic Workspace"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-zinc-200 hover:text-white bg-[#0e0e11] hover:bg-[#18181c] border border-zinc-800 shadow-none transition-all active:scale-95 group"
+              title="Try Clarity CoWork — Dedicated Agentic Workspace"
             >
-              <Briefcase size={14} className="text-zinc-300" />
-              <span className="hidden sm:inline font-sans">Clarity CoWork</span>
+              <Briefcase size={13} className="text-zinc-400 group-hover:text-zinc-200 transition-colors" />
+              <span className="hidden sm:inline font-sans">Try CoWork</span>
+              <ArrowRight size={12} className="text-zinc-400 group-hover:text-zinc-200 group-hover:translate-x-0.5 transition-all" />
             </Link>
 
             <button
