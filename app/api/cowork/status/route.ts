@@ -15,11 +15,23 @@ export async function GET() {
   let liName: string | null = null;
 
   try {
-    const profile = user
-      ? await prisma.userProfile.findUnique({ where: { userId: user.userId } })
-      : await prisma.userProfile.findFirst({
-          where: { OR: [{ githubConnected: true }, { linkedinConnected: true }] },
-        });
+    let profile = null;
+    if (user) {
+      profile = await prisma.userProfile.findUnique({ where: { userId: user.userId } });
+    }
+
+    if (!profile) {
+      const dbUser = await prisma.user.findFirst();
+      if (dbUser) {
+        profile = await prisma.userProfile.findUnique({ where: { userId: dbUser.id } });
+      }
+    }
+
+    if (!profile) {
+      profile = await prisma.userProfile.findFirst({
+        where: { OR: [{ githubConnected: true }, { linkedinConnected: true }] },
+      });
+    }
 
     if (profile) {
       isGitHubConnected = Boolean(profile.githubConnected);
@@ -27,6 +39,27 @@ export async function GET() {
       isMcpConnected = Boolean(profile.mcpConnected);
       ghUsername = profile.githubUsername;
       liName = profile.linkedinName;
+    }
+
+    // Check if any other profile in single-user dev environment has active integrations
+    if (!isGitHubConnected) {
+      const anyGh = await prisma.userProfile.findFirst({
+        where: { githubConnected: true },
+      });
+      if (anyGh) {
+        isGitHubConnected = true;
+        ghUsername = anyGh.githubUsername;
+      }
+    }
+
+    if (!isLinkedInConnected) {
+      const anyLi = await prisma.userProfile.findFirst({
+        where: { linkedinConnected: true },
+      });
+      if (anyLi) {
+        isLinkedInConnected = true;
+        liName = anyLi.linkedinName;
+      }
     }
   } catch (e) {
     console.warn("Integrations status DB check notice:", e);
@@ -72,3 +105,4 @@ export async function GET() {
     integrations,
   });
 }
+

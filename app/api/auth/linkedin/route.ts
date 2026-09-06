@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser, setSessionCookie } from "@/lib/auth";
+import { getSessionUser, signJwt } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   let user = await getSessionUser();
@@ -20,16 +22,30 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    setSessionCookie({ id: dbUser.id, username: dbUser.username, email: dbUser.email });
     user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
   }
 
   const clientId = process.env.LINKEDIN_CLIENT_ID || "77uyoymp53nn7y";
   const redirectUri = encodeURIComponent(`${appUrl}/api/auth/linkedin/callback`);
-  const state = Math.random().toString(36).substring(7);
+  const stateData = {
+    userId: user.userId,
+    nonce: Math.random().toString(36).substring(7),
+  };
+  const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
   const scopes = encodeURIComponent("openid profile email w_member_social");
 
   const linkedinAuthUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=${scopes}`;
 
-  return NextResponse.redirect(linkedinAuthUrl);
+  const response = NextResponse.redirect(linkedinAuthUrl);
+  const token = signJwt({ userId: user.userId, username: user.username, email: user.email });
+  response.cookies.set("mindmate_session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60,
+  });
+
+  return response;
 }
+

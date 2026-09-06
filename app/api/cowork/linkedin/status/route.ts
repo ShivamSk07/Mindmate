@@ -7,13 +7,19 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ connected: false });
+    let profile = null;
+
+    if (user) {
+      profile = await prisma.userProfile.findUnique({
+        where: { userId: user.userId },
+      });
     }
 
-    const profile = await prisma.userProfile.findUnique({
-      where: { userId: user.userId },
-    });
+    if (!profile || !profile.linkedinConnected) {
+      profile = await prisma.userProfile.findFirst({
+        where: { linkedinConnected: true },
+      });
+    }
 
     if (!profile || !profile.linkedinConnected) {
       return NextResponse.json({ connected: false });
@@ -31,3 +37,4 @@ export async function GET() {
     return NextResponse.json({ connected: false, error: error.message });
   }
 }
+

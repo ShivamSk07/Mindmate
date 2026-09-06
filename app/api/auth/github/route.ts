@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser, setSessionCookie } from "@/lib/auth";
+import { getSessionUser, signJwt } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   let user = await getSessionUser();
@@ -20,13 +22,28 @@ export async function GET(request: NextRequest) {
         },
       });
     }
-    setSessionCookie({ id: dbUser.id, username: dbUser.username, email: dbUser.email });
     user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
   }
 
-  const clientId = process.env.GITHUB_CLIENT_ID || "ov23liClarityApp";
+  const clientId = process.env.GITHUB_CLIENT_ID || "Ov23liqPzNRSCTrz3Wg3";
   const redirectUri = encodeURIComponent(`${appUrl}/api/auth/github/callback`);
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo%20read:user%20user:email&redirect_uri=${redirectUri}`;
+  const stateData = {
+    userId: user.userId,
+    nonce: Math.random().toString(36).substring(7),
+  };
+  const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo%20read:user%20user:email&redirect_uri=${redirectUri}&state=${state}`;
 
-  return NextResponse.redirect(githubAuthUrl);
+  const response = NextResponse.redirect(githubAuthUrl);
+  const token = signJwt({ userId: user.userId, username: user.username, email: user.email });
+  response.cookies.set("mindmate_session", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 7 * 24 * 60 * 60,
+  });
+
+  return response;
 }
+

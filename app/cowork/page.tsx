@@ -175,15 +175,57 @@ export default function CoworkPage() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [krokiUrls, setKrokiUrls] = useState<{ url: string; pngUrl: string } | null>(null);
 
+  const [notification, setNotification] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
+
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const logScrollRef = useRef<HTMLDivElement | null>(null);
 
-  // ── Initial load
+  // ── Initial load & OAuth callback listener
   useEffect(() => {
     fetchStatus();
     fetchHistory();
     fetchRepos();
+
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const connected = params.get("connected");
+      const err = params.get("error");
+
+      if (connected === "linkedin") {
+        setNotification({
+          type: "success",
+          message: "LinkedIn account connected successfully!",
+        });
+        fetchStatus();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (connected === "github") {
+        setNotification({
+          type: "success",
+          message: "GitHub account connected successfully!",
+        });
+        fetchStatus();
+        fetchRepos();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (err) {
+        setNotification({
+          type: "error",
+          message: `Connection failed: ${err}`,
+        });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
   }, []);
+
+  useEffect(() => {
+    if (notification) {
+      const timer = setTimeout(() => setNotification(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [notification]);
+
 
   const fetchRepos = async () => {
     try {
@@ -356,6 +398,30 @@ export default function CoworkPage() {
   return (
     <div className="h-[100dvh] w-full bg-[#0a0a0a] text-zinc-100 flex flex-col overflow-hidden" style={{ fontFamily: "'Inter', -apple-system, sans-serif" }}>
 
+      {/* Notification Toast */}
+      {notification && (
+        <div
+          className={`fixed top-4 right-4 z-50 flex items-center gap-2.5 px-3.5 py-2.5 rounded-lg border text-xs shadow-2xl transition-all animate-in fade-in slide-in-from-top-2 ${
+            notification.type === "success"
+              ? "bg-[#0d1712] border-emerald-500/50 text-emerald-400"
+              : "bg-[#170d0d] border-red-500/50 text-red-400"
+          }`}
+        >
+          {notification.type === "success" ? (
+            <CheckCircle2 size={15} className="text-emerald-400 flex-shrink-0" />
+          ) : (
+            <AlertCircle size={15} className="text-red-400 flex-shrink-0" />
+          )}
+          <span className="font-medium">{notification.message}</span>
+          <button
+            onClick={() => setNotification(null)}
+            className="ml-2 text-zinc-500 hover:text-zinc-300 p-0.5"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
       {/* Integrations Modal */}
       <IntegrationsModal
         isOpen={showIntegrationsModal}
@@ -407,7 +473,15 @@ export default function CoworkPage() {
                 return (
                   <span
                     key={item.id}
-                    className={`p-0.5 ${item.connected ? "text-zinc-300" : "text-zinc-700"}`}
+                    className={`p-0.5 ${
+                      item.connected
+                        ? item.id === "linkedin"
+                          ? "text-[#0a66c2]"
+                          : item.id === "github"
+                          ? "text-emerald-400"
+                          : "text-zinc-200"
+                        : "text-zinc-700"
+                    }`}
                   >
                     <Icon size={13} />
                   </span>
