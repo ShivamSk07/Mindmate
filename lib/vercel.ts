@@ -262,6 +262,37 @@ export async function vercel_get_deployment_status(
 }
 
 /**
+ * List user's Vercel projects
+ */
+export async function vercel_list_projects(token: string, limit = 20): Promise<any[]> {
+  try {
+    const res = await fetch(`https://api.vercel.com/v9/projects?limit=${limit}`, {
+      headers: {
+        Authorization: `Bearer ${token.trim()}`,
+      },
+    });
+
+    if (!res.ok) {
+      console.error("[Vercel API] Failed to list projects:", res.status);
+      return [];
+    }
+    const data = await res.json();
+    return (data.projects || []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      framework: p.framework || "other",
+      updatedAt: p.updatedAt,
+      createdAt: p.createdAt,
+      repo: p.link?.repo || null,
+      latestDeployments: (p.latestDeployments || []).slice(0, 2),
+    }));
+  } catch (e: any) {
+    console.error("[Vercel API] Error in vercel_list_projects:", e);
+    return [];
+  }
+}
+
+/**
  * List recent deployments
  */
 export async function vercel_list_deployments(token: string, limit = 10): Promise<any[]> {

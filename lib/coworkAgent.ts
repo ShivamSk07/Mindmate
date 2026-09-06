@@ -16,6 +16,8 @@ import {
   vercel_deploy_files,
   vercel_deploy_repo,
   vercel_get_deployment_status,
+  vercel_list_projects,
+  vercel_list_deployments,
 } from "./vercel";
 import { listMCPServers } from "./mcp";
 import { searchWeb, SearchResult } from "./search";
@@ -616,80 +618,118 @@ ${repoListDetails}`;
     await delay(30);
   }
 
-  // ── VERCEL DEPLOYMENT ───────────────────────────────────────
+  // ── VERCEL INTEGRATION ──────────────────────────────────────
   if (flags.needsVercel) {
     setStep(task, "step_vercel", "running");
-    addLog(task, "tool_call", "Preparing Vercel Deployment", "Checking project configuration & hosting parameters", "vercel");
-    await delay(50);
+    addLog(task, "tool_call", "Connecting to Vercel", `@${vercelUsername}`, "vercel");
+    await delay(30);
 
     if (!vercelAccessToken) {
-      addLog(task, "error", "Vercel Not Connected", "Please connect your Vercel account in Integrations to deploy live.", "vercel");
+      addLog(task, "error", "Vercel Not Connected", "Please connect your Vercel account in Integrations.", "vercel");
       setStep(task, "step_vercel", "failed");
-      vercelText = "⚠️ Vercel deployment could not proceed because Vercel account is not connected. Please open Integrations to connect Vercel with your Personal Access Token.";
+      vercelText = "⚠️ Vercel account is not connected. Please open Integrations to connect your Vercel account.";
     } else {
       try {
-        const isRepoDeploy = (queryLower.includes("repo") || queryLower.includes("repository")) && Boolean(repo || owner);
+        const isListProjectsRequest =
+          /\b(kitne|how many|list|show|all|my|view|count|get|check|tell|status|overview)\b/i.test(queryLower) &&
+          /\b(project|projects|deployment|deployments|app|apps|sites|account)\b/i.test(queryLower);
 
-        if (isRepoDeploy) {
-          const targetRepo = repo ? (owner ? `${owner}/${repo}` : repo) : "ShivamSk07/Mindmate";
-          const projName = (repo || "clarity-app").toLowerCase().replace(/[^a-z0-9-_]/g, "-");
-          addLog(task, "tool_call", "Deploying GitHub Repository", `${targetRepo} (${branch}) to Vercel`, "vercel", { toolName: "vercel_deploy_repo" });
+        const isExplicitDeploy =
+          /\b(deploy|host|publish online|deploy on vercel|deploy to vercel|host my site|host my app)\b/i.test(queryLower) &&
+          !isListProjectsRequest;
 
-          const deployRes = await vercel_deploy_repo(vercelAccessToken, projName, targetRepo, branch);
-          if (deployRes.success && deployRes.url) {
-            addLog(task, "success", "Live Deployment Created", `URL: ${deployRes.url}`, "vercel");
-            task.artifacts.unshift({
-              id: `art_vercel_${Date.now()}`,
-              title: `Live Deployment: ${projName}`,
-              type: "vercel_deployment",
-              content: `# 🚀 Live Vercel Deployment\n\n**Project**: \`${projName}\`\n**Repository**: \`${targetRepo}\` (\`${branch}\`)\n**Live URL**: [${deployRes.url}](${deployRes.url})\n**Status**: \`${deployRes.readyState || "READY"}\`\n\n[Open Live Site ↗](${deployRes.url})`,
-              createdAt: ts(),
-            });
-            vercelText = `🚀 Vercel Deployment Success!\n- Project: ${projName}\n- Repository: ${targetRepo}\n- Live URL: ${deployRes.url}\n- Status: ${deployRes.readyState || "READY"}`;
+        if (isListProjectsRequest || !isExplicitDeploy) {
+          addLog(task, "tool_call", "Fetching Vercel Projects", `@${vercelUsername}`, "vercel", { toolName: "vercel_list_projects" });
+          const projects = await vercel_list_projects(vercelAccessToken);
+          const deployments = await vercel_list_deployments(vercelAccessToken, 5);
+          task.usedTools.push("vercel_list_projects");
+
+          if (projects.length > 0) {
+            const projectList = projects.map((p: any, idx: number) => 
+              `${idx + 1}. **${p.name}**
+   - Framework: \`${p.framework || "other"}\`
+   - Linked Repo: ${p.repo ? `\`${p.repo}\`` : "Direct Upload"}
+   - Last Updated: ${p.updatedAt ? new Date(p.updatedAt).toLocaleString() : "N/A"}`
+            ).join("\n\n");
+
+            addLog(task, "success", `${projects.length} Vercel project${projects.length > 1 ? "s" : ""} found`, `@${vercelUsername}`, "vercel");
+            vercelText = `Vercel Account (@${vercelUsername}) Projects Overview:
+Total Projects Found: ${projects.length}
+
+${projectList}
+
+Recent Deployments:
+${deployments.map((d: any) => `• [${d.name}](${d.url}) (${d.state || "READY"})`).join("\n") || "No recent deployments."}`;
             setStep(task, "step_vercel", "completed");
           } else {
-            addLog(task, "error", "Vercel Deployment Failed", deployRes.error || "Deployment failed", "vercel");
-            vercelText = `⚠️ Vercel Deployment Failed: ${deployRes.error || "Unknown error"}`;
-            setStep(task, "step_vercel", "failed");
+            addLog(task, "reasoning", "No Vercel projects found", `Account @${vercelUsername} has 0 active projects`, "vercel");
+            vercelText = `Vercel Account (@${vercelUsername}): No active projects found.`;
+            setStep(task, "step_vercel", "completed");
           }
         } else {
-          // Instant direct file deployment (generate modern web page from prompt)
-          addLog(task, "reasoning", "Generating Deployment Code", "Crafting responsive single-page web bundle...", "system");
-          const client = getCerebrasClient();
-          const bundlePrompt = `You are an expert web developer. Build a complete, modern, beautifully styled responsive single-page web application for: "${task.userQuery}".
-Return ONLY the raw HTML code with inline CSS styling in <style> and JavaScript in <script> if needed. Do not wrap in markdown code blocks.`;
-          const completion = (await client.chat.completions.create({
-            model: MODEL,
-            messages: [{ role: "user", content: bundlePrompt }],
-            temperature: 0.2,
-            max_tokens: 3000,
-          })) as any;
+          const isRepoDeploy = (queryLower.includes("repo") || queryLower.includes("repository")) && Boolean(repo || owner);
 
-          let htmlCode = completion.choices[0]?.message?.content?.trim() || "";
-          htmlCode = htmlCode.replace(/^```html\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+          if (isRepoDeploy) {
+            const targetRepo = repo ? (owner ? `${owner}/${repo}` : repo) : "ShivamSk07/Mindmate";
+            const projName = (repo || "clarity-app").toLowerCase().replace(/[^a-z0-9-_]/g, "-");
+            addLog(task, "tool_call", "Deploying GitHub Repository", `${targetRepo} (${branch}) to Vercel`, "vercel", { toolName: "vercel_deploy_repo" });
 
-          const projName = `clarity-site-${Date.now().toString(36)}`;
-          addLog(task, "tool_call", "Deploying Static App to Vercel", `Project: ${projName}`, "vercel", { toolName: "vercel_deploy_files" });
-
-          const deployRes = await vercel_deploy_files(vercelAccessToken, projName, [
-            { file: "index.html", data: htmlCode },
-          ]);
-
-          if (deployRes.success && deployRes.url) {
-            addLog(task, "success", "Live Deployment Ready", `URL: ${deployRes.url}`, "vercel");
-            task.artifacts.unshift({
-              id: `art_vercel_${Date.now()}`,
-              title: `Live App: ${projName}`,
-              type: "vercel_deployment",
-              content: `# 🚀 Live App Hosted on Vercel\n\n**Project**: \`${projName}\`\n**Live URL**: [${deployRes.url}](${deployRes.url})\n**Status**: \`${deployRes.readyState || "READY"}\`\n\n[Open Live Site ↗](${deployRes.url})`,
-              createdAt: ts(),
-            });
-            vercelText = `🚀 Vercel Deployment Success!\n- Project: ${projName}\n- Live URL: ${deployRes.url}\n- Status: ${deployRes.readyState || "READY"}`;
-            setStep(task, "step_vercel", "completed");
+            const deployRes = await vercel_deploy_repo(vercelAccessToken, projName, targetRepo, branch);
+            if (deployRes.success && deployRes.url) {
+              addLog(task, "success", "Live Deployment Created", `URL: ${deployRes.url}`, "vercel");
+              task.artifacts.unshift({
+                id: `art_vercel_${Date.now()}`,
+                title: `Live Deployment: ${projName}`,
+                type: "vercel_deployment",
+                content: `# 🚀 Live Vercel Deployment\n\n**Project**: \`${projName}\`\n**Repository**: \`${targetRepo}\` (\`${branch}\`)\n**Live URL**: [${deployRes.url}](${deployRes.url})\n**Status**: \`${deployRes.readyState || "READY"}\`\n\n[Open Live Site ↗](${deployRes.url})`,
+                createdAt: ts(),
+              });
+              vercelText = `🚀 Vercel Deployment Success!\n- Project: ${projName}\n- Repository: ${targetRepo}\n- Live URL: ${deployRes.url}\n- Status: ${deployRes.readyState || "READY"}`;
+              setStep(task, "step_vercel", "completed");
+            } else {
+              addLog(task, "error", "Vercel Deployment Failed", deployRes.error || "Deployment failed", "vercel");
+              vercelText = `⚠️ Vercel Deployment Failed: ${deployRes.error || "Unknown error"}`;
+              setStep(task, "step_vercel", "failed");
+            }
           } else {
-            addLog(task, "error", "Vercel Deployment Failed", deployRes.error || "Deployment failed", "vercel");
-            vercelText = `⚠️ Vercel Deployment Failed: ${deployRes.error || "Unknown error"}`;
-            setStep(task, "step_vercel", "failed");
+            // Instant direct file deployment (generate modern web page from prompt)
+            addLog(task, "reasoning", "Generating Deployment Code", "Crafting responsive single-page web bundle...", "system");
+            const client = getCerebrasClient();
+            const bundlePrompt = `You are an expert web developer. Build a complete, modern, beautifully styled responsive single-page web application for: "${task.userQuery}".
+Return ONLY the raw HTML code with inline CSS styling in <style> and JavaScript in <script> if needed. Do not wrap in markdown code blocks.`;
+            const completion = (await client.chat.completions.create({
+              model: MODEL,
+              messages: [{ role: "user", content: bundlePrompt }],
+              temperature: 0.2,
+              max_tokens: 3000,
+            })) as any;
+
+            let htmlCode = completion.choices[0]?.message?.content?.trim() || "";
+            htmlCode = htmlCode.replace(/^```html\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+
+            const projName = `clarity-site-${Date.now().toString(36)}`;
+            addLog(task, "tool_call", "Deploying Static App to Vercel", `Project: ${projName}`, "vercel", { toolName: "vercel_deploy_files" });
+
+            const deployRes = await vercel_deploy_files(vercelAccessToken, projName, [
+              { file: "index.html", data: htmlCode },
+            ]);
+
+            if (deployRes.success && deployRes.url) {
+              addLog(task, "success", "Live Deployment Ready", `URL: ${deployRes.url}`, "vercel");
+              task.artifacts.unshift({
+                id: `art_vercel_${Date.now()}`,
+                title: `Live App: ${projName}`,
+                type: "vercel_deployment",
+                content: `# 🚀 Live App Hosted on Vercel\n\n**Project**: \`${projName}\`\n**Live URL**: [${deployRes.url}](${deployRes.url})\n**Status**: \`${deployRes.readyState || "READY"}\`\n\n[Open Live Site ↗](${deployRes.url})`,
+                createdAt: ts(),
+              });
+              vercelText = `🚀 Vercel Deployment Success!\n- Project: ${projName}\n- Live URL: ${deployRes.url}\n- Status: ${deployRes.readyState || "READY"}`;
+              setStep(task, "step_vercel", "completed");
+            } else {
+              addLog(task, "error", "Vercel Deployment Failed", deployRes.error || "Deployment failed", "vercel");
+              vercelText = `⚠️ Vercel Deployment Failed: ${deployRes.error || "Unknown error"}`;
+              setStep(task, "step_vercel", "failed");
+            }
           }
         }
       } catch (err: any) {
