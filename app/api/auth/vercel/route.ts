@@ -5,50 +5,27 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  let user = await getSessionUser();
-
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
   const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 
-  if (!user) {
-    let dbUser = await prisma.user.findFirst();
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          username: "user",
-          name: "User",
-          password: "demo_password_hash",
-        },
-      });
-    }
-    user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
+  let userId = "guest_user";
+  try {
+    const user = await getSessionUser();
+    if (user?.userId) userId = user.userId;
+  } catch (e) {
+    console.warn("Session lookup notice:", e);
   }
 
-  const clientId = process.env.VERCEL_CLIENT_ID?.trim();
-  const slug = process.env.VERCEL_INTEGRATION_SLUG?.trim() || "clarity-cowork";
+  const clientId = process.env.VERCEL_CLIENT_ID?.trim() || "oac_fbIMmseds7b8hfjKwtnYCJv0";
   const redirectUri = encodeURIComponent(`${appUrl}/api/auth/vercel/callback`);
   const stateData = {
-    userId: user.userId,
+    userId,
     nonce: Math.random().toString(36).substring(7),
   };
   const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
 
-  // Vercel Integration installation URL (official) or OAuth authorize URL
-  let vercelAuthUrl = `https://vercel.com/integrations/${slug}/new?state=${state}`;
-  if (clientId && clientId !== "oac_clarity_cowork") {
-    vercelAuthUrl = `https://vercel.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}`;
-  }
+  const vercelAuthUrl = `https://vercel.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}`;
 
-  const response = NextResponse.redirect(vercelAuthUrl);
-  const token = signJwt({ userId: user.userId, username: user.username, email: user.email });
-  response.cookies.set("mindmate_session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 7 * 24 * 60 * 60,
-  });
-
-  return response;
+  return NextResponse.redirect(vercelAuthUrl);
 }

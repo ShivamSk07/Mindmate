@@ -285,13 +285,13 @@ export default function IntegrationsModal({
                           {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Disconnect"}
                         </button>
                       ) : (
-                        <button
-                          onClick={() => { window.location.href = "/api/auth/github"; }}
+                        <a
+                          href="/api/auth/github"
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-colors"
                         >
                           <Github size={13} />
                           <span>OAuth Connect</span>
-                        </button>
+                        </a>
                       )}
                     </div>
 
@@ -371,13 +371,13 @@ export default function IntegrationsModal({
                           {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Disconnect"}
                         </button>
                       ) : (
-                        <button
-                          onClick={() => { window.location.href = "/api/auth/linkedin"; }}
+                        <a
+                          href="/api/auth/linkedin"
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-medium transition-colors shadow-sm"
                         >
                           <Linkedin size={13} />
                           <span>Connect LinkedIn</span>
-                        </button>
+                        </a>
                       )}
                     </div>
                   </div>
@@ -423,13 +423,13 @@ export default function IntegrationsModal({
                           {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Disconnect"}
                         </button>
                       ) : (
-                        <button
-                          onClick={() => { window.location.href = "/api/auth/vercel"; }}
+                        <a
+                          href="/api/auth/vercel"
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-colors"
                         >
                           <Triangle size={11} className="fill-zinc-950" />
                           <span>OAuth Connect</span>
-                        </button>
+                        </a>
                       )}
                     </div>
 
