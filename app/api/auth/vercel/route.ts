@@ -18,6 +18,11 @@ export async function GET(request: NextRequest) {
   }
 
   const slug = process.env.VERCEL_INTEGRATION_SLUG?.trim() || "clarity-cowork";
+  const stateData = {
+    userId,
+    nonce: Math.random().toString(36).substring(7),
+  };
+  const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
   const vercelAuthUrl = `https://vercel.com/integrations/${slug}/new?state=${state}`;
 
   return NextResponse.redirect(vercelAuthUrl);
