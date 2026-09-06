@@ -71,8 +71,8 @@ export async function GET(request: NextRequest) {
     return sendRedirect("/cowork?error=no_code_provided");
   }
 
-  const clientId = process.env.VERCEL_CLIENT_ID || "";
-  const clientSecret = process.env.VERCEL_CLIENT_SECRET || "";
+  const clientId = process.env.VERCEL_CLIENT_ID || "oac_fbIMmseds7b8hfjKwtnYCJv0";
+  const clientSecret = process.env.VERCEL_CLIENT_SECRET || "eJKh6K1VsMsCVU5Gd4HjhK0e";
   const redirectUri = `${appUrl}/api/auth/vercel/callback`;
 
   let accessToken: string | null = null;
@@ -88,13 +88,18 @@ export async function GET(request: NextRequest) {
     params.append("code", code);
     params.append("redirect_uri", redirectUri);
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
     const tokenRes = await fetch("https://api.vercel.com/v2/oauth/access_token", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: params.toString(),
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (tokenRes.ok) {
       const tokenData = await tokenRes.json();
@@ -102,14 +107,19 @@ export async function GET(request: NextRequest) {
       vercelTeamId = tokenData.team_id || null;
 
       if (accessToken) {
-        const vercelUser = await vercel_get_user(accessToken);
-        if (vercelUser) {
-          vercelUsername = vercelUser.username;
-          vercelAvatarUrl = vercelUser.avatar || null;
+        try {
+          const vercelUser = await vercel_get_user(accessToken);
+          if (vercelUser) {
+            vercelUsername = vercelUser.username;
+            vercelAvatarUrl = vercelUser.avatar || null;
+          }
+        } catch (uErr) {
+          console.warn("User profile fetch notice:", uErr);
         }
       }
     } else {
       exchangeError = await tokenRes.text();
+      console.error("[Vercel OAuth Token Exchange Error]", tokenRes.status, exchangeError);
     }
   } catch (e: any) {
     exchangeError = e.message || "token_exchange_exception";
