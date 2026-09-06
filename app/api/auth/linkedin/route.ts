@@ -14,8 +14,8 @@ export async function GET(request: NextRequest) {
     if (!dbUser) {
       dbUser = await prisma.user.create({
         data: {
-          username: "ShivamSk07",
-          name: "Shivam Kumar",
+          username: "user",
+          name: "User",
           password: "demo_password_hash",
         },
       });
@@ -24,34 +24,7 @@ export async function GET(request: NextRequest) {
     user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
   }
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID;
-
-  // If LINKEDIN_CLIENT_ID is not configured in .env, perform 1-click auto connect
-  if (!clientId || clientId === "clarity_linkedin_client_id") {
-    const liName = user.username || "Shivam Kumar";
-    try {
-      await prisma.userProfile.upsert({
-        where: { userId: user.userId },
-        update: {
-          linkedinConnected: true,
-          linkedinName: liName,
-          linkedinPersonUrn: "urn:li:person:me",
-          linkedinEmail: `${user.username}@linkedin.com`,
-        },
-        create: {
-          userId: user.userId,
-          linkedinConnected: true,
-          linkedinName: liName,
-          linkedinPersonUrn: "urn:li:person:me",
-          linkedinEmail: `${user.username}@linkedin.com`,
-        },
-      });
-    } catch (e) {
-      console.warn("LinkedIn 1-click connect notice:", e);
-    }
-    return NextResponse.redirect(new URL("/cowork?connected=linkedin", appUrl));
-  }
-
+  const clientId = process.env.LINKEDIN_CLIENT_ID || "77clarityappli";
   const redirectUri = encodeURIComponent(`${appUrl}/api/auth/linkedin/callback`);
   const state = Math.random().toString(36).substring(7);
   const scopes = encodeURIComponent("openid profile email w_member_social");

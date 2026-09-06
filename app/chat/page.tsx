@@ -86,8 +86,8 @@ export default function ChatPage() {
   };
 
   // Apply settings to DOM element - always dark
-  const applyUserSettings = (profile: any) => {
-    if (typeof document !== "undefined") {
+  const applyUserSettings = (profile?: any) => {
+    if (typeof document !== "undefined" && profile) {
       const bubble = profile.bubbleStyle || "modern";
       const size = profile.fontSize || "14";
       document.documentElement.className = "dark";

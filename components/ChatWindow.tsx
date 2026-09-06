@@ -208,7 +208,7 @@ export function ChatWindow({
     }
   };
 
-  const firstName = username.split(" ")[0] || username;
+  const firstName = (username || "User").split(" ")[0] || "User";
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] main-chat overflow-hidden relative">
