@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     console.warn("Session lookup notice:", e);
   }
 
-  const slug = process.env.VERCEL_INTEGRATION_SLUG?.trim() || "clarity-cowork";
+  const slug = process.env.VERCEL_INTEGRATION_SLUG?.trim() || "clarity";
   const stateData = {
     userId,
     nonce: Math.random().toString(36).substring(7),
