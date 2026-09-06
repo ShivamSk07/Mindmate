@@ -7,10 +7,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   Github,
-  HardDrive,
-  Calendar,
-  Mail,
-  FileSpreadsheet,
+  Linkedin,
   Plug,
   Globe,
   FileText,
@@ -107,10 +104,7 @@ interface CoworkTask {
 // ─── Tool colors ──────────────────────────────────────────────────────────────
 const TOOL_COLOR: Record<string, string> = {
   github: "text-zinc-300",
-  drive: "text-zinc-300",
-  calendar: "text-zinc-300",
-  gmail: "text-zinc-300",
-  sheets: "text-zinc-300",
+  linkedin: "text-[#0a66c2]",
   mcp: "text-zinc-300",
   browser: "text-zinc-300",
   system: "text-zinc-500",
@@ -118,10 +112,7 @@ const TOOL_COLOR: Record<string, string> = {
 
 const TOOL_DOT: Record<string, string> = {
   github: "bg-violet-400",
-  drive: "bg-blue-400",
-  calendar: "bg-pink-400",
-  gmail: "bg-red-400",
-  sheets: "bg-emerald-400",
+  linkedin: "bg-[#0a66c2]",
   mcp: "bg-amber-400",
   browser: "bg-sky-400",
   system: "bg-zinc-500",
@@ -129,10 +120,7 @@ const TOOL_DOT: Record<string, string> = {
 
 const INTEGRATION_ICON: Record<string, any> = {
   github: Github,
-  drive: HardDrive,
-  calendar: Calendar,
-  gmail: Mail,
-  sheets: FileSpreadsheet,
+  linkedin: Linkedin,
   mcp: Plug,
   browser: Globe,
 };
@@ -504,7 +492,7 @@ export default function CoworkPage() {
               <div className="space-y-2">
                 <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">What do you want to accomplish?</h1>
                 <p className="text-sm text-zinc-500">
-                  CoWork runs tasks across your connected tools — GitHub, Google Drive, Gmail, Calendar, and live web search. Ask to visualize your code, database, or API flows to generate diagrams.
+                  CoWork runs tasks across your connected tools — GitHub, MCP servers, and live web search. Ask to visualize your code, database, or API flows to generate diagrams.
                 </p>
               </div>
 

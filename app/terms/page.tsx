@@ -44,7 +44,7 @@ export default function TermsPage() {
           <section>
             <h2 className="text-base font-semibold text-white mb-2">2. Description of the Service</h2>
             <p>
-              Clarity is an autonomous AI agentic workspace designed to assist developers and teams by connecting with GitHub repositories and Google Workspace (Gmail, Google Drive, Calendar, and Sheets) to execute software analysis, planning, and productivity workflows.
+              Clarity is an autonomous AI workspace designed to assist professionals and developers by connecting with GitHub repositories and LinkedIn to execute codebase analysis, content planning, and social growth workflows.
             </p>
           </section>
 
@@ -52,15 +52,15 @@ export default function TermsPage() {
           <section>
             <h2 className="text-base font-semibold text-white mb-2">3. User Accounts & Third-Party Integrations</h2>
             <p>
-              You are responsible for maintaining the confidentiality of your account credentials. When you connect third-party accounts (such as GitHub or Google Workspace), you authorize Clarity to access the requested data strictly in accordance with the permissions you grant and our Privacy Policy.
+              You are responsible for maintaining the confidentiality of your account credentials. When you connect third-party accounts (such as GitHub or LinkedIn), you authorize Clarity to access the requested data strictly in accordance with the permissions you grant and our Privacy Policy.
             </p>
           </section>
 
-          {/* 4. Google Data Limited Use */}
+          {/* 4. Third-Party Data Limited Use */}
           <section>
-            <h2 className="text-base font-semibold text-white mb-2">4. Google Workspace Data & Limited Use</h2>
+            <h2 className="text-base font-semibold text-white mb-2">4. Third-Party Data & Limited Use</h2>
             <p>
-              Clarity accesses Google user data (Gmail, Google Drive, Google Calendar, and Google Sheets) on a read-only basis solely to fulfill user-initiated assistant tasks. We do not sell, rent, or transfer your Google data to third parties, nor do we use your data to train generalized AI models.
+              Clarity accesses authorized third-party data solely to fulfill user-initiated assistant tasks. We do not sell, rent, or transfer your third-party account data to outside entities, nor do we use your data to train generalized AI models.
             </p>
           </section>
 

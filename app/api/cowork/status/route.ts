@@ -9,24 +9,24 @@ export async function GET() {
   const user = await getSessionUser();
 
   let isGitHubConnected = false;
-  let isGoogleConnected = false;
+  let isLinkedInConnected = false;
   let isMcpConnected = false;
   let ghUsername: string | null = null;
-  let googleEmail: string | null = null;
+  let liName: string | null = null;
 
   try {
     const profile = user
       ? await prisma.userProfile.findUnique({ where: { userId: user.userId } })
       : await prisma.userProfile.findFirst({
-          where: { OR: [{ githubConnected: true }, { googleConnected: true }] },
+          where: { OR: [{ githubConnected: true }, { linkedinConnected: true }] },
         });
 
     if (profile) {
       isGitHubConnected = Boolean(profile.githubConnected);
-      isGoogleConnected = Boolean(profile.googleConnected);
+      isLinkedInConnected = Boolean(profile.linkedinConnected);
       isMcpConnected = Boolean(profile.mcpConnected);
       ghUsername = profile.githubUsername;
-      googleEmail = profile.googleEmail;
+      liName = profile.linkedinName;
     }
   } catch (e) {
     console.warn("Integrations status DB check notice:", e);
@@ -43,32 +43,11 @@ export async function GET() {
       username: isGitHubConnected ? (ghUsername || user?.username || "GitHub Account") : null,
     },
     {
-      id: "drive",
-      name: "Google Drive",
-      icon: "HardDrive",
-      connected: isGoogleConnected,
-      username: isGoogleConnected ? (googleEmail || (user ? `${user.username}@gmail.com` : "Google Account")) : null,
-    },
-    {
-      id: "calendar",
-      name: "Google Calendar",
-      icon: "Calendar",
-      connected: isGoogleConnected,
-      username: isGoogleConnected ? (googleEmail || (user ? `${user.username}@gmail.com` : "Google Account")) : null,
-    },
-    {
-      id: "gmail",
-      name: "Gmail",
-      icon: "Mail",
-      connected: isGoogleConnected,
-      username: isGoogleConnected ? (googleEmail || (user ? `${user.username}@gmail.com` : "Google Account")) : null,
-    },
-    {
-      id: "sheets",
-      name: "Google Sheets",
-      icon: "FileSpreadsheet",
-      connected: isGoogleConnected,
-      username: isGoogleConnected ? (googleEmail || (user ? `${user.username}@gmail.com` : "Google Account")) : null,
+      id: "linkedin",
+      name: "LinkedIn",
+      icon: "Linkedin",
+      connected: isLinkedInConnected,
+      username: isLinkedInConnected ? (liName || user?.username || "LinkedIn User") : null,
     },
     {
       id: "mcp",
@@ -79,10 +58,10 @@ export async function GET() {
     },
     {
       id: "browser",
-      name: "Browser Agent",
+      name: "Web Search",
       icon: "Globe",
-      connected: false,
-      details: "Not configured",
+      connected: true,
+      details: "Active",
     },
   ];
 

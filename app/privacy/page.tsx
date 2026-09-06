@@ -29,8 +29,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-white mb-3">1. Introduction</h2>
             <p>
               Clarity (&quot;we&quot;, &quot;our&quot;, or &quot;us&quot;) is an autonomous AI agentic workspace that connects your GitHub repositories,
-              Google Workspace (Drive, Gmail, Calendar, Sheets), and other tools to help you execute complex multi-tool
-              workflows and automate tasks. This Privacy Policy explains how we collect, use, and protect your
+              LinkedIn profile, and tools to help you execute complex workflows and automate tasks. This Privacy Policy explains how we collect, use, and protect your
               information when you use our platform at{" "}
               <a href="https://theclarity.vercel.app" className="text-violet-400 hover:underline">
                 https://theclarity.vercel.app
@@ -43,31 +42,23 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-white mb-3">2. Information We Collect</h2>
             <ul className="list-disc list-inside space-y-2">
               <li><span className="text-white font-medium">Account Information:</span> Username, email address, and encrypted password when you register.</li>
-              <li><span className="text-white font-medium">Google Account Data:</span> When you connect Google, we store your email address and OAuth access tokens to call Google APIs on your behalf (Gmail, Drive, Calendar, Sheets).</li>
+              <li><span className="text-white font-medium">LinkedIn Account Data:</span> When you connect LinkedIn, we store your name, email, avatar, person URN, and OAuth access token to publish authorized posts and fetch profile information on your behalf.</li>
               <li><span className="text-white font-medium">GitHub Account Data:</span> When you connect GitHub, we store your GitHub username, avatar URL, and OAuth access token to interact with your repositories.</li>
               <li><span className="text-white font-medium">Workspace Data:</span> Chat messages, tasks, session history, and personas you create within the platform.</li>
               <li><span className="text-white font-medium">Usage Data:</span> Standard server logs including IP addresses, browser type, and pages visited for security and analytics.</li>
             </ul>
           </section>
 
-          {/* 3. How We Use Google Data */}
+          {/* 3. How We Use Connected Data */}
           <section>
-            <h2 className="text-xl font-semibold text-white mb-3">3. How We Use Google User Data</h2>
-            <p className="mb-3">
-              Clarity's use of information received from Google APIs adheres to the{" "}
-              <a href="https://developers.google.com/terms/api-services-user-data-policy" className="text-violet-400 hover:underline" target="_blank" rel="noopener noreferrer">
-                Google API Services User Data Policy
-              </a>, including the Limited Use requirements.
-            </p>
-            <p className="mb-3">We access Google data <strong className="text-white">only</strong> for the following purposes:</p>
+            <h2 className="text-xl font-semibold text-white mb-3">3. How We Use Connected Account Data</h2>
+            <p className="mb-3">We access connected third-party data <strong className="text-white">only</strong> for user-initiated assistant tasks:</p>
             <ul className="list-disc list-inside space-y-2">
-              <li><span className="text-white font-medium">Gmail (Read-only):</span> To search and display your inbox messages within the CoWork agent so you can analyze emails and plan responses.</li>
-              <li><span className="text-white font-medium">Google Drive (Read-only):</span> To search and retrieve your Drive files so the agent can analyze documents and proposals.</li>
-              <li><span className="text-white font-medium">Google Calendar (Read-only):</span> To check your upcoming events and find available time slots for scheduling.</li>
-              <li><span className="text-white font-medium">Google Sheets (Read-only):</span> To read spreadsheet data for analysis and reporting within the workspace.</li>
+              <li><span className="text-white font-medium">LinkedIn:</span> To publish updates and format posts upon explicit user confirmation and approval.</li>
+              <li><span className="text-white font-medium">GitHub:</span> To inspect repositories, files, and branches to assist with software analysis and visualizations.</li>
             </ul>
             <p className="mt-3 p-4 bg-violet-500/10 border border-violet-500/20 rounded-xl text-sm">
-              🔒 <strong className="text-white">We do not sell, share, or transfer your Google data to any third parties.</strong> Your Google data is used exclusively to provide the AI workspace features you request.
+              🔒 <strong className="text-white">We do not sell, share, or transfer your third-party data to outside entities.</strong> Your data is used exclusively to provide the AI workspace features you request.
             </p>
           </section>
 
@@ -77,8 +68,8 @@ export default function PrivacyPage() {
             <ul className="list-disc list-inside space-y-2">
               <li>All data is stored in a secure PostgreSQL database hosted on Neon.tech with SSL encryption.</li>
               <li>Passwords are hashed using PBKDF2 with 100,000 salt iterations — never stored in plain text.</li>
-              <li>OAuth tokens are stored encrypted and are only used for API calls you explicitly initiate.</li>
-              <li>You can disconnect your Google or GitHub account at any time, which deletes your stored tokens immediately.</li>
+              <li>OAuth tokens are stored securely and are only used for API calls you explicitly initiate.</li>
+              <li>You can disconnect your LinkedIn or GitHub account at any time, which deletes your stored tokens immediately.</li>
             </ul>
           </section>
 
@@ -95,7 +86,7 @@ export default function PrivacyPage() {
             <h2 className="text-xl font-semibold text-white mb-3">6. Third-Party Services</h2>
             <p>Clarity integrates with the following third-party services:</p>
             <ul className="list-disc list-inside space-y-2 mt-2">
-              <li><span className="text-white font-medium">Google (Gmail, Drive, Calendar, Sheets)</span> — <a href="https://policies.google.com/privacy" className="text-violet-400 hover:underline" target="_blank" rel="noopener noreferrer">Google Privacy Policy</a></li>
+              <li><span className="text-white font-medium">LinkedIn</span> — <a href="https://www.linkedin.com/legal/privacy-policy" className="text-violet-400 hover:underline" target="_blank" rel="noopener noreferrer">LinkedIn Privacy Policy</a></li>
               <li><span className="text-white font-medium">GitHub</span> — <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" className="text-violet-400 hover:underline" target="_blank" rel="noopener noreferrer">GitHub Privacy Statement</a></li>
               <li><span className="text-white font-medium">Cerebras AI</span> — Used to power the AI reasoning engine. No personal data is shared.</li>
               <li><span className="text-white font-medium">Vercel</span> — Hosts the web application. Standard hosting infrastructure.</li>

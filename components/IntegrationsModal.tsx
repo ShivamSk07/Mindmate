@@ -4,16 +4,12 @@ import { useState } from "react";
 import {
   X,
   Github,
-  HardDrive,
-  Calendar,
-  Mail,
-  FileSpreadsheet,
+  Linkedin,
   Plug,
   Globe,
   Loader2,
   Check,
   AlertCircle,
-  ExternalLink,
 } from "lucide-react";
 
 export interface IntegrationItem {
@@ -44,7 +40,7 @@ export default function IntegrationsModal({
   if (!isOpen) return null;
 
   const githubIntegration = integrations.find((i) => i.id === "github");
-  const googleIntegration = integrations.find((i) => ["drive", "gmail", "calendar", "sheets"].includes(i.id));
+  const linkedinIntegration = integrations.find((i) => i.id === "linkedin");
 
   const handleDisconnectGitHub = async () => {
     setIsProcessing(true);
@@ -69,18 +65,18 @@ export default function IntegrationsModal({
     }
   };
 
-  const handleDisconnectGoogle = async () => {
+  const handleDisconnectLinkedIn = async () => {
     setIsProcessing(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/cowork/google/connect", {
+      const res = await fetch("/api/cowork/linkedin/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "disconnect" }),
       });
       const data = await res.json();
       if (res.ok) {
-        setMessage({ type: "success", text: "Google services disconnected" });
+        setMessage({ type: "success", text: "LinkedIn disconnected" });
         onStatusChange();
       } else {
         setMessage({ type: "error", text: data.error || "Failed to disconnect" });
@@ -94,7 +90,7 @@ export default function IntegrationsModal({
 
   const INTEGRATION_TABS = [
     { id: "github", name: "GitHub", icon: Github, connected: !!githubIntegration?.connected },
-    { id: "google", name: "Google Workspace", icon: HardDrive, connected: !!googleIntegration?.connected },
+    { id: "linkedin", name: "LinkedIn", icon: Linkedin, connected: !!linkedinIntegration?.connected },
     { id: "mcp", name: "MCP Servers", icon: Plug, connected: false },
     { id: "browser", name: "Web Search", icon: Globe, connected: true },
   ];
@@ -102,8 +98,6 @@ export default function IntegrationsModal({
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
       <div className="w-full max-w-xl bg-[#0a0a0a] border border-zinc-900 rounded-xl flex flex-col overflow-hidden text-zinc-200">
-        
-        {/* Header */}
         <div className="h-12 px-4 border-b border-zinc-900 flex items-center justify-between flex-shrink-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-zinc-200">Integrations</span>
@@ -117,10 +111,7 @@ export default function IntegrationsModal({
           </button>
         </div>
 
-        {/* Modal Body */}
         <div className="flex flex-1 min-h-[300px]">
-          
-          {/* Sidebar */}
           <div className="w-44 border-r border-zinc-900 p-2 space-y-1 bg-[#0a0a0a] flex-shrink-0">
             {INTEGRATION_TABS.map((tab) => {
               const Icon = tab.icon;
@@ -128,7 +119,10 @@ export default function IntegrationsModal({
               return (
                 <button
                   key={tab.id}
-                  onClick={() => { setSelectedTab(tab.id); setMessage(null); }}
+                  onClick={() => {
+                    setSelectedTab(tab.id);
+                    setMessage(null);
+                  }}
                   className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition-colors ${
                     isSelected
                       ? "bg-zinc-900 text-zinc-100 font-medium"
@@ -149,7 +143,6 @@ export default function IntegrationsModal({
             })}
           </div>
 
-          {/* Main Content */}
           <div className="flex-1 p-5 flex flex-col justify-between bg-[#0a0a0a]">
             <div>
               {message && (
@@ -165,7 +158,6 @@ export default function IntegrationsModal({
                 </div>
               )}
 
-              {/* GitHub */}
               {selectedTab === "github" && (
                 <div className="space-y-4">
                   <div>
@@ -174,7 +166,7 @@ export default function IntegrationsModal({
                       <h3 className="text-xs font-semibold text-zinc-200">GitHub</h3>
                     </div>
                     <p className="text-[11px] text-zinc-500 mt-1">
-                      Allows CoWork to search repositories, commits, code, and issues.
+                      Allows CoWork to inspect repositories, codebase trees, commits, and issues.
                     </p>
                   </div>
 
@@ -218,16 +210,15 @@ export default function IntegrationsModal({
                 </div>
               )}
 
-              {/* Google Workspace */}
-              {selectedTab === "google" && (
+              {selectedTab === "linkedin" && (
                 <div className="space-y-4">
                   <div>
                     <div className="flex items-center gap-2">
-                      <HardDrive size={15} className="text-zinc-200" />
-                      <h3 className="text-xs font-semibold text-zinc-200">Google Workspace</h3>
+                      <Linkedin size={15} className="text-[#0a66c2]" />
+                      <h3 className="text-xs font-semibold text-zinc-200">LinkedIn</h3>
                     </div>
                     <p className="text-[11px] text-zinc-500 mt-1">
-                      Enables access across Google Drive, Gmail, Calendar, and Sheets.
+                      Allows CoWork to publish updates, draft thought-leadership posts, and automate social growth.
                     </p>
                   </div>
 
@@ -238,20 +229,20 @@ export default function IntegrationsModal({
                         <div className="flex items-center gap-2 mt-0.5">
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              googleIntegration?.connected ? "bg-emerald-500" : "bg-zinc-700"
+                              linkedinIntegration?.connected ? "bg-[#0a66c2]" : "bg-zinc-700"
                             }`}
                           />
                           <span className="text-xs font-medium text-zinc-300">
-                            {googleIntegration?.connected
-                              ? googleIntegration.username || "Connected"
+                            {linkedinIntegration?.connected
+                              ? `@${linkedinIntegration.username || "Connected"}`
                               : "Not Connected"}
                           </span>
                         </div>
                       </div>
 
-                      {googleIntegration?.connected ? (
+                      {linkedinIntegration?.connected ? (
                         <button
-                          onClick={handleDisconnectGoogle}
+                          onClick={handleDisconnectLinkedIn}
                           disabled={isProcessing}
                           className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-300 hover:text-red-400 transition-colors disabled:opacity-50"
                         >
@@ -259,40 +250,18 @@ export default function IntegrationsModal({
                         </button>
                       ) : (
                         <button
-                          onClick={() => { window.location.href = "/api/auth/google"; }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-colors"
+                          onClick={() => { window.location.href = "/api/auth/linkedin"; }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-medium transition-colors shadow-sm"
                         >
-                          <ExternalLink size={13} />
-                          <span>Connect</span>
+                          <Linkedin size={13} />
+                          <span>Connect LinkedIn</span>
                         </button>
                       )}
                     </div>
                   </div>
-
-                  {/* Included Services */}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
-                    {[
-                      { name: "Google Drive", icon: HardDrive },
-                      { name: "Gmail", icon: Mail },
-                      { name: "Google Calendar", icon: Calendar },
-                      { name: "Google Sheets", icon: FileSpreadsheet },
-                    ].map((svc) => {
-                      const SvcIcon = svc.icon;
-                      return (
-                        <div
-                          key={svc.name}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-900 text-xs text-zinc-400"
-                        >
-                          <SvcIcon size={13} className="text-zinc-500" />
-                          <span>{svc.name}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
                 </div>
               )}
 
-              {/* MCP Servers */}
               {selectedTab === "mcp" && (
                 <div className="space-y-4">
                   <div>
@@ -316,7 +285,6 @@ export default function IntegrationsModal({
                 </div>
               )}
 
-              {/* Web Search */}
               {selectedTab === "browser" && (
                 <div className="space-y-4">
                   <div>
@@ -345,7 +313,6 @@ export default function IntegrationsModal({
               )}
             </div>
 
-            {/* Footer */}
             <div className="pt-3 border-t border-zinc-900 flex justify-end">
               <button
                 onClick={onClose}

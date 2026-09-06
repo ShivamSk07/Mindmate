@@ -35,6 +35,13 @@ model UserProfile {
   githubToken          String?  @db.Text
   githubUsername       String?
   githubAvatarUrl      String?
+  linkedinConnected    Boolean  @default(false)
+  linkedinToken        String?  @db.Text
+  linkedinRefreshToken String?  @db.Text
+  linkedinPersonUrn    String?
+  linkedinName         String?
+  linkedinEmail        String?
+  linkedinAvatarUrl    String?
   googleConnected      Boolean  @default(false)
   googleEmail          String?
   googleToken          String?  @db.Text

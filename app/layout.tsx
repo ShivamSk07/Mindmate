@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "Clarity — Autonomous AI Agentic Workspace",
-  description: "Clarity is an autonomous AI agentic workspace that connects your GitHub, Google Drive, Gmail, Calendar, and Sheets to execute multi-tool workflows and automate enterprise tasks.",
+  description: "Clarity is an autonomous AI agentic workspace that connects your GitHub, MCP servers, and browser tools to execute multi-step workflows and automate project work.",
   verification: {
     google: "w7SiSdrB1FiHi2nZhS90TO-ZbS4vm7PB47nJQC07VXE",
   },

@@ -66,33 +66,30 @@ ${fileList}
       } catch (err) {
         logs.push(`[${new Date().toLocaleTimeString()}] ⚠️ GitHub connection warning: proceeding with local agent simulation.`);
       }
-    } else if (integrationType === "postgresql") {
-      logs.push(`[${new Date().toLocaleTimeString()}] 🗄️ Connecting to PostgreSQL Database schema inspector...`);
-      extraContext = `DATABASE CONTEXT: PostgreSQL schema with User, Session, Message, UserProfile, and Task tables.`;
-    } else if (integrationType === "notion") {
-      logs.push(`[${new Date().toLocaleTimeString()}] 📝 Connecting to Notion Workspace document sync...`);
-      extraContext = `NOTION DOCS CONTEXT: System architecture specifications and user workflow documentation.`;
-    } else if (integrationType === "figma") {
-      logs.push(`[${new Date().toLocaleTimeString()}] 🎨 Connecting to Figma Design Tokens & Component Extractor...`);
-      extraContext = `FIGMA DESIGN CONTEXT: Dark mode theme tokens (#000000 main, #1c1c1e cards, #2c2c2e borders, #007aff primary blue).`;
+    } else if (integrationType === "linkedin") {
+      logs.push(`[${new Date().toLocaleTimeString()}] 💼 Connecting to LinkedIn Professional Network & UGC API...`);
+      extraContext = `LINKEDIN INTEGRATION CONTEXT:
+Permissions: openid profile email w_member_social
+Target Author: Authenticated LinkedIn Profile
+Capabilities: Automated Post Generation, Thought Leadership Ghostwriting, Job Announcements, Public Commentary.`;
     }
 
-    logs.push(`[${new Date().toLocaleTimeString()}] 🧠 Invoking Groq AI Agent Reasoner (${MODEL})...`);
+    logs.push(`[${new Date().toLocaleTimeString()}] 🧠 Invoking AI Agent Reasoner (${MODEL})...`);
 
-    const agentSystemPrompt = `You are Clarity CoWork Agent, an autonomous enterprise AI workspace agent.
-You execute complex multi-step technical tasks across GitHub codebases, Notion documentation, PostgreSQL schemas, and Figma UI designs.
+    const agentSystemPrompt = `You are Clarity CoWork Agent, an autonomous AI workspace agent.
+You execute complex multi-step technical and professional tasks across GitHub codebases and LinkedIn content growth.
 
 INSTRUCTIONS:
 1. Provide a thorough, professional, actionable report in Markdown format.
 2. Structure your output with clear sections:
    - ## Task Executive Summary
    - ## Key Findings & Analysis
-   - ## Proposed Code / Actionable Solution (Include complete code blocks or diffs if requested)
+   - ## Proposed Solution / Content
    - ## Next Recommended Steps
-3. Maintain an executive, Apple-level technical precision. No fluff or generic intro/outro statements.
+3. Maintain an executive, high-precision standard. No fluff or generic intro/outro statements.
 4. DIAGRAMS & FLOWCHARTS:
    - STRICT PROHIBITION: NEVER output ASCII art diagrams, text boxes, ascii arrows (+---+, | |, -->), or unicode box drawings (┌───┐, │ │, └───┘).
-   - When generating architecture, workflows, sequence diagrams, flowcharts, data flows, database schemas, or relationship maps, ALWAYS output valid Mermaid syntax inside a \`\`\`mermaid code block.
+   - When generating architecture, workflows, sequence diagrams, flowcharts, data flows, or relationship maps, ALWAYS output valid Mermaid syntax inside a \`\`\`mermaid code block.
    - Our UI automatically renders \`\`\`mermaid blocks into live SVG diagrams.`;
 
     const fullPrompt = `${extraContext ? `### CONNECTED INTEGRATION CONTEXT:\n${extraContext}\n\n` : ""}### AGENTIC TASK REQUEST:

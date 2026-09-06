@@ -9,17 +9,9 @@ import {
   github_create_pull_request,
 } from "./github";
 import {
-  drive_search_files,
-  drive_get_file_content,
-  calendar_list_events,
-  calendar_find_free_time,
-  calendar_create_event,
-  gmail_search,
-  gmail_create_draft,
-  gmail_send,
-  sheets_read,
-  sheets_write,
-} from "./google";
+  linkedin_get_profile,
+  linkedin_create_post,
+} from "./linkedin";
 import { listMCPServers } from "./mcp";
 import { searchWeb, SearchResult } from "./search";
 import { getCerebrasClient, MODEL } from "./cerebras";
@@ -40,7 +32,7 @@ export interface ActivityItem {
   id: string;
   timestamp: string;
   type: "connect" | "tool_call" | "reasoning" | "approval_request" | "success" | "error";
-  category?: "github" | "drive" | "calendar" | "gmail" | "sheets" | "mcp" | "browser" | "system";
+  category?: "github" | "linkedin" | "mcp" | "browser" | "system";
   title: string;
   description: string;
   toolName?: string;
@@ -50,7 +42,7 @@ export interface ActivityItem {
 
 export interface PendingApproval {
   toolName: string;
-  category: "github" | "drive" | "calendar" | "gmail" | "sheets" | "mcp" | "browser";
+  category: "github" | "linkedin" | "mcp" | "browser";
   params: any;
   title: string;
   description: string;
@@ -60,7 +52,7 @@ export interface PendingApproval {
 export interface Artifact {
   id: string;
   title: string;
-  type: "report" | "plan" | "email" | "calendar" | "sheets" | "code_diff" | "review" | "visualization";
+  type: "report" | "plan" | "linkedin_post" | "code_diff" | "review" | "visualization";
   content: string;
   createdAt: string;
 }
@@ -154,25 +146,10 @@ export function detectToolRequirements(userQuery: string) {
     q.includes("@github") ||
     /\b(first repo|oldest repo|my repo|my repositories|list repo|show repo|check repo)\b/i.test(q);
 
-  // Google Drive keywords
-  const isDrive =
-    /\b(drive|google drive|docs|doc|pdf|pdfs|folder|folders|files in drive|my file|my document)\b/i.test(q) ||
-    q.includes("@drive");
-
-  // Google Calendar keywords
-  const isCalendar =
-    /\b(calendar|meeting|meetings|schedule|appointment|appointments|events|free slot|free time|free slots|schedule meeting)\b/i.test(q) ||
-    q.includes("@calendar");
-
-  // Gmail keywords
-  const isGmail =
-    /\b(gmail|email|emails|mail|mails|inbox|draft|drafts|unread email|send email|compose email)\b/i.test(q) ||
-    q.includes("@gmail");
-
-  // Google Sheets keywords
-  const isSheets =
-    /\b(sheet|sheets|spreadsheet|spreadsheets|excel|rows|columns|dataset|sales table|csv)\b/i.test(q) ||
-    q.includes("@sheets");
+  // LinkedIn keywords & intents
+  const isLinkedIn =
+    /\b(linkedin|linkdin|linked in|linkedin post|post on linkedin|post to linkedin|share on linkedin|thought leadership|hiring post|connection note|professional update|linkedin profile)\b/i.test(q) ||
+    q.includes("@linkedin");
 
   // MCP keywords
   const isMCP =
@@ -186,17 +163,14 @@ export function detectToolRequirements(userQuery: string) {
     q.includes("@browser") ||
     q.includes("@web");
 
-  const anyWorkspaceTool = isGitHub || isDrive || isCalendar || isGmail || isSheets || isMCP;
+  const anyWorkspaceTool = isGitHub || isLinkedIn || isMCP;
 
   // Run web search ONLY IF explicitly requested OR if no workspace tools are matched
   const isWeb = isExplicitWeb || !anyWorkspaceTool;
 
   return {
     needsGitHub: isGitHub,
-    needsDrive: isDrive,
-    needsCalendar: isCalendar,
-    needsGmail: isGmail,
-    needsSheets: isSheets,
+    needsLinkedIn: isLinkedIn,
     needsMCP: isMCP,
     needsBrowser: isWeb,
   };
@@ -261,15 +235,11 @@ export async function createAndRunTask(
       { id: "step_final", title: "Finalizing visualization", status: "waiting" },
     ];
   } else {
-    // Detect which tools are needed accurately
     const flags = detectToolRequirements(userQuery);
 
     initialPlan.push({ id: "step_init", title: "Analyzing request", status: "completed" });
     if (flags.needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub Repositories", status: "waiting" });
-    if (flags.needsDrive) initialPlan.push({ id: "step_drive", title: "Google Drive", status: "waiting" });
-    if (flags.needsSheets) initialPlan.push({ id: "step_sheets", title: "Google Sheets", status: "waiting" });
-    if (flags.needsCalendar) initialPlan.push({ id: "step_cal", title: "Google Calendar", status: "waiting" });
-    if (flags.needsGmail) initialPlan.push({ id: "step_gmail", title: "Gmail", status: "waiting" });
+    if (flags.needsLinkedIn) initialPlan.push({ id: "step_linkedin", title: "LinkedIn Network", status: "waiting" });
     if (flags.needsBrowser) initialPlan.push({ id: "step_browser", title: "Live Web Search", status: "waiting" });
     if (flags.needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP Servers", status: "waiting" });
     initialPlan.push({ id: "step_final", title: "Writing response", status: "waiting" });
@@ -337,11 +307,8 @@ export async function createAndRunTask(
 async function executeAgentLoop(
   taskId: string,
   flags: {
-    needsDrive: boolean;
     needsGitHub: boolean;
-    needsCalendar: boolean;
-    needsGmail: boolean;
-    needsSheets: boolean;
+    needsLinkedIn: boolean;
     needsBrowser: boolean;
     needsMCP: boolean;
   }
@@ -355,16 +322,20 @@ async function executeAgentLoop(
   let repo = task.repoName;
 
   // Fetch tokens from DB
-  let googleAccessToken: string | null = null;
+  let linkedinAccessToken: string | null = null;
+  let linkedinPersonUrn: string | null = null;
+  let linkedinName: string = "LinkedIn User";
   let githubAccessToken: string | null = null;
   let githubUsername: string = owner;
 
   try {
-    const gProfile = await (prisma as any).userProfile.findFirst({
-      where: { googleConnected: true },
-      select: { googleToken: true },
+    const liProfile = await (prisma as any).userProfile.findFirst({
+      where: { linkedinConnected: true },
+      select: { linkedinToken: true, linkedinPersonUrn: true, linkedinName: true },
     });
-    googleAccessToken = gProfile?.googleToken || null;
+    linkedinAccessToken = liProfile?.linkedinToken || null;
+    linkedinPersonUrn = liProfile?.linkedinPersonUrn || null;
+    if (liProfile?.linkedinName) linkedinName = liProfile.linkedinName;
   } catch {}
 
   try {
@@ -377,11 +348,8 @@ async function executeAgentLoop(
     if (!owner) owner = githubUsername;
   } catch {}
 
-  let driveText = "";
+  let linkedinText = "";
   let githubText = "";
-  let calendarText = "";
-  let gmailText = "";
-  let sheetsText = "";
   let webText = "";
 
   // ── WEB SEARCH (Only when requested) ─────────────────────────
@@ -408,32 +376,105 @@ async function executeAgentLoop(
     await delay(30);
   }
 
-  // ── GOOGLE DRIVE ─────────────────────────────────────────────
-  if (flags.needsDrive) {
-    setStep(task, "step_drive", "running");
-    addLog(task, "tool_call", "Searching Drive", `Looking for files matching "${task.userQuery.slice(0, 40)}"`, "drive", { toolName: "drive_search_files" });
+  // ── LINKEDIN ────────────────────────────────────────────────
+  if (flags.needsLinkedIn) {
+    setStep(task, "step_linkedin", "running");
+    addLog(task, "tool_call", "Connecting to LinkedIn", `@${linkedinName}`, "linkedin", { toolName: "linkedin_get_profile" });
     await delay(30);
 
-    try {
-      const files = await drive_search_files(task.userQuery, googleAccessToken);
-      if (files.length > 0) {
-        addLog(task, "tool_call", `Reading ${files[0].name}`, `Extracting file content`, "drive", { toolName: "drive_get_file_content" });
-        await delay(30);
-        const content = await drive_get_file_content(files[0].id);
-        driveText =
-          `Files found (${files.length}):\n` +
-          files.map((f) => `• ${f.name}`).join("\n") +
-          `\n\n${files[0].name} content:\n${content.content}`;
-        task.usedTools.push("drive_search_files", "drive_get_file_content");
-        addLog(task, "success", `Read ${files[0].name}`, `${files.length} file(s) retrieved`, "drive");
-      } else {
-        addLog(task, "reasoning", "No Drive files found", "No matching documents in Google Drive", "drive");
+    if (linkedinAccessToken) {
+      try {
+        const profile = await linkedin_get_profile(linkedinAccessToken);
+        if (profile) {
+          linkedinPersonUrn = profile.personUrn || linkedinPersonUrn;
+          linkedinName = profile.name || linkedinName;
+          task.usedTools.push("linkedin_get_profile");
+          addLog(task, "success", `Authenticated as ${linkedinName}`, `Person URN: ${linkedinPersonUrn}`, "linkedin");
+          linkedinText = `LinkedIn Authenticated Profile:
+Name: ${profile.name}
+Email: ${profile.email || "N/A"}
+Person URN: ${profile.personUrn}
+Status: Active & Authorized for Social Sharing`;
+        } else {
+          addLog(task, "reasoning", "Profile session cached", `Using profile @${linkedinName}`, "linkedin");
+          linkedinText = `LinkedIn Profile: @${linkedinName} (Connected)`;
+        }
+      } catch (e: any) {
+        addLog(task, "error", "LinkedIn profile check failed", e.message, "linkedin");
       }
-    } catch (e: any) {
-      addLog(task, "error", "Drive access failed", e.message || "Check Google connection", "drive");
+    } else {
+      addLog(task, "reasoning", "LinkedIn not connected", "Drafting post locally. Connect LinkedIn in Integrations for 1-click publishing.", "linkedin");
+      linkedinText = `LinkedIn Account Status: Not connected (Simulated/Draft Mode).`;
     }
 
-    setStep(task, "step_drive", "completed");
+    // Check if user specifically requested publishing a post
+    const isPostPublishRequest =
+      /\b(post|publish|share|send post|drop post|make post)\b/i.test(queryLower) &&
+      !queryLower.includes("don't post") &&
+      !queryLower.includes("just draft");
+
+    if (isPostPublishRequest) {
+      // Generate the drafted post commentary first
+      let draftedPostText = "";
+      try {
+        const client = getCerebrasClient();
+        const draftPrompt = `You are an elite LinkedIn content creator and ghostwriter.
+Generate a high-converting, professional, engaging LinkedIn post for the following topic:
+"${task.userQuery}"
+
+Rules:
+- Include a strong 1-2 line hook to capture attention.
+- Use clean spacing, line breaks, bullet points, and 2-3 relevant emojis.
+- Include 3-5 relevant hashtags at the bottom (e.g. #AI #Innovation #Productivity).
+- Keep tone confident, thought-provoking, and professional.
+- Return ONLY the final ready-to-publish post text.`;
+
+        const draftComp = (await client.chat.completions.create({
+          model: MODEL,
+          messages: [{ role: "user", content: draftPrompt }],
+          temperature: 0.3,
+          max_tokens: 1000,
+        })) as any;
+
+        draftedPostText = draftComp.choices[0]?.message?.content?.trim() || "";
+      } catch (err) {
+        draftedPostText = `Excited to share our latest updates!\n\n${task.userQuery}\n\n#Growth #Tech #Innovation`;
+      }
+
+      // Trigger Human-in-the-loop Approval for LinkedIn Post
+      setStep(task, "step_final", "approval_required");
+      task.status = "waiting_approval";
+      task.pendingApproval = {
+        toolName: "linkedin_create_post",
+        category: "linkedin",
+        title: "Publish to LinkedIn",
+        description: `Publish this drafted update to your LinkedIn profile (${linkedinName}).`,
+        targetResource: `LinkedIn @${linkedinName}`,
+        params: {
+          authorUrn: linkedinPersonUrn || "me",
+          postText: draftedPostText,
+        },
+      };
+
+      addLog(task, "approval_request", "Approval required", "Review drafted post before live publishing to LinkedIn", "linkedin", {
+        toolName: "linkedin_create_post",
+        details: task.pendingApproval,
+      });
+
+      // Also create a drafted artifact for the user to view immediately
+      task.artifacts.push({
+        id: `art_li_${Date.now()}`,
+        title: "LinkedIn Post Draft",
+        type: "linkedin_post",
+        content: draftedPostText,
+        createdAt: ts(),
+      });
+
+      taskStore.set(taskId, task);
+      return;
+    }
+
+    setStep(task, "step_linkedin", "completed");
     await delay(30);
   }
 
@@ -453,7 +494,6 @@ async function executeAgentLoop(
       let resolvedRepo = repo;
 
       if (repos.length > 0) {
-        // Sort repos by creation date ascending (oldest/first created repo)
         const sortedByCreated = [...repos].sort((a, b) => {
           const tA = a.created_at ? new Date(a.created_at).getTime() : 0;
           const tB = b.created_at ? new Date(b.created_at).getTime() : 0;
@@ -461,7 +501,6 @@ async function executeAgentLoop(
         });
         const firstCreatedRepo = sortedByCreated[0];
 
-        // Sort repos by updated date descending (most recently updated)
         const sortedByUpdated = [...repos].sort((a, b) => {
           const tA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
           const tB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
@@ -515,7 +554,6 @@ async function executeAgentLoop(
           } catch {}
         }
 
-        // Build rich GitHub context with all details
         const repoListDetails = repos.map((r, idx) => 
           `${idx + 1}. **${r.name}** (${r.full_name})
    - Primary Language: ${r.language || "N/A"}
@@ -553,97 +591,15 @@ ${repoListDetails}`;
     await delay(30);
   }
 
-  // ── GOOGLE SHEETS ────────────────────────────────────────────
-  if (flags.needsSheets) {
-    setStep(task, "step_sheets", "running");
-    addLog(task, "tool_call", "Reading spreadsheet", "Fetching rows and columns", "sheets", { toolName: "sheets_read" });
-    await delay(30);
-
-    try {
-      const sheetData = await sheets_read("sheet_101");
-      sheetsText = `${sheetData.title}\nHeaders: ${sheetData.headers.join(", ")}\nData:\n${sheetData.rows.map((r) => r.join(" | ")).join("\n")}`;
-      task.usedTools.push("sheets_read");
-      addLog(task, "success", "Spreadsheet loaded", `${sheetData.rows.length} rows`, "sheets");
-    } catch (e: any) {
-      addLog(task, "error", "Sheets access failed", e.message || "Check Google connection", "sheets");
-    }
-
-    setStep(task, "step_sheets", "completed");
-    await delay(30);
-  }
-
-  // ── GOOGLE CALENDAR ──────────────────────────────────────────
-  if (flags.needsCalendar) {
-    setStep(task, "step_cal", "running");
-    addLog(task, "tool_call", "Checking calendar", "Finding free slots tomorrow", "calendar", { toolName: "calendar_find_free_time" });
-    await delay(30);
-
-    try {
-      const slots = await calendar_find_free_time("tomorrow", 60);
-      calendarText = `Free slots tomorrow: ${slots.availableSlots.join(", ")}`;
-      task.usedTools.push("calendar_find_free_time");
-      addLog(task, "success", "Calendar read", `${slots.availableSlots.length} free slots found`, "calendar");
-    } catch (e: any) {
-      addLog(task, "error", "Calendar access failed", e.message || "Check Google connection", "calendar");
-    }
-
-    setStep(task, "step_cal", "completed");
-    await delay(30);
-  }
-
-  // ── GMAIL ────────────────────────────────────────────────────
-  if (flags.needsGmail) {
-    setStep(task, "step_gmail", "running");
-    addLog(task, "tool_call", "Searching inbox", `"${task.userQuery.slice(0, 40)}"`, "gmail", { toolName: "gmail_search" });
-    await delay(30);
-
-    try {
-      const emails = await gmail_search(task.userQuery, googleAccessToken);
-      const profile = await (prisma as any).userProfile.findFirst({
-        where: { googleConnected: true },
-        select: { googleEmail: true },
-      });
-      const userEmail = profile?.googleEmail || "your account";
-      gmailText =
-        `Gmail: ${userEmail}\n${emails.length} message(s) found\n\n` +
-        emails
-          .map((e) => `From: ${e.from}\nSubject: ${e.subject}\nSnippet: ${e.snippet}\nDate: ${new Date(e.date).toLocaleString()}`)
-          .join("\n\n");
-      task.usedTools.push("gmail_search");
-      addLog(task, "success", `${emails.length} email${emails.length !== 1 ? "s" : ""} found`, emails[0]?.subject || "Inbox read", "gmail");
-    } catch (e: any) {
-      addLog(task, "error", "Gmail access failed", e.message || "Check Google connection", "gmail");
-    }
-
-    setStep(task, "step_gmail", "completed");
-    await delay(30);
-  }
-
-  // ── HUMAN APPROVAL CHECK ─────────────────────────────────────
-  const isSendEmail = queryLower.includes("send email") || queryLower.includes("send mail");
-  const isCreateEvent = queryLower.includes("schedule meeting") || queryLower.includes("create event");
+  // ── HUMAN APPROVAL CHECK FOR GITHUB ACTIONS ──────────────────
   const isCreateIssue = queryLower.includes("create issue") || queryLower.includes("open issue");
 
-  if (isSendEmail || isCreateEvent || isCreateIssue) {
-    let toolName = "gmail_send";
-    let cat: "gmail" | "calendar" | "github" = "gmail";
-    let titleText = "Send email";
-    let descText = "Send the drafted email to the recipient.";
-    let params: any = { to: "", subject: task.userQuery.slice(0, 40), body: "..." };
-
-    if (isCreateEvent) {
-      toolName = "calendar_create_event";
-      cat = "calendar";
-      titleText = "Create calendar event";
-      descText = "Create the meeting event in Google Calendar.";
-      params = { summary: "Meeting", startIso: "Tomorrow 10:00 AM", endIso: "Tomorrow 11:00 AM" };
-    } else if (isCreateIssue) {
-      toolName = "github_create_issue";
-      cat = "github";
-      titleText = "Create GitHub issue";
-      descText = `Open a new issue on ${owner}/${repo}.`;
-      params = { owner, repo, title: task.userQuery.slice(0, 60), body: "" };
-    }
+  if (isCreateIssue) {
+    const toolName = "github_create_issue";
+    const cat = "github";
+    const titleText = "Create GitHub issue";
+    const descText = `Open a new issue on ${owner}/${repo}.`;
+    const params = { owner, repo, title: task.userQuery.slice(0, 60), body: "" };
 
     setStep(task, "step_final", "approval_required");
     task.status = "waiting_approval";
@@ -652,7 +608,7 @@ ${repoListDetails}`;
       category: cat,
       title: titleText,
       description: descText,
-      targetResource: params.to || params.summary || `${owner}/${repo}`,
+      targetResource: `${owner}/${repo}`,
       params,
     };
 
@@ -665,11 +621,8 @@ ${repoListDetails}`;
   await finalizeReport(task, {
     owner,
     repo,
-    driveText,
+    linkedinText,
     githubText,
-    calendarText,
-    gmailText,
-    sheetsText,
     webText,
   });
 }
@@ -683,11 +636,8 @@ async function finalizeReport(
   ctx: {
     owner: string;
     repo: string;
-    driveText: string;
+    linkedinText: string;
     githubText: string;
-    calendarText: string;
-    gmailText: string;
-    sheetsText: string;
     webText: string;
     writeActionResult?: string;
   }
@@ -698,23 +648,20 @@ async function finalizeReport(
 
   const contextParts: string[] = [];
   if (ctx.webText) contextParts.push(`WEB:\n${ctx.webText}`);
-  if (ctx.driveText) contextParts.push(`DRIVE:\n${ctx.driveText}`);
-  if (ctx.gmailText) contextParts.push(`GMAIL:\n${ctx.gmailText}`);
+  if (ctx.linkedinText) contextParts.push(`LINKEDIN:\n${ctx.linkedinText}`);
   if (ctx.githubText) contextParts.push(`GITHUB:\n${ctx.githubText}`);
-  if (ctx.sheetsText) contextParts.push(`SHEETS:\n${ctx.sheetsText}`);
-  if (ctx.calendarText) contextParts.push(`CALENDAR:\n${ctx.calendarText}`);
   if (ctx.writeActionResult) contextParts.push(`ACTION RESULT:\n${ctx.writeActionResult}`);
 
-  const sysPrompt = `You are Clarity, an AI workspace agent.
+  const sysPrompt = `You are Clarity, an autonomous AI workspace agent specializing in GitHub codebase analysis, LinkedIn content & social growth automation, and live intelligence.
 Answer the user's request directly and clearly using the retrieved data below.
-Format the response with clean markdown: use headers, bullet lists, code blocks where relevant.
-Be specific, factual, and concise. Do not use filler phrases.
-If real data was retrieved, reference it directly (repo names, commit messages, email subjects, etc.).
+Format the response with clean markdown: use headers, bullet lists, code blocks or quotes where relevant.
+Be specific, factual, engaging, and concise. Do not use filler phrases.
+If real data was retrieved, reference it directly (repo names, LinkedIn author URN, etc.).
 
 CRITICAL FORMATTING RULES:
 - STRICT PROHIBITION: NEVER output ASCII art diagrams, text boxes, ascii arrows (+---+, | |, -->), or unicode box-drawing diagrams (┌───┐, │ │, └───┘).
-- When explaining architecture, workflows, sequence diagrams, flowcharts, data flows, database schemas, or relationship maps, ALWAYS output valid Mermaid syntax inside a \`\`\`mermaid code block.
-- Our frontend UI automatically compiles and renders \`\`\`mermaid code blocks into interactive live SVG diagrams in real-time. NEVER output copy/paste instructions or advice on external editors.`;
+- When explaining architecture, workflows, sequence diagrams, flowcharts, data flows, or relationship maps, ALWAYS output valid Mermaid syntax inside a \`\`\`mermaid code block.
+- Our frontend UI automatically compiles and renders \`\`\`mermaid code blocks into interactive live SVG diagrams in real-time.`;
 
   const userPrompt = `Request: "${task.userQuery}"
 
@@ -732,28 +679,29 @@ Respond directly and clearly.`;
         { role: "system", content: sysPrompt },
         { role: "user", content: userPrompt },
       ],
-      temperature: 0.1,
+      temperature: 0.15,
       max_tokens: 2500,
     })) as any;
     const choice = completion.choices[0]?.message;
     reportText = choice?.content?.trim() || choice?.reasoning?.trim() || "";
   } catch (e) {
-    // Fallback: just show the raw context clearly formatted
     reportText = contextParts.length > 0
       ? contextParts.join("\n\n---\n\n")
-      : `No data was retrieved. Make sure your integrations (GitHub, Google) are connected.`;
+      : `No data was retrieved. Make sure your integrations (GitHub, LinkedIn) are connected.`;
   }
 
   const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const artifacts: Artifact[] = [];
+  const artifacts: Artifact[] = task.artifacts || [];
 
-  artifacts.push({
-    id: `art_main_${Date.now()}`,
-    title: task.userQuery.slice(0, 50),
-    type: "report",
-    content: reportText,
-    createdAt: nowStr,
-  });
+  if (!artifacts.some((a) => a.type === "report" || a.type === "linkedin_post")) {
+    artifacts.unshift({
+      id: `art_main_${Date.now()}`,
+      title: task.userQuery.slice(0, 50),
+      type: "report",
+      content: reportText,
+      createdAt: nowStr,
+    });
+  }
 
   task.artifacts = artifacts;
   task.report = reportText;
@@ -761,7 +709,7 @@ Respond directly and clearly.`;
   task.plan.forEach((s) => { if (s.status !== "failed") s.status = "completed"; });
   task.updatedAt = new Date().toISOString();
 
-  addLog(task, "success", "Done", `${artifacts.length} artifact generated`, "system");
+  addLog(task, "success", "Done", `${artifacts.length} artifact(s) generated`, "system");
   taskStore.set(task.id, task);
 }
 
@@ -780,15 +728,41 @@ export async function approvePendingTask(taskId: string): Promise<CoworkTask> {
 
   let resultInfo = "";
   try {
-    if (toolName === "gmail_send") {
-      const res = await gmail_send(params.to, params.subject, params.body);
-      resultInfo = `Email sent (${res.messageId})`;
-    } else if (toolName === "calendar_create_event") {
-      const res = await calendar_create_event(params.summary, params.startIso, params.endIso);
-      resultInfo = `Event created: ${res.summary}`;
+    if (toolName === "linkedin_create_post") {
+      let liToken: string | null = null;
+      let liUrn: string | null = params.authorUrn;
+
+      try {
+        const liProfile = await (prisma as any).userProfile.findFirst({
+          where: { linkedinConnected: true },
+          select: { linkedinToken: true, linkedinPersonUrn: true },
+        });
+        liToken = liProfile?.linkedinToken || null;
+        if (liProfile?.linkedinPersonUrn) liUrn = liProfile.linkedinPersonUrn;
+      } catch {}
+
+      if (liToken) {
+        const postRes = await linkedin_create_post(liToken, liUrn || "me", params.postText);
+        if (postRes.success) {
+          resultInfo = `🚀 Post successfully published to LinkedIn! (ID: ${postRes.postId || "Live"})`;
+        } else {
+          resultInfo = `⚠️ Post publication failed: ${postRes.error || "LinkedIn API error"}`;
+        }
+      } else {
+        resultInfo = `🚀 Post simulated and marked published (Connect real LinkedIn in Integrations to send live API request).`;
+      }
     } else if (toolName === "github_create_issue") {
-      const res = await github_create_issue(params.owner, params.repo, params.title, params.body);
-      resultInfo = `Issue #${res.number} created`;
+      let ghToken: string | null = null;
+      try {
+        const ghProfile = await (prisma as any).userProfile.findFirst({
+          where: { githubConnected: true },
+          select: { githubToken: true },
+        });
+        ghToken = ghProfile?.githubToken || null;
+      } catch {}
+
+      const res = await github_create_issue(params.owner, params.repo, params.title, params.body, ghToken);
+      resultInfo = `Issue #${res.number} created on ${params.owner}/${params.repo}`;
     }
   } catch (e: any) {
     resultInfo = `Action failed: ${e.message}`;
@@ -802,11 +776,8 @@ export async function approvePendingTask(taskId: string): Promise<CoworkTask> {
   await finalizeReport(task, {
     owner: task.repoOwner,
     repo: task.repoName,
-    driveText: "",
+    linkedinText: `Live Action Result:\n${resultInfo}\n\nPublished Content:\n${params.postText || ""}`,
     githubText: "",
-    calendarText: "",
-    gmailText: "",
-    sheetsText: "",
     webText: "",
     writeActionResult: resultInfo,
   });
@@ -883,7 +854,6 @@ Generate the updated Mermaid diagram now:`;
 
         let newMermaid = completion.choices[0]?.message?.content?.trim() || "";
         newMermaid = sanitizeMermaid(newMermaid);
-        const newKroki = getKrokiUrl(newMermaid);
         const replyTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
         task.messages.push({
@@ -893,7 +863,6 @@ Generate the updated Mermaid diagram now:`;
           timestamp: replyTime,
         });
 
-        // Unshift/insert the new visualization artifact to make it active
         task.artifacts.unshift({
           id: `art_vis_${Date.now()}`,
           title: followupQuery.slice(0, 40),
@@ -1001,13 +970,12 @@ export function sanitizeMermaid(code: string): string {
     return `|${safeLabel}|`;
   });
 
-  // 6. Clean node definitions line by line for maximum reliability:
+  // 6. Clean node definitions line by line
   const lines = clean.split("\n");
   const processedLines = lines.map((line) => {
     let l = line;
     const trimmed = l.trim();
 
-    // Skip comments and directives
     if (
       trimmed.startsWith("%%") ||
       trimmed.startsWith("classDef") ||
@@ -1017,37 +985,30 @@ export function sanitizeMermaid(code: string): string {
       return l;
     }
 
-    // Process nodes with cylinder: id[(text)] -> id[("text")]
     l = l.replace(/([a-zA-Z0-9_-]+)\[\(\s*(?!"|\()([^\]\r\n]*?)\s*\)\]/g, (_, id, text) => {
       return `${id}[("${text.replace(/["\\]/g, "'").trim()}")]`;
     });
 
-    // Process nodes with stadium: id([text]) -> id(["text"])
     l = l.replace(/([a-zA-Z0-9_-]+)\(\[\s*(?!"|\()([^\]\r\n]*?)\s*\]\)/g, (_, id, text) => {
       return `${id}(["${text.replace(/["\\]/g, "'").trim()}"])`;
     });
 
-    // Process nodes with subroutine: id[[text]] -> id[["text"]]
     l = l.replace(/([a-zA-Z0-9_-]+)\[\[\s*(?!"|\[)([^\]\r\n]*?)\s*\]\]/g, (_, id, text) => {
       return `${id}[["${text.replace(/["\\]/g, "'").trim()}"]]`;
     });
 
-    // Process nodes with double circle: id((text)) -> id(("text"))
     l = l.replace(/([a-zA-Z0-9_-]+)\(\(\s*(?!"|\()([^)\r\n]*?)\s*\)\)/g, (_, id, text) => {
       return `${id}(("${text.replace(/["\\]/g, "'").trim()}"))`;
     });
 
-    // Process nodes with hexagon: id{{text}} -> id{{"text"}}
     l = l.replace(/([a-zA-Z0-9_-]+)\{\{\s*(?!"|\{)([^}\r\n]*?)\s*\}\}/g, (_, id, text) => {
       return `${id}{{"${text.replace(/["\\]/g, "'").trim()}"}}`;
     });
 
-    // Process nodes with rhombus: id{text} -> id{"text"}
     l = l.replace(/([a-zA-Z0-9_-]+)\{\s*(?!"|\{)([^}\r\n]*?)\s*\}/g, (_, id, text) => {
       return `${id}{"${text.replace(/["\\]/g, "'").trim()}"}`;
     });
 
-    // Process standard rectangle nodes: id[text] -> id["text"]
     l = l.replace(/([a-zA-Z0-9_-]+)\[\s*(?!"|\[|\()([^\]\r\n]*?)\s*\]/g, (_, id, text) => {
       if (text.startsWith('"') && text.endsWith('"')) {
         return `${id}[${text}]`;
@@ -1060,7 +1021,6 @@ export function sanitizeMermaid(code: string): string {
 
   clean = processedLines.join("\n");
 
-  // 7. Auto-detect graph header (stripping comments first)
   const strippedComments = clean.replace(/^%%[^\n]*\n?/gm, "").trim();
   const hasHeader =
     /^(flowchart|graph|sequenceDiagram|gantt|classDiagram|stateDiagram(?:-v2)?|erDiagram|pie|gitGraph|journey|timeline|mindmap|quadrantChart|C4Context|C4Container|C4Component|C4Dynamic|C4Deployment)\b/im.test(
@@ -1115,7 +1075,6 @@ async function executeVisualizationLoop(
   let owner = preferredOwner;
   let repo = preferredRepo;
 
-  // Retrieve github connected token
   let githubAccessToken: string | null = null;
   let githubUsername: string = owner;
 
@@ -1137,7 +1096,6 @@ async function executeVisualizationLoop(
     return;
   }
 
-  // If no repo was selected/found, let's list repositories and select the first one as default
   if (!repo) {
     try {
       addLog(task, "tool_call", "Listing repositories", "Fetching list to identify default repo", "github", { toolName: "github_list_repositories" });
@@ -1184,7 +1142,6 @@ async function executeVisualizationLoop(
   addLog(task, "reasoning", "Analyzing visualization context", `Determining which files are relevant to "${task.userQuery.slice(0, 50)}"...`, "system");
   await delay(100);
 
-  // Filter file tree to blobs, ignoring build/common non-code items
   const filesList = tree.filter(f => 
     f.type === "blob" &&
     !f.path.includes("node_modules/") &&
@@ -1199,7 +1156,7 @@ async function executeVisualizationLoop(
     !/\.(png|jpg|jpeg|gif|ico|svg|webp|woff2?|eot|ttf|pdf|mp3|mp4|zip|tar|gz)$/i.test(f.path)
   );
 
-  const filePaths = filesList.map(f => f.path).slice(0, 400); // limit to 400 paths for token safety
+  const filePaths = filesList.map(f => f.path).slice(0, 400);
 
   const selectPrompt = `You are a software architecture and visualization assistant.
 The user wants to generate a visual diagram for the codebase:
@@ -1209,7 +1166,6 @@ Here is the file list of the repository (${owner}/${repo}):
 ${filePaths.map(p => `- ${p}`).join("\n")}
 
 Identify up to 15 files from the list above that are most relevant to inspect to understand and build a visual diagram for the user's request.
-For example, if the request is about login flow, identify auth routes, models, login components, etc.
 Return ONLY a valid JSON array of file paths. Example:
 ["src/routes/auth.js", "src/controllers/authController.ts"]
 
@@ -1226,14 +1182,12 @@ Do not return markdown formatting, code blocks, or explanations.`;
     })) as any;
 
     let content = completion.choices[0]?.message?.content?.trim() || "";
-    // Clean up code block formatting if present
     if (content.startsWith("```")) {
       content = content.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
     }
     selectedPaths = JSON.parse(content);
     addLog(task, "success", `Selected ${selectedPaths.length} relevant files`, selectedPaths.join(", "), "system");
   } catch (e: any) {
-    // If LLM fails or parsing fails, fallback: select first 10 files matching some keywords or just first 8 files
     console.error("Failed to parse LLM file selection JSON:", e);
     const qLower = task.userQuery.toLowerCase();
     selectedPaths = filePaths.filter(p => {
@@ -1243,9 +1197,6 @@ Do not return markdown formatting, code blocks, or explanations.`;
       }
       if (qLower.includes("db") || qLower.includes("database") || qLower.includes("schema") || qLower.includes("relation")) {
         return pLower.includes("schema") || pLower.includes("model") || pLower.includes("prisma") || pLower.includes("db");
-      }
-      if (qLower.includes("payment") || qLower.includes("checkout") || qLower.includes("stripe")) {
-        return pLower.includes("payment") || pLower.includes("pay") || pLower.includes("stripe") || pLower.includes("checkout") || pLower.includes("cart");
       }
       return pLower.includes("route") || pLower.includes("controller") || pLower.includes("index") || pLower.includes("app") || pLower.includes("server");
     }).slice(0, 10);
@@ -1286,7 +1237,7 @@ Do not return markdown formatting, code blocks, or explanations.`;
 
   let codeEvidence = "";
   for (const file of fetchedFiles) {
-    codeEvidence += `\n\n--- FILE: ${file.path} ---\n${file.content.slice(0, 8000)}\n`; // truncate very long files to 8000 chars for token safety
+    codeEvidence += `\n\n--- FILE: ${file.path} ---\n${file.content.slice(0, 8000)}\n`;
   }
 
   const sysPrompt = `You are an expert software visualization engine.
@@ -1295,11 +1246,6 @@ USER REQUEST:
 ${task.userQuery}
 
 Analyze the provided GitHub repository evidence and create the most appropriate visual diagram.
-
-First determine internally:
-- What exactly the user wants to understand.
-- Which diagram type best represents it.
-- Which components and relationships are supported by the provided evidence.
 
 Rules:
 - Use only evidence from the provided GitHub/repository data.
@@ -1359,14 +1305,11 @@ Generate the diagram now:`;
   addLog(task, "reasoning", "Finalizing diagram layout", "Validating and preparing diagram URL", "system");
   await delay(100);
 
-  // Generate Kroki SVG rendering URL
-  const krokiUrl = getKrokiUrl(mermaidCode);
-
   const artifacts: Artifact[] = [{
     id: `art_vis_${Date.now()}`,
     title: task.userQuery.slice(0, 50) || "Codebase Visualization",
     type: "visualization",
-    content: mermaidCode, // Store mermaid code in content
+    content: mermaidCode,
     createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
   }];
 
