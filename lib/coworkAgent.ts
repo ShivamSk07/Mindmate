@@ -12,6 +12,11 @@ import {
   linkedin_get_profile,
   linkedin_create_post,
 } from "./linkedin";
+import {
+  vercel_deploy_files,
+  vercel_deploy_repo,
+  vercel_get_deployment_status,
+} from "./vercel";
 import { listMCPServers } from "./mcp";
 import { searchWeb, SearchResult } from "./search";
 import { getCerebrasClient, MODEL } from "./cerebras";
@@ -32,7 +37,7 @@ export interface ActivityItem {
   id: string;
   timestamp: string;
   type: "connect" | "tool_call" | "reasoning" | "approval_request" | "success" | "error";
-  category?: "github" | "linkedin" | "mcp" | "browser" | "system";
+  category?: "github" | "linkedin" | "vercel" | "mcp" | "browser" | "system";
   title: string;
   description: string;
   toolName?: string;
@@ -42,7 +47,7 @@ export interface ActivityItem {
 
 export interface PendingApproval {
   toolName: string;
-  category: "github" | "linkedin" | "mcp" | "browser";
+  category: "github" | "linkedin" | "vercel" | "mcp" | "browser";
   params: any;
   title: string;
   description: string;
@@ -52,7 +57,7 @@ export interface PendingApproval {
 export interface Artifact {
   id: string;
   title: string;
-  type: "report" | "plan" | "linkedin_post" | "code_diff" | "review" | "visualization";
+  type: "report" | "plan" | "linkedin_post" | "code_diff" | "review" | "visualization" | "vercel_deployment";
   content: string;
   createdAt: string;
 }
@@ -151,6 +156,11 @@ export function detectToolRequirements(userQuery: string) {
     /\b(linkedin|linkdin|linked in|linkedin post|post on linkedin|post to linkedin|share on linkedin|thought leadership|hiring post|connection note|professional update|linkedin profile)\b/i.test(q) ||
     q.includes("@linkedin");
 
+  // Vercel keywords & intents
+  const isVercel =
+    /\b(vercel|deploy|host|hosting|live url|publish online|deploy on vercel|deploy to vercel|host my site|host my app)\b/i.test(q) ||
+    q.includes("@vercel");
+
   // MCP keywords
   const isMCP =
     /\b(mcp|model context protocol)\b/i.test(q) ||
@@ -163,7 +173,7 @@ export function detectToolRequirements(userQuery: string) {
     q.includes("@browser") ||
     q.includes("@web");
 
-  const anyWorkspaceTool = isGitHub || isLinkedIn || isMCP;
+  const anyWorkspaceTool = isGitHub || isLinkedIn || isVercel || isMCP;
 
   // Run web search ONLY IF explicitly requested OR if no workspace tools are matched
   const isWeb = isExplicitWeb || !anyWorkspaceTool;
@@ -171,6 +181,7 @@ export function detectToolRequirements(userQuery: string) {
   return {
     needsGitHub: isGitHub,
     needsLinkedIn: isLinkedIn,
+    needsVercel: isVercel,
     needsMCP: isMCP,
     needsBrowser: isWeb,
   };
@@ -240,6 +251,7 @@ export async function createAndRunTask(
     initialPlan.push({ id: "step_init", title: "Analyzing request", status: "completed" });
     if (flags.needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub Repositories", status: "waiting" });
     if (flags.needsLinkedIn) initialPlan.push({ id: "step_linkedin", title: "LinkedIn Network", status: "waiting" });
+    if (flags.needsVercel) initialPlan.push({ id: "step_vercel", title: "Vercel Deployment", status: "waiting" });
     if (flags.needsBrowser) initialPlan.push({ id: "step_browser", title: "Live Web Search", status: "waiting" });
     if (flags.needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP Servers", status: "waiting" });
     initialPlan.push({ id: "step_final", title: "Writing response", status: "waiting" });
@@ -309,6 +321,7 @@ async function executeAgentLoop(
   flags: {
     needsGitHub: boolean;
     needsLinkedIn: boolean;
+    needsVercel: boolean;
     needsBrowser: boolean;
     needsMCP: boolean;
   }
@@ -327,6 +340,8 @@ async function executeAgentLoop(
   let linkedinName: string = "LinkedIn User";
   let githubAccessToken: string | null = null;
   let githubUsername: string = owner;
+  let vercelAccessToken: string | null = null;
+  let vercelUsername: string = "Vercel User";
 
   try {
     const liProfile = await (prisma as any).userProfile.findFirst({
@@ -348,8 +363,18 @@ async function executeAgentLoop(
     if (!owner) owner = githubUsername;
   } catch {}
 
+  try {
+    const vProfile = await (prisma as any).userProfile.findFirst({
+      where: { vercelConnected: true },
+      select: { vercelToken: true, vercelUsername: true },
+    });
+    vercelAccessToken = vProfile?.vercelToken || null;
+    if (vProfile?.vercelUsername) vercelUsername = vProfile.vercelUsername;
+  } catch {}
+
   let linkedinText = "";
   let githubText = "";
+  let vercelText = "";
   let webText = "";
 
   // ── WEB SEARCH (Only when requested) ─────────────────────────
@@ -591,6 +616,90 @@ ${repoListDetails}`;
     await delay(30);
   }
 
+  // ── VERCEL DEPLOYMENT ───────────────────────────────────────
+  if (flags.needsVercel) {
+    setStep(task, "step_vercel", "running");
+    addLog(task, "tool_call", "Preparing Vercel Deployment", "Checking project configuration & hosting parameters", "vercel");
+    await delay(50);
+
+    if (!vercelAccessToken) {
+      addLog(task, "error", "Vercel Not Connected", "Please connect your Vercel account in Integrations to deploy live.", "vercel");
+      setStep(task, "step_vercel", "failed");
+      vercelText = "⚠️ Vercel deployment could not proceed because Vercel account is not connected. Please open Integrations to connect Vercel with your Personal Access Token.";
+    } else {
+      try {
+        const isRepoDeploy = (queryLower.includes("repo") || queryLower.includes("repository")) && Boolean(repo || owner);
+
+        if (isRepoDeploy) {
+          const targetRepo = repo ? (owner ? `${owner}/${repo}` : repo) : "ShivamSk07/Mindmate";
+          const projName = (repo || "clarity-app").toLowerCase().replace(/[^a-z0-9-_]/g, "-");
+          addLog(task, "tool_call", "Deploying GitHub Repository", `${targetRepo} (${branch}) to Vercel`, "vercel", { toolName: "vercel_deploy_repo" });
+
+          const deployRes = await vercel_deploy_repo(vercelAccessToken, projName, targetRepo, branch);
+          if (deployRes.success && deployRes.url) {
+            addLog(task, "success", "Live Deployment Created", `URL: ${deployRes.url}`, "vercel");
+            task.artifacts.unshift({
+              id: `art_vercel_${Date.now()}`,
+              title: `Live Deployment: ${projName}`,
+              type: "vercel_deployment",
+              content: `# 🚀 Live Vercel Deployment\n\n**Project**: \`${projName}\`\n**Repository**: \`${targetRepo}\` (\`${branch}\`)\n**Live URL**: [${deployRes.url}](${deployRes.url})\n**Status**: \`${deployRes.readyState || "READY"}\`\n\n[Open Live Site ↗](${deployRes.url})`,
+              createdAt: ts(),
+            });
+            vercelText = `🚀 Vercel Deployment Success!\n- Project: ${projName}\n- Repository: ${targetRepo}\n- Live URL: ${deployRes.url}\n- Status: ${deployRes.readyState || "READY"}`;
+            setStep(task, "step_vercel", "completed");
+          } else {
+            addLog(task, "error", "Vercel Deployment Failed", deployRes.error || "Deployment failed", "vercel");
+            vercelText = `⚠️ Vercel Deployment Failed: ${deployRes.error || "Unknown error"}`;
+            setStep(task, "step_vercel", "failed");
+          }
+        } else {
+          // Instant direct file deployment (generate modern web page from prompt)
+          addLog(task, "reasoning", "Generating Deployment Code", "Crafting responsive single-page web bundle...", "system");
+          const client = getCerebrasClient();
+          const bundlePrompt = `You are an expert web developer. Build a complete, modern, beautifully styled responsive single-page web application for: "${task.userQuery}".
+Return ONLY the raw HTML code with inline CSS styling in <style> and JavaScript in <script> if needed. Do not wrap in markdown code blocks.`;
+          const completion = (await client.chat.completions.create({
+            model: MODEL,
+            messages: [{ role: "user", content: bundlePrompt }],
+            temperature: 0.2,
+            max_tokens: 3000,
+          })) as any;
+
+          let htmlCode = completion.choices[0]?.message?.content?.trim() || "";
+          htmlCode = htmlCode.replace(/^```html\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+
+          const projName = `clarity-site-${Date.now().toString(36)}`;
+          addLog(task, "tool_call", "Deploying Static App to Vercel", `Project: ${projName}`, "vercel", { toolName: "vercel_deploy_files" });
+
+          const deployRes = await vercel_deploy_files(vercelAccessToken, projName, [
+            { file: "index.html", data: htmlCode },
+          ]);
+
+          if (deployRes.success && deployRes.url) {
+            addLog(task, "success", "Live Deployment Ready", `URL: ${deployRes.url}`, "vercel");
+            task.artifacts.unshift({
+              id: `art_vercel_${Date.now()}`,
+              title: `Live App: ${projName}`,
+              type: "vercel_deployment",
+              content: `# 🚀 Live App Hosted on Vercel\n\n**Project**: \`${projName}\`\n**Live URL**: [${deployRes.url}](${deployRes.url})\n**Status**: \`${deployRes.readyState || "READY"}\`\n\n[Open Live Site ↗](${deployRes.url})`,
+              createdAt: ts(),
+            });
+            vercelText = `🚀 Vercel Deployment Success!\n- Project: ${projName}\n- Live URL: ${deployRes.url}\n- Status: ${deployRes.readyState || "READY"}`;
+            setStep(task, "step_vercel", "completed");
+          } else {
+            addLog(task, "error", "Vercel Deployment Failed", deployRes.error || "Deployment failed", "vercel");
+            vercelText = `⚠️ Vercel Deployment Failed: ${deployRes.error || "Unknown error"}`;
+            setStep(task, "step_vercel", "failed");
+          }
+        }
+      } catch (err: any) {
+        addLog(task, "error", "Vercel Exception", err.message, "vercel");
+        vercelText = `⚠️ Vercel Error: ${err.message}`;
+        setStep(task, "step_vercel", "failed");
+      }
+    }
+  }
+
   // ── HUMAN APPROVAL CHECK FOR GITHUB ACTIONS ──────────────────
   const isCreateIssue = queryLower.includes("create issue") || queryLower.includes("open issue");
 
@@ -623,6 +732,7 @@ ${repoListDetails}`;
     repo,
     linkedinText,
     githubText,
+    vercelText,
     webText,
   });
 }
@@ -638,6 +748,7 @@ async function finalizeReport(
     repo: string;
     linkedinText: string;
     githubText: string;
+    vercelText?: string;
     webText: string;
     writeActionResult?: string;
   }
@@ -650,13 +761,14 @@ async function finalizeReport(
   if (ctx.webText) contextParts.push(`WEB:\n${ctx.webText}`);
   if (ctx.linkedinText) contextParts.push(`LINKEDIN:\n${ctx.linkedinText}`);
   if (ctx.githubText) contextParts.push(`GITHUB:\n${ctx.githubText}`);
+  if (ctx.vercelText) contextParts.push(`VERCEL DEPLOYMENT:\n${ctx.vercelText}`);
   if (ctx.writeActionResult) contextParts.push(`ACTION RESULT:\n${ctx.writeActionResult}`);
 
-  const sysPrompt = `You are Clarity, an autonomous AI workspace agent specializing in GitHub codebase analysis, LinkedIn content & social growth automation, and live intelligence.
+  const sysPrompt = `You are Clarity, an autonomous AI workspace agent specializing in GitHub codebase analysis, LinkedIn content & social growth automation, Vercel cloud hosting & deployments, and live web intelligence.
 Answer the user's request directly and clearly using the retrieved data below.
-Format the response with clean markdown: use headers, bullet lists, code blocks or quotes where relevant.
+Format the response with clean markdown: use headers, bullet lists, code blocks, or links where relevant.
 Be specific, factual, engaging, and concise. Do not use filler phrases.
-If real data was retrieved, reference it directly (repo names, LinkedIn author URN, etc.).
+If a live Vercel URL was generated, prominently feature it as a clickable markdown link.
 
 CRITICAL FORMATTING RULES:
 - STRICT PROHIBITION: NEVER output ASCII art diagrams, text boxes, ascii arrows (+---+, | |, -->), or unicode box-drawing diagrams (┌───┐, │ │, └───┘).
@@ -687,13 +799,13 @@ Respond directly and clearly.`;
   } catch (e) {
     reportText = contextParts.length > 0
       ? contextParts.join("\n\n---\n\n")
-      : `No data was retrieved. Make sure your integrations (GitHub, LinkedIn) are connected.`;
+      : `No data was retrieved. Make sure your integrations (GitHub, LinkedIn, Vercel) are connected.`;
   }
 
   const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const artifacts: Artifact[] = task.artifacts || [];
 
-  if (!artifacts.some((a) => a.type === "report" || a.type === "linkedin_post")) {
+  if (!artifacts.some((a) => a.type === "report" || a.type === "linkedin_post" || a.type === "vercel_deployment")) {
     artifacts.unshift({
       id: `art_main_${Date.now()}`,
       title: task.userQuery.slice(0, 50),
@@ -763,6 +875,39 @@ export async function approvePendingTask(taskId: string): Promise<CoworkTask> {
 
       const res = await github_create_issue(params.owner, params.repo, params.title, params.body, ghToken);
       resultInfo = `Issue #${res.number} created on ${params.owner}/${params.repo}`;
+    } else if (toolName === "vercel_deploy") {
+      let vercelToken: string | null = null;
+      try {
+        const vProfile = await (prisma as any).userProfile.findFirst({
+          where: { vercelConnected: true },
+          select: { vercelToken: true },
+        });
+        vercelToken = vProfile?.vercelToken || null;
+      } catch {}
+
+      if (vercelToken) {
+        let deployRes;
+        if (params.type === "repo" && params.repo) {
+          deployRes = await vercel_deploy_repo(vercelToken, params.projectName, params.repo, params.branch || "main");
+        } else {
+          deployRes = await vercel_deploy_files(vercelToken, params.projectName, params.files || []);
+        }
+
+        if (deployRes.success && deployRes.url) {
+          resultInfo = `🚀 Successfully deployed to Vercel! Live URL: ${deployRes.url}`;
+          task.artifacts.unshift({
+            id: `art_vercel_${Date.now()}`,
+            title: `Live Deployment: ${params.projectName}`,
+            type: "vercel_deployment",
+            content: `# 🚀 Live Vercel Deployment\n\n**Project**: ${params.projectName}\n**URL**: [${deployRes.url}](${deployRes.url})\n**Status**: \`READY\`\n\n[Open Live Site ↗](${deployRes.url})`,
+            createdAt: ts(),
+          });
+        } else {
+          resultInfo = `⚠️ Vercel deployment error: ${deployRes.error || "Deployment failed"}`;
+        }
+      } else {
+        resultInfo = `⚠️ Vercel account not connected.`;
+      }
     }
   } catch (e: any) {
     resultInfo = `Action failed: ${e.message}`;

@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Github,
   Linkedin,
+  Triangle,
   Plug,
   Globe,
   FileText,
@@ -105,6 +106,7 @@ interface CoworkTask {
 const TOOL_COLOR: Record<string, string> = {
   github: "text-zinc-300",
   linkedin: "text-[#0a66c2]",
+  vercel: "text-zinc-100",
   mcp: "text-zinc-300",
   browser: "text-zinc-300",
   system: "text-zinc-500",
@@ -113,6 +115,7 @@ const TOOL_COLOR: Record<string, string> = {
 const TOOL_DOT: Record<string, string> = {
   github: "bg-violet-400",
   linkedin: "bg-[#0a66c2]",
+  vercel: "bg-zinc-100",
   mcp: "bg-amber-400",
   browser: "bg-sky-400",
   system: "bg-zinc-500",
@@ -121,6 +124,7 @@ const TOOL_DOT: Record<string, string> = {
 const INTEGRATION_ICON: Record<string, any> = {
   github: Github,
   linkedin: Linkedin,
+  vercel: Triangle,
   mcp: Plug,
   browser: Globe,
 };
@@ -208,6 +212,13 @@ export default function CoworkPage() {
         });
         fetchStatus();
         fetchRepos();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (connected === "vercel") {
+        setNotification({
+          type: "success",
+          message: "Vercel account connected successfully!",
+        });
+        fetchStatus();
         window.history.replaceState({}, document.title, window.location.pathname);
       } else if (err) {
         setNotification({
@@ -387,7 +398,7 @@ export default function CoworkPage() {
   const PRESETS = [
     "Visualize the login flow",
     "Show me the database relationships",
-    "What is my first repo?",
+    "Deploy a modern landing page to Vercel",
     "Summarize my GitHub repositories",
   ];
 
@@ -479,11 +490,13 @@ export default function CoworkPage() {
                           ? "text-[#0a66c2]"
                           : item.id === "github"
                           ? "text-emerald-400"
+                          : item.id === "vercel"
+                          ? "text-zinc-100"
                           : "text-zinc-200"
                         : "text-zinc-700"
                     }`}
                   >
-                    <Icon size={13} />
+                    <Icon size={13} className={item.id === "vercel" ? "fill-current" : undefined} />
                   </span>
                 );
               })}
@@ -852,6 +865,28 @@ export default function CoworkPage() {
                               strong: ({ children }) => (
                                 <strong className="font-semibold text-zinc-200">{children}</strong>
                               ),
+                              a: ({ href, children }) => {
+                                if (href?.startsWith("https://kroki.io/")) {
+                                  return (
+                                    <div className="my-4 p-2 bg-[#070707] border border-zinc-800 rounded-lg overflow-hidden flex flex-col items-center gap-2">
+                                      <img src={href} alt="Rendered Diagram" className="max-w-full max-h-[350px] object-contain" />
+                                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-400 hover:underline">
+                                        Open in new tab
+                                      </a>
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 underline underline-offset-2 font-medium transition-colors"
+                                  >
+                                    {children}
+                                  </a>
+                                );
+                              },
                                code: ({ children, className, ...props }: any) => {
                                  const codeString = String(children || "").trim();
                                  const isDiagram = isDiagramCode(className, codeString);
@@ -894,23 +929,6 @@ export default function CoworkPage() {
                               blockquote: ({ children }) => (
                                 <blockquote className="border-l-2 border-zinc-700 pl-4 my-4 text-zinc-500 italic">{children}</blockquote>
                               ),
-                              a: ({ children, href }) => {
-                                if (href?.startsWith("https://kroki.io/")) {
-                                  return (
-                                    <div className="my-4 p-2 bg-[#070707] border border-zinc-800 rounded-lg overflow-hidden flex flex-col items-center gap-2">
-                                      <img src={href} alt="Rendered Diagram" className="max-w-full max-h-[350px] object-contain" />
-                                      <a href={href} target="_blank" rel="noopener noreferrer" className="text-xs text-violet-400 hover:underline">
-                                        Open in new tab
-                                      </a>
-                                    </div>
-                                  );
-                                }
-                                return (
-                                  <a href={href} target="_blank" rel="noopener" className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
-                                    {children}
-                                  </a>
-                                );
-                              },
                               hr: () => <hr className="border-zinc-800 my-6" />,
                             }}
                           >

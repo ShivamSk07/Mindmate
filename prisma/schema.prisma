@@ -47,6 +47,11 @@ model UserProfile {
   googleToken          String?  @db.Text
   googleRefreshToken   String?  @db.Text
   mcpConnected         Boolean  @default(false)
+  vercelConnected      Boolean  @default(false)
+  vercelToken          String?  @db.Text
+  vercelUsername       String?
+  vercelAvatarUrl      String?
+  vercelTeamId         String?
 }
 
 model Persona {

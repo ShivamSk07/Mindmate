@@ -10,9 +10,11 @@ export async function GET() {
 
   let isGitHubConnected = false;
   let isLinkedInConnected = false;
+  let isVercelConnected = false;
   let isMcpConnected = false;
   let ghUsername: string | null = null;
   let liName: string | null = null;
+  let vercelUsername: string | null = null;
 
   try {
     let profile = null;
@@ -29,16 +31,18 @@ export async function GET() {
 
     if (!profile) {
       profile = await prisma.userProfile.findFirst({
-        where: { OR: [{ githubConnected: true }, { linkedinConnected: true }] },
+        where: { OR: [{ githubConnected: true }, { linkedinConnected: true }, { vercelConnected: true }] },
       });
     }
 
     if (profile) {
       isGitHubConnected = Boolean(profile.githubConnected);
       isLinkedInConnected = Boolean(profile.linkedinConnected);
+      isVercelConnected = Boolean(profile.vercelConnected);
       isMcpConnected = Boolean(profile.mcpConnected);
       ghUsername = profile.githubUsername;
       liName = profile.linkedinName;
+      vercelUsername = profile.vercelUsername;
     }
 
     // Check if any other profile in single-user dev environment has active integrations
@@ -61,6 +65,16 @@ export async function GET() {
         liName = anyLi.linkedinName;
       }
     }
+
+    if (!isVercelConnected) {
+      const anyVercel = await prisma.userProfile.findFirst({
+        where: { vercelConnected: true },
+      });
+      if (anyVercel) {
+        isVercelConnected = true;
+        vercelUsername = anyVercel.vercelUsername;
+      }
+    }
   } catch (e) {
     console.warn("Integrations status DB check notice:", e);
   }
@@ -81,6 +95,13 @@ export async function GET() {
       icon: "Linkedin",
       connected: isLinkedInConnected,
       username: isLinkedInConnected ? (liName || user?.username || "LinkedIn User") : null,
+    },
+    {
+      id: "vercel",
+      name: "Vercel",
+      icon: "Triangle",
+      connected: isVercelConnected,
+      username: isVercelConnected ? (vercelUsername || "Vercel Account") : null,
     },
     {
       id: "mcp",
