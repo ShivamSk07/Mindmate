@@ -25,7 +25,8 @@ export async function GET(request: NextRequest) {
     user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
   }
 
-  const clientId = process.env.VERCEL_CLIENT_ID || "oac_clarity_cowork";
+  const clientId = process.env.VERCEL_CLIENT_ID?.trim();
+  const slug = process.env.VERCEL_INTEGRATION_SLUG?.trim() || "clarity-cowork";
   const redirectUri = encodeURIComponent(`${appUrl}/api/auth/vercel/callback`);
   const stateData = {
     userId: user.userId,
@@ -33,7 +34,11 @@ export async function GET(request: NextRequest) {
   };
   const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
 
-  const vercelAuthUrl = `https://vercel.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}&scope=deployments:write,projects:write,user:read`;
+  // Vercel Integration installation URL (official) or OAuth authorize URL
+  let vercelAuthUrl = `https://vercel.com/integrations/${slug}/new?state=${state}`;
+  if (clientId && clientId !== "oac_clarity_cowork") {
+    vercelAuthUrl = `https://vercel.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}`;
+  }
 
   const response = NextResponse.redirect(vercelAuthUrl);
   const token = signJwt({ userId: user.userId, username: user.username, email: user.email });
