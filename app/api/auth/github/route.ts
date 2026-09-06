@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     nonce: Math.random().toString(36).substring(7),
   };
   const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
-  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo%20read:user%20user:email&redirect_uri=${redirectUri}&state=${state}`;
+  const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&scope=repo%20read:user%20user:email&redirect_uri=${redirectUri}&state=${state}&prompt=consent`;
 
   return NextResponse.redirect(githubAuthUrl);
 }

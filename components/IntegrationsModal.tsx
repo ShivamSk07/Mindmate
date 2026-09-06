@@ -11,8 +11,6 @@ import {
   Loader2,
   Check,
   AlertCircle,
-  Key,
-  ExternalLink,
 } from "lucide-react";
 
 export interface IntegrationItem {
@@ -38,8 +36,6 @@ export default function IntegrationsModal({
 }: IntegrationsModalProps) {
   const [selectedTab, setSelectedTab] = useState<string>("github");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [githubTokenInput, setGithubTokenInput] = useState("");
-  const [vercelTokenInput, setVercelTokenInput] = useState("");
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   if (!isOpen) return null;
@@ -47,35 +43,6 @@ export default function IntegrationsModal({
   const githubIntegration = integrations.find((i) => i.id === "github");
   const linkedinIntegration = integrations.find((i) => i.id === "linkedin");
   const vercelIntegration = integrations.find((i) => i.id === "vercel");
-
-  const handleConnectGitHubToken = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!githubTokenInput.trim() || isProcessing) return;
-
-    setIsProcessing(true);
-    setMessage(null);
-
-    try {
-      const res = await fetch("/api/cowork/github/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: githubTokenInput.trim() }),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.connected) {
-        setMessage({ type: "success", text: data.message || "GitHub connected successfully" });
-        setGithubTokenInput("");
-        onStatusChange();
-      } else {
-        setMessage({ type: "error", text: data.error || "Failed to connect GitHub token" });
-      }
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Connection failed" });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const handleDisconnectGitHub = async () => {
     setIsProcessing(true);
@@ -118,35 +85,6 @@ export default function IntegrationsModal({
       }
     } catch (e: any) {
       setMessage({ type: "error", text: e.message || "Failed to disconnect" });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const handleConnectVercelToken = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!vercelTokenInput.trim() || isProcessing) return;
-
-    setIsProcessing(true);
-    setMessage(null);
-
-    try {
-      const res = await fetch("/api/cowork/vercel/connect", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: vercelTokenInput.trim() }),
-      });
-      const data = await res.json();
-
-      if (res.ok && data.connected) {
-        setMessage({ type: "success", text: data.message || "Vercel connected successfully" });
-        setVercelTokenInput("");
-        onStatusChange();
-      } else {
-        setMessage({ type: "error", text: data.error || "Failed to connect Vercel token" });
-      }
-    } catch (err: any) {
-      setMessage({ type: "error", text: err.message || "Connection failed" });
     } finally {
       setIsProcessing(false);
     }
@@ -290,44 +228,10 @@ export default function IntegrationsModal({
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-colors"
                         >
                           <Github size={13} />
-                          <span>OAuth Connect</span>
+                          <span>Connect GitHub</span>
                         </a>
                       )}
                     </div>
-
-                    {!githubIntegration?.connected && (
-                      <div className="pt-3 border-t border-zinc-900">
-                        <p className="text-[11px] text-zinc-400 font-medium flex items-center gap-1 mb-2">
-                          <Key size={12} className="text-zinc-500" />
-                          <span>Or connect with Personal Access Token:</span>
-                        </p>
-                        <form onSubmit={handleConnectGitHubToken} className="flex gap-2">
-                          <input
-                            type="password"
-                            placeholder="GitHub Token (ghp_... with repo scope)"
-                            value={githubTokenInput}
-                            onChange={(e) => setGithubTokenInput(e.target.value)}
-                            className="flex-1 px-3 py-1.5 bg-black border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                          />
-                          <button
-                            type="submit"
-                            disabled={!githubTokenInput.trim() || isProcessing}
-                            className="px-3 py-1.5 bg-zinc-200 hover:bg-white text-zinc-950 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Connect"}
-                          </button>
-                        </form>
-                        <a
-                          href="https://github.com/settings/tokens/new?scopes=repo,read:user,user:email&description=Clarity+Cowork"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 mt-1.5 transition-colors"
-                        >
-                          <span>Generate token on GitHub (1-click)</span>
-                          <ExternalLink size={10} />
-                        </a>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -428,44 +332,10 @@ export default function IntegrationsModal({
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-950 text-xs font-medium transition-colors"
                         >
                           <Triangle size={11} className="fill-zinc-950" />
-                          <span>OAuth Connect</span>
+                          <span>Connect Vercel</span>
                         </a>
                       )}
                     </div>
-
-                    {!vercelIntegration?.connected && (
-                      <div className="pt-3 border-t border-zinc-900">
-                        <p className="text-[11px] text-zinc-400 font-medium flex items-center gap-1 mb-2">
-                          <Key size={12} className="text-zinc-500" />
-                          <span>Or connect with Personal Access Token:</span>
-                        </p>
-                        <form onSubmit={handleConnectVercelToken} className="flex gap-2">
-                          <input
-                            type="password"
-                            placeholder="Vercel Access Token (Account Settings > Tokens)"
-                            value={vercelTokenInput}
-                            onChange={(e) => setVercelTokenInput(e.target.value)}
-                            className="flex-1 px-3 py-1.5 bg-black border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600"
-                          />
-                          <button
-                            type="submit"
-                            disabled={!vercelTokenInput.trim() || isProcessing}
-                            className="px-3 py-1.5 bg-zinc-200 hover:bg-white text-zinc-950 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50"
-                          >
-                            {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Connect"}
-                          </button>
-                        </form>
-                        <a
-                          href="https://vercel.com/account/tokens"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1 mt-1.5 transition-colors"
-                        >
-                          <span>Get token from Vercel Account Settings</span>
-                          <ExternalLink size={10} />
-                        </a>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
