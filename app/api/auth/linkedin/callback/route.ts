@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/cowork?error=no_code_provided", appUrl));
   }
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID;
-  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+  const clientId = process.env.LINKEDIN_CLIENT_ID || "77uyoymp53nn7y";
+  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET || "";
   const redirectUri = `${appUrl}/api/auth/linkedin/callback`;
 
   let accessToken: string | null = null;

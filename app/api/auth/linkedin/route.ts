@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
   }
 
-  const clientId = process.env.LINKEDIN_CLIENT_ID || "77clarityappli";
+  const clientId = process.env.LINKEDIN_CLIENT_ID || "77uyoymp53nn7y";
   const redirectUri = encodeURIComponent(`${appUrl}/api/auth/linkedin/callback`);
   const state = Math.random().toString(36).substring(7);
   const scopes = encodeURIComponent("openid profile email w_member_social");
