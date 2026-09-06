@@ -17,15 +17,8 @@ export async function GET(request: NextRequest) {
     console.warn("Session lookup notice:", e);
   }
 
-  const clientId = process.env.VERCEL_CLIENT_ID?.trim() || "oac_fbIMmseds7b8hfjKwtnYCJv0";
-  const redirectUri = encodeURIComponent(`${appUrl}/api/auth/vercel/callback`);
-  const stateData = {
-    userId,
-    nonce: Math.random().toString(36).substring(7),
-  };
-  const state = Buffer.from(JSON.stringify(stateData)).toString("base64url");
-
-  const vercelAuthUrl = `https://vercel.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&state=${state}`;
+  const slug = process.env.VERCEL_INTEGRATION_SLUG?.trim() || "clarity-cowork";
+  const vercelAuthUrl = `https://vercel.com/integrations/${slug}/new?state=${state}`;
 
   return NextResponse.redirect(vercelAuthUrl);
 }
