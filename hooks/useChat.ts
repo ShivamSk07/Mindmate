@@ -20,7 +20,8 @@ export function useChat(initialSessionId?: string) {
     length?: string,
     documentContent?: string,
     documentName?: string,
-    documentId?: string
+    documentId?: string,
+    isGhost?: boolean
   ) => {
     if (!content.trim() || isLoading) return;
 
@@ -45,7 +46,7 @@ export function useChat(initialSessionId?: string) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: content,
-          conversation_id: sessionId,
+          conversation_id: isGhost ? undefined : sessionId,
           persona_id: activePersonaId,
           folder: activeFolder || "",
           force_search: forceSearch ?? false,
@@ -55,6 +56,8 @@ export function useChat(initialSessionId?: string) {
           document_content: documentContent,
           document_name: documentName,
           document_id: documentId,
+          is_ghost: isGhost ?? false,
+          client_history: isGhost ? [...messages, userMessage] : undefined,
         }),
         signal: abortControllerRef.current.signal,
       });

@@ -1,7 +1,6 @@
-"use client";
-
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
-import { Send, Square, Globe, Wand2, Paperclip, Radio, FileText } from "lucide-react";
+import { Send, Square, Globe, Wand2, Paperclip, Radio, FileText, Ghost, Terminal, Plus } from "lucide-react";
+import { CustomPromptsModal, type CustomPrompt } from "./CustomPromptsModal";
 
 interface ChatInputProps {
   onSend: (
@@ -12,17 +11,41 @@ interface ChatInputProps {
     length?: string,
     documentContent?: string,
     documentName?: string,
-    documentId?: string
+    documentId?: string,
+    isGhost?: boolean
   ) => void;
   onStop: () => void;
   isLoading: boolean;
   disabled?: boolean;
   sessionId?: string;
   injectedText?: string;
+  isGhostMode?: boolean;
+  onToggleGhostMode?: () => void;
 }
 
-export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, injectedText }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  onStop,
+  isLoading,
+  disabled,
+  sessionId,
+  injectedText,
+  isGhostMode: externalGhostMode,
+  onToggleGhostMode,
+}: ChatInputProps) {
   const [input, setInput] = useState("");
+  const [isGhost, setIsGhost] = useState(false);
+
+  // Sync ghost mode with external prop if provided
+  const activeGhost = externalGhostMode !== undefined ? externalGhostMode : isGhost;
+
+  const toggleGhost = () => {
+    if (onToggleGhostMode) {
+      onToggleGhostMode();
+    } else {
+      setIsGhost((prev) => !prev);
+    }
+  };
 
   useEffect(() => {
     if (injectedText) {
@@ -37,16 +60,40 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
 
   const [showSlashMenu, setShowSlashMenu] = useState(false);
   const [slashIndex, setSlashIndex] = useState(0);
+  const [showCustomPromptsModal, setShowCustomPromptsModal] = useState(false);
+  const [customPrompts, setCustomPrompts] = useState<CustomPrompt[]>([]);
 
-  const slashCommands = [
-    { name: "/image", desc: "Generate FLUX.1 HD AI image" },
-    { name: "/imagine", desc: "Create photo with FLUX.1 AI" },
-    { name: "/summarize", desc: "Summarize conversation history" },
-    { name: "/rewrite", desc: "Rewrite, refine, and polish text" },
-    { name: "/research", desc: "Force deep search on a topic" },
+  // Load custom prompts from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("clarity_custom_prompts");
+      if (saved) {
+        setCustomPrompts(JSON.parse(saved));
+      }
+    } catch (e) {}
+  }, []);
+
+  const builtInCommands = [
+    { name: "/image", desc: "Generate FLUX.1 HD AI image", template: "", isCustom: false },
+    { name: "/imagine", desc: "Create photo with FLUX.1 AI", template: "", isCustom: false },
+    { name: "/summarize", desc: "Summarize conversation history", template: "/summarize", isCustom: false },
+    { name: "/rewrite", desc: "Rewrite, refine, and polish text", template: "/rewrite ", isCustom: false },
+    { name: "/research", desc: "Force deep search on a topic", template: "/research ", isCustom: false },
   ];
 
-  const filteredCommands = slashCommands.filter((c) => c.name.startsWith(input));
+  const allSlashCommands = [
+    ...builtInCommands,
+    ...customPrompts.map((cp) => ({
+      name: cp.command,
+      desc: cp.description || cp.name,
+      template: cp.template,
+      isCustom: true,
+    })),
+  ];
+
+  const filteredCommands = allSlashCommands.filter((c) =>
+    c.name.toLowerCase().startsWith(input.toLowerCase().trim())
+  );
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -79,7 +126,8 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
       undefined,
       attachedFile?.content,
       attachedFile?.name,
-      attachedFile?.id
+      attachedFile?.id,
+      activeGhost
     );
     setInput("");
     setAttachedFile(null);
@@ -102,13 +150,21 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
     }
   };
 
-  const selectCommand = (cmd: string) => {
-    if (cmd === "/summarize") {
-      onSend("/summarize", false);
+  const selectCommand = (cmdItem: { name: string; template?: string; isCustom?: boolean }) => {
+    if (cmdItem.name === "/summarize") {
+      onSend("/summarize", false, undefined, undefined, undefined, undefined, undefined, undefined, activeGhost);
       setInput("");
       setShowSlashMenu(false);
+    } else if (cmdItem.template && cmdItem.template.includes("{text}")) {
+      setInput(cmdItem.template.replace("{text}", ""));
+      setShowSlashMenu(false);
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    } else if (cmdItem.template && cmdItem.isCustom) {
+      setInput(cmdItem.template + "\n\n");
+      setShowSlashMenu(false);
+      setTimeout(() => textareaRef.current?.focus(), 50);
     } else {
-      setInput(cmd + " ");
+      setInput(cmdItem.name + " ");
       setShowSlashMenu(false);
       setTimeout(() => textareaRef.current?.focus(), 50);
     }
@@ -124,7 +180,7 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
         setSlashIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
       } else if (e.key === "Enter") {
         e.preventDefault();
-        selectCommand(filteredCommands[slashIndex].name);
+        selectCommand(filteredCommands[slashIndex]);
       } else if (e.key === "Escape") {
         e.preventDefault();
         setShowSlashMenu(false);
@@ -185,27 +241,66 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
     <div className="bg-transparent px-3 sm:px-4 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-5 pt-1.5 relative z-10">
       <div className="max-w-3xl mx-auto flex flex-col gap-2 relative">
 
-        {/* Floating Slash Commands Suggestion Menu */}
-        {showSlashMenu && filteredCommands.length > 0 && (
-          <div className="absolute bottom-[105%] left-0 max-w-xs w-full bg-[rgba(10,10,15,0.95)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] rounded-2xl shadow-[0_-12px_36px_rgba(0,0,0,0.65)] z-50 overflow-hidden animate-fade-in py-1">
-            <div className="px-3 py-1 text-[8px] uppercase font-bold tracking-widest text-[#64748b] border-b border-[rgba(255,255,255,0.03)] bg-[rgba(0,0,0,0.1)]">
-              Commands
+        {/* Ghost Mode Ambient Banner */}
+        {activeGhost && (
+          <div className="flex items-center justify-between px-3.5 py-1.5 bg-purple-950/40 border border-purple-500/30 rounded-xl text-xs text-purple-300 animate-fade-in shadow-lg shadow-purple-950/20">
+            <div className="flex items-center gap-2">
+              <Ghost size={14} className="text-purple-400 animate-pulse" />
+              <span className="font-medium text-[11px]">Ghost Mode Active — Zero DB Writes • Ephemeral Session</span>
             </div>
-            {filteredCommands.map((cmd, idx) => (
-              <div
-                key={cmd.name}
-                onClick={() => selectCommand(cmd.name)}
-                onMouseEnter={() => setSlashIndex(idx)}
-                className={`flex items-center justify-between px-3.5 py-2 cursor-pointer transition-colors ${
-                  idx === slashIndex
-                    ? "bg-[rgba(99,102,241,0.12)] text-indigo-300 font-semibold"
-                    : "text-[#cbd5e1] hover:bg-[rgba(255,255,255,0.03)]"
-                }`}
+            <button
+              onClick={toggleGhost}
+              className="text-[10px] text-purple-400 hover:text-white underline ml-2 transition-colors"
+            >
+              Exit Ghost Mode
+            </button>
+          </div>
+        )}
+
+        {/* Floating Slash Commands Suggestion Menu */}
+        {showSlashMenu && (
+          <div className="absolute bottom-[105%] left-0 max-w-sm w-full bg-[#0d0d12] backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in py-1 max-h-64 flex flex-col">
+            <div className="px-3 py-1.5 text-[9px] uppercase font-bold tracking-widest text-zinc-500 border-b border-zinc-800/80 bg-zinc-950/40 flex items-center justify-between">
+              <span>Slash Commands & Prompts</span>
+              <span className="text-zinc-600 font-normal">Navigate ↑ ↓</span>
+            </div>
+            <div className="overflow-y-auto custom-scrollbar flex-1 py-1">
+              {filteredCommands.map((cmd, idx) => (
+                <div
+                  key={cmd.name}
+                  onClick={() => selectCommand(cmd)}
+                  onMouseEnter={() => setSlashIndex(idx)}
+                  className={`flex items-center justify-between px-3.5 py-2 cursor-pointer transition-colors ${
+                    idx === slashIndex
+                      ? "bg-indigo-600/15 text-indigo-300 font-semibold"
+                      : "text-zinc-300 hover:bg-zinc-800/40"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-mono text-indigo-400">{cmd.name}</span>
+                    <span className="text-[11px] text-zinc-400 truncate max-w-[180px]">{cmd.desc}</span>
+                  </div>
+                  {cmd.isCustom && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                      Custom
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+            <div className="p-1.5 border-t border-zinc-800/80 bg-zinc-950/40">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSlashMenu(false);
+                  setShowCustomPromptsModal(true);
+                }}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-colors"
               >
-                <span className="text-xs font-mono">{cmd.name}</span>
-                <span className="text-[9px] text-[#64748b]">{cmd.desc}</span>
-              </div>
-            ))}
+                <Plus size={12} />
+                <span>+ Create / Manage Custom Prompts</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -224,7 +319,11 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
 
         {/* Input Box — Refined Dark Glass Capsule Style */}
         <div
-          className="flex flex-col gap-2 rounded-[24px] px-4 py-2.5 bg-[#0e0e14]/75 backdrop-blur-2xl border border-white/[0.09] shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.06)] transition-all focus-within:border-white/[0.18] focus-within:shadow-[0_12px_40px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.1)]"
+          className={`flex flex-col gap-2 rounded-[24px] px-4 py-2.5 backdrop-blur-2xl border transition-all ${
+            activeGhost
+              ? "bg-[#130d1c]/80 border-purple-500/30 shadow-[0_8px_32px_rgba(88,28,135,0.25)] focus-within:border-purple-500/60"
+              : "bg-[#0e0e14]/75 border-white/[0.09] shadow-[0_8px_32px_rgba(0,0,0,0.5)] focus-within:border-white/[0.18]"
+          }`}
         >
           {/* File Attachment Chip Inside Capsule — Minimalist Dark Style */}
           {(isUploading || attachedFile) && (
@@ -264,85 +363,121 @@ export function ChatInput({ onSend, onStop, isLoading, disabled, sessionId, inje
             >
               <Paperclip size={16} />
             </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileChange}
-            accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
-            className="hidden"
-          />
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept=".pdf,.docx,.txt,.csv,.md,.png,.jpg,.jpeg,.webp"
+              className="hidden"
+            />
 
-          {/* Textarea */}
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={(e) => handleInputChange(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onInput={handleInput}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              const text = e.dataTransfer.getData("text/plain");
-              if (text) {
-                setInput((prev) => (prev ? `${prev}\n${text}` : text));
-              }
-            }}
-            placeholder="Message Clarity..."
-            disabled={disabled}
-            rows={1}
-            className="flex-1 bg-transparent resize-none outline-none text-sm text-[#f2f2f7] placeholder-[#8e8e93] max-h-[180px] min-h-[24px] py-1 leading-relaxed scrollbar-none"
-          />
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onInput={handleInput}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const text = e.dataTransfer.getData("text/plain");
+                if (text) {
+                  setInput((prev) => (prev ? `${prev}\n${text}` : text));
+                }
+              }}
+              placeholder={activeGhost ? "Ask in Ghost Mode (zero trace)..." : "Message Clarity... (Type / for commands)"}
+              disabled={disabled}
+              rows={1}
+              className="flex-1 bg-transparent resize-none outline-none text-sm text-[#f2f2f7] placeholder-[#8e8e93] max-h-[180px] min-h-[24px] py-1 leading-relaxed scrollbar-none"
+            />
 
-          {/* Actions */}
-          <div className="flex items-center gap-1.5 flex-shrink-0 mb-0.5">
-            {/* Search on Web button */}
-            {!isLoading && (
+            {/* Actions */}
+            <div className="flex items-center gap-1.5 flex-shrink-0 mb-0.5">
+              {/* Ghost Mode Toggle */}
               <button
-                onClick={() => handleSend(true)}
-                disabled={!input.trim() || disabled}
-                title="Search on Web"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[#8e8e93] bg-[#2c2c2e]/60 border border-[#3a3a3c] hover:bg-[#2c2c2e] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                type="button"
+                onClick={toggleGhost}
+                title={activeGhost ? "Ghost Mode ON (0 DB Writes)" : "Turn on Ghost Mode (Zero Trace)"}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  activeGhost
+                    ? "bg-purple-600/30 text-purple-300 border border-purple-500/50"
+                    : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60"
+                }`}
               >
-                <Globe size={13} className="text-[#8e8e93]" />
-                <span className="hidden sm:inline">Search Web</span>
+                <Ghost size={13} className={activeGhost ? "text-purple-400" : ""} />
+                <span className="hidden md:inline text-[11px]">Ghost</span>
               </button>
-            )}
 
-            {isLoading ? (
-              <button
-                onClick={onStop}
-                className="w-8 h-8 rounded-full bg-[#2c2c2e] border border-[#3a3a3c] text-white flex items-center justify-center transition-all"
-                title="Stop generation"
-              >
-                <Square size={12} />
-              </button>
-            ) : (
-              <button
-                onClick={() => handleSend(false)}
-                disabled={!input.trim() || disabled}
-                className="w-8 h-8 rounded-full bg-white text-black hover:bg-[#e5e5ea] disabled:bg-[#2c2c2e] disabled:text-[#6c6c70] disabled:cursor-not-allowed active:scale-95 flex items-center justify-center transition-all flex-shrink-0 shadow-sm"
-                title="Send message"
-              >
-                <Send size={13} />
-              </button>
-            )}
+              {/* Search on Web button */}
+              {!isLoading && (
+                <button
+                  onClick={() => handleSend(true)}
+                  disabled={!input.trim() || disabled}
+                  title="Search on Web"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-[#8e8e93] bg-[#2c2c2e]/60 border border-[#3a3a3c] hover:bg-[#2c2c2e] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                >
+                  <Globe size={13} className="text-[#8e8e93]" />
+                  <span className="hidden sm:inline">Search Web</span>
+                </button>
+              )}
+
+              {isLoading ? (
+                <button
+                  onClick={onStop}
+                  className="w-8 h-8 rounded-full bg-[#2c2c2e] border border-[#3a3a3c] text-white flex items-center justify-center transition-all"
+                  title="Stop generation"
+                >
+                  <Square size={12} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSend(false)}
+                  disabled={!input.trim() || disabled}
+                  className="w-8 h-8 rounded-full bg-white text-black hover:bg-[#e5e5ea] disabled:bg-[#2c2c2e] disabled:text-[#6c6c70] disabled:cursor-not-allowed active:scale-95 flex items-center justify-center transition-all flex-shrink-0 shadow-sm"
+                  title="Send message"
+                >
+                  <Send size={13} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-        {/* Footer — both mobile and desktop */}
-        <div className="text-center text-[10px] text-zinc-500 tracking-wider font-medium">
-          Created by{" "}
-          <a
-            href="https://www.linkedin.com/in/shivam-kothekar-10296b260/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-zinc-400 hover:text-white transition-colors underline underline-offset-2"
+        {/* Footer */}
+        <div className="flex items-center justify-between text-[10px] text-zinc-500 px-1 font-medium">
+          <button
+            type="button"
+            onClick={() => setShowCustomPromptsModal(true)}
+            className="hover:text-indigo-400 transition-colors flex items-center gap-1"
           >
-            Shivam Kothekar
-          </a>
+            <Terminal size={11} />
+            <span>Prompt Library (/shortcuts)</span>
+          </button>
+          <span>
+            Created by{" "}
+            <a
+              href="https://www.linkedin.com/in/shivam-kothekar-10296b260/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-400 hover:text-white transition-colors underline underline-offset-2"
+            >
+              Shivam Kothekar
+            </a>
+          </span>
         </div>
       </div>
+
+      {/* Custom Prompts Modal */}
+      <CustomPromptsModal
+        isOpen={showCustomPromptsModal}
+        onClose={() => setShowCustomPromptsModal(false)}
+        onPromptsUpdated={(updated) => setCustomPrompts(updated)}
+        onSelectPrompt={(tpl) => {
+          setInput(tpl.replace("{text}", ""));
+          setTimeout(() => textareaRef.current?.focus(), 50);
+        }}
+      />
     </div>
   );
 }

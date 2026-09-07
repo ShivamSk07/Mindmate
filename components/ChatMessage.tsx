@@ -113,7 +113,11 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
   const botAvatar = avatarUrl || fallbackAvatar;
 
   return (
-    <div className="flex flex-col mb-5 w-full group animate-fade-in break-words">
+    <div
+      id={`chat-msg-${message.id}`}
+      data-role={message.role}
+      className="flex flex-col mb-5 w-full group animate-fade-in break-words transition-all duration-300"
+    >
 
       {isUser ? (
         /* ── USER: right-aligned pill bubble (Refined Dark Glass) ── */

@@ -124,6 +124,8 @@ export async function POST(request: NextRequest) {
       document_content,
       document_name,
       document_id,
+      is_ghost,
+      client_history,
     } = body;
 
     if (!message?.trim()) {
@@ -133,9 +135,22 @@ export async function POST(request: NextRequest) {
     // Trigger auto cleanup of expired documents (2 min TTL) in background
     runAutoCleanupIfNeeded().catch(() => {});
 
-    let conv;
-    // 1. Get or Create Session (Instant without blocking LLM call)
-    if (conversation_id) {
+    let conv: any;
+    let chatHistory: Array<{ role: "user" | "assistant" | "system"; content: string }> = [];
+
+    // 1. Get or Create Session (or Ephemeral Session if Ghost Mode)
+    if (is_ghost) {
+      conv = {
+        id: conversation_id || "ghost_" + Math.random().toString(36).substring(7),
+        activePersona: { name: "Clarity", systemPrompt: "Friendly and helpful assistant." },
+      };
+      if (Array.isArray(client_history) && client_history.length > 0) {
+        chatHistory = client_history.map((m: any) => ({
+          role: m.role as "user" | "assistant" | "system",
+          content: m.content,
+        }));
+      }
+    } else if (conversation_id) {
       conv = await prisma.session.findFirst({
         where: { id: conversation_id, userId: user.userId },
         include: { activePersona: true }
@@ -166,16 +181,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 2. Save User Message asynchronously
-    const saveUserMsgPromise = prisma.message.create({
-      data: {
-        role: "user",
-        content: message,
-        sessionId: conv.id,
-      }
-    });
-
-    // 3. Fetch Profile & Message History in parallel (with safe fallback)
+    // 2. Fetch Profile & Message History in parallel (if not ghost mode)
     let profile: any = null;
     try {
       profile = await prisma.userProfile.findUnique({ where: { userId: user.userId } });
@@ -183,20 +189,31 @@ export async function POST(request: NextRequest) {
       console.warn("[Profile query fallback]", e);
     }
 
-    const [historyMessages] = await Promise.all([
-      prisma.message.findMany({
-        where: { sessionId: conv.id },
-        orderBy: { createdAt: "asc" },
-        take: 6
-      }),
-      saveUserMsgPromise
-    ]);
+    if (!is_ghost) {
+      const saveUserMsgPromise = prisma.message.create({
+        data: {
+          role: "user",
+          content: message,
+          sessionId: conv.id,
+        }
+      });
 
-    const memoryVault = profile?.memoryVault || "";
-    const chatHistory = historyMessages.map(m => ({
-      role: m.role as "user" | "assistant" | "system",
-      content: m.content
-    }));
+      const [historyMessages] = await Promise.all([
+        prisma.message.findMany({
+          where: { sessionId: conv.id },
+          orderBy: { createdAt: "asc" },
+          take: 6
+        }),
+        saveUserMsgPromise
+      ]);
+
+      chatHistory = historyMessages.map(m => ({
+        role: m.role as "user" | "assistant" | "system",
+        content: m.content
+      }));
+    }
+
+    const memoryVault = is_ghost ? "" : (profile?.memoryVault || "");
 
     // 4. Intercept Image Generation & Slash Commands
     let userQuery = message.trim();
@@ -438,25 +455,27 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Save assistant message to database with clean response
-          await prisma.message.create({
-            data: {
-              role: "assistant",
-              content: cleanResponse,
-              searched,
-              sources: sources.length > 0 ? sources : undefined,
-              sessionId: conv.id
-            }
-          });
+          // Save assistant message to database with clean response (skip if Ghost Mode)
+          if (!is_ghost) {
+            await prisma.message.create({
+              data: {
+                role: "assistant",
+                content: cleanResponse,
+                searched,
+                sources: sources.length > 0 ? sources : undefined,
+                sessionId: conv.id
+              }
+            });
 
-          // Memory extraction in background (non-blocking)
-          extractAndUpdateMemory(userId, message, cleanResponse);
+            // Memory extraction in background (non-blocking)
+            extractAndUpdateMemory(userId, message, cleanResponse);
 
-          // Update Session modified timestamp
-          await prisma.session.update({
-            where: { id: conv.id },
-            data: { updatedAt: new Date() }
-          });
+            // Update Session modified timestamp
+            await prisma.session.update({
+              where: { id: conv.id },
+              data: { updatedAt: new Date() }
+            });
+          }
 
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             done: true,

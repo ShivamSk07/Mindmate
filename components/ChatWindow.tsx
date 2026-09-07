@@ -1,10 +1,27 @@
-"use client";
-
 import { useEffect, useRef, useState } from "react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import type { Message } from "@/types";
-import { Sparkles, CornerDownLeft, Copy, Check, HelpCircle, CheckCircle2, Languages, ArrowRight } from "lucide-react";
+import {
+  Sparkles,
+  CornerDownLeft,
+  Copy,
+  Check,
+  HelpCircle,
+  CheckCircle2,
+  Languages,
+  ArrowRight,
+  Search,
+  Share2,
+  ChevronUp,
+  ChevronDown,
+  X,
+  Code,
+  Bot,
+  Globe,
+  GitFork,
+  ExternalLink,
+} from "lucide-react";
 
 interface ChatWindowProps {
   messages: Message[];
@@ -141,6 +158,110 @@ export function ChatWindow({
   const [selectionPos, setSelectionPos] = useState<{ top: number; left: number } | null>(null);
   const [copiedSelection, setCopiedSelection] = useState(false);
 
+  // In-Chat Search State (Ctrl+F)
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchFilter, setSearchFilter] = useState<"all" | "code" | "ai">("all");
+  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Share Modal State
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [isSharing, setIsSharing] = useState(false);
+  const [copiedShare, setCopiedShare] = useState(false);
+
+  // Filter matching messages
+  const matchingMessages = messages.filter((m) => {
+    if (!searchQuery.trim()) return false;
+    const content = m.content.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
+
+    if (!content.includes(query)) return false;
+
+    if (searchFilter === "code") {
+      return content.includes("```") || /\b(function|const|import|class|def|interface)\b/.test(content);
+    }
+    if (searchFilter === "ai") {
+      return m.role === "assistant";
+    }
+    return true;
+  });
+
+  const jumpToMatch = (index: number) => {
+    if (matchingMessages.length === 0) return;
+    const target = matchingMessages[index];
+    if (!target) return;
+
+    setCurrentMatchIndex(index);
+    const el = document.getElementById(`chat-msg-${target.id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("ring-2", "ring-indigo-500", "bg-indigo-500/10", "rounded-2xl");
+      setTimeout(() => {
+        el.classList.remove("ring-2", "ring-indigo-500", "bg-indigo-500/10");
+      }, 2500);
+    }
+  };
+
+  const handleNextMatch = () => {
+    if (matchingMessages.length === 0) return;
+    const nextIdx = (currentMatchIndex + 1) % matchingMessages.length;
+    jumpToMatch(nextIdx);
+  };
+
+  const handlePrevMatch = () => {
+    if (matchingMessages.length === 0) return;
+    const prevIdx = (currentMatchIndex - 1 + matchingMessages.length) % matchingMessages.length;
+    jumpToMatch(prevIdx);
+  };
+
+  // Keyboard shortcut Ctrl+F / Cmd+F listener
+  useEffect(() => {
+    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault();
+        setShowSearch(true);
+        setTimeout(() => searchInputRef.current?.focus(), 50);
+      } else if (e.key === "Escape" && showSearch) {
+        setShowSearch(false);
+        setSearchQuery("");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [showSearch]);
+
+  const handleShareSession = async () => {
+    if (!sessionId) {
+      alert("Please send a message to start a conversation before sharing.");
+      return;
+    }
+    try {
+      setIsSharing(true);
+      const res = await fetch(`/api/share/${sessionId}`, { method: "POST" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to create share link");
+      }
+      const data = await res.json();
+      setShareUrl(data.shareUrl);
+      setShowShareModal(true);
+    } catch (e: any) {
+      alert(e.message || "Could not generate share link.");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (matchingMessages.length > 0) {
+      jumpToMatch(0);
+    } else {
+      setCurrentMatchIndex(0);
+    }
+  }, [searchQuery, searchFilter]);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
@@ -237,7 +358,220 @@ export function ChatWindow({
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] main-chat overflow-hidden relative">
 
-      {/* Floating Selection Instant Ask Popover — Minimalist Dark Theme */}
+      {/* Top Floating Control Bar — Search & Share */}
+      <div className="absolute top-3 right-4 z-30 flex items-center gap-1.5">
+        <button
+          onClick={() => {
+            setShowSearch((prev) => !prev);
+            if (!showSearch) setTimeout(() => searchInputRef.current?.focus(), 50);
+          }}
+          title="Search in conversation (Ctrl+F)"
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-all backdrop-blur-md shadow-lg ${
+            showSearch
+              ? "bg-indigo-600 text-white border-indigo-500 shadow-indigo-600/20"
+              : "bg-[#0c0c10]/80 hover:bg-zinc-800/90 text-zinc-400 hover:text-white border-zinc-800/90"
+          }`}
+        >
+          <Search size={13} />
+          <span className="hidden sm:inline text-[11px]">Find</span>
+          <kbd className="hidden md:inline-block text-[9px] px-1.5 py-0.5 rounded bg-black/40 text-zinc-400 font-mono">
+            Ctrl+F
+          </kbd>
+        </button>
+
+        {sessionId && (
+          <button
+            onClick={handleShareSession}
+            disabled={isSharing}
+            title="Share conversation link"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#0c0c10]/80 hover:bg-zinc-800/90 text-zinc-400 hover:text-white border border-zinc-800/90 text-xs font-medium transition-all backdrop-blur-md shadow-lg"
+          >
+            <Share2 size={13} className={isSharing ? "animate-spin" : ""} />
+            <span className="hidden sm:inline text-[11px]">{isSharing ? "Sharing..." : "Share"}</span>
+          </button>
+        )}
+      </div>
+
+      {/* Floating In-Chat Search Toolbar (Ctrl+F) */}
+      {showSearch && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-lg bg-[#0e0e14]/95 backdrop-blur-2xl border border-zinc-700/80 rounded-2xl shadow-2xl p-2.5 animate-fade-in flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Search size={14} className="text-zinc-400 flex-shrink-0 ml-1" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (e.shiftKey) handlePrevMatch();
+                  else handleNextMatch();
+                } else if (e.key === "Escape") {
+                  setShowSearch(false);
+                  setSearchQuery("");
+                }
+              }}
+              placeholder="Find in this chat..."
+              className="flex-1 bg-transparent text-xs text-white placeholder-zinc-500 outline-none"
+            />
+
+            {/* Match Counter */}
+            {searchQuery.trim() && (
+              <span className="text-[11px] font-mono text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-800/80">
+                {matchingMessages.length > 0
+                  ? `${currentMatchIndex + 1} / ${matchingMessages.length}`
+                  : "0 matches"}
+              </span>
+            )}
+
+            {/* Stepper Navigation */}
+            <div className="flex items-center gap-0.5 border-l border-zinc-800 pl-1.5">
+              <button
+                onClick={handlePrevMatch}
+                disabled={matchingMessages.length <= 1}
+                title="Previous Match (Shift+Enter)"
+                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition-colors"
+              >
+                <ChevronUp size={14} />
+              </button>
+              <button
+                onClick={handleNextMatch}
+                disabled={matchingMessages.length <= 1}
+                title="Next Match (Enter)"
+                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition-colors"
+              >
+                <ChevronDown size={14} />
+              </button>
+              <button
+                onClick={() => {
+                  setShowSearch(false);
+                  setSearchQuery("");
+                }}
+                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors ml-1"
+                title="Close Search (Esc)"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Filter Pills */}
+          <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-800/60 text-[10px]">
+            <span className="text-zinc-500 px-1">Filter:</span>
+            <button
+              onClick={() => setSearchFilter("all")}
+              className={`px-2 py-0.5 rounded-md transition-colors ${
+                searchFilter === "all"
+                  ? "bg-indigo-600 text-white font-medium"
+                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setSearchFilter("code")}
+              className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors ${
+                searchFilter === "code"
+                  ? "bg-indigo-600 text-white font-medium"
+                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Code size={10} />
+              <span>Code Blocks</span>
+            </button>
+            <button
+              onClick={() => setSearchFilter("ai")}
+              className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors ${
+                searchFilter === "ai"
+                  ? "bg-indigo-600 text-white font-medium"
+                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+              }`}
+            >
+              <Bot size={10} />
+              <span>AI Only</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="relative w-full max-w-md bg-[#0e0e12] border border-zinc-800 rounded-2xl shadow-2xl p-6 flex flex-col space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white">
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <Share2 size={16} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold">Share Conversation</h3>
+                  <p className="text-[11px] text-zinc-400">Anyone with this link can view & fork this chat</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-zinc-300">Public Shareable Link</label>
+              <div className="flex items-center gap-2 p-2 bg-zinc-900 border border-zinc-800 rounded-xl">
+                <input
+                  type="text"
+                  readOnly
+                  value={shareUrl}
+                  className="flex-1 bg-transparent text-xs font-mono text-zinc-300 outline-none truncate"
+                />
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(shareUrl);
+                    setCopiedShare(true);
+                    setTimeout(() => setCopiedShare(false), 2000);
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors flex items-center gap-1.5 flex-shrink-0"
+                >
+                  {copiedShare ? <Check size={12} className="text-white" /> : <Copy size={12} />}
+                  <span>{copiedShare ? "Copied" : "Copy"}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl text-xs text-zinc-400 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-300 font-medium">
+                <GitFork size={13} className="text-indigo-400" />
+                <span>Fork & Continue Enabled</span>
+              </div>
+              <p className="text-[11px] text-zinc-500">
+                Viewers can fork this exact solution into their workspace to continue building without modifying your original chat.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-3 py-1.5 text-xs text-zinc-400 hover:text-white transition-colors"
+              >
+                <span>Preview Page</span>
+                <ExternalLink size={12} />
+              </a>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="px-4 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-medium rounded-lg transition-colors"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Selection Instant Ask Popover */}
       {selectedText && selectionPos && (
         <div
           id="selection-action-popover"
