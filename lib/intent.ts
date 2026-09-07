@@ -1,58 +1,59 @@
-const SEARCH_TRIGGER_KEYWORDS = [
-  // English
-  "latest", "current", "live", "today", "now", "recent",
-  "news", "weather", "score", "match", "result", "winner",
-  "trending", "stock", "crypto", "bitcoin", "forecast", "price",
-  "happening", "announced", "released", "launched", "update", "version",
-  "2024", "2025", "2026", "2027", "2028", "2029", "2030",
-  "who is", "what is", "where is", "when is", "how much",
-  "ipl", "wpl", "t20", "world cup", "olympics", "champions trophy",
-  "champion", "points table", "schedule", "ceo", "president", "prime minister",
-  "deepseek", "openai", "gpt", "gemini", "claude", "next.js", "react",
-  "captain", "coach", "head coach", "squad", "playing 11", "playing xi",
-  "movie", "show", "series", "season", "episode", "release", "hustle",
-  // Hinglish / Hindi
-  "taza", "khabar", "score kya", "kitna hai", "aaj ka", "aaj ki", "aaj",
-  "kya hua", "kab hai", "kahan hai", "batao abhi", "jeeta", "kaun jeeta",
-  "nayi", "naya", "haalat", "samachar", "bhav", "daam", "rate",
-  "mausam", "kaptaan", "kal", "parso", "kab aayega", "kab aayegi", "kab aayenge",
-  "kon hai", "kaun hai", "kiska", "kisne", "konsa", "kaunsa"
+// Specific live patterns where real-time web search is actually required
+const LIVE_SEARCH_PATTERNS = [
+  // Weather queries
+  /\b(weather|mausam|temperature|forecast)\b/i,
+
+  // Financial / Market live prices
+  /\b(price|rate|bhav|daam|cost)\b.*\b(gold|silver|bitcoin|btc|eth|crypto|stock|share|sensex|nifty|today|aaj)\b/i,
+  /\b(gold|silver|bitcoin|btc|eth|crypto|stock|share|sensex|nifty)\b.*\b(price|rate|bhav|daam|today|aaj)\b/i,
+
+  // Sports live updates & scores
+  /\b(live score|match score|cricket score|points table|ipl|wpl|t20|world cup|champions trophy)\b/i,
+  /\b(who won|winner of|score of).*(match|cup|tournament|today|yesterday|kal)\b/i,
+
+  // News & Current Events
+  /\b(breaking news|latest news|today'?s? news|aaj ki (taza )?khabar|current news|headlines)\b/i,
+
+  // Current political or corporate leaders (time-sensitive)
+  /\b(current|present)\s+(ceo|president|prime minister|governor|captain|coach)\b/i,
+  /\b(who is (the )?current|abhi kaun hai)\s+(ceo|president|prime minister|governor|captain|coach)\b/i,
+
+  // Recent 2025/2026 releases or upcoming dates
+  /\b(release date|kab release|launch date)\b.*\b(movie|show|series|season|episode|album|game|iphone)\b/i,
+  /\b(movie|show|series|season|episode|album|game|iphone)\b.*\b(release date|kab release|launch date)\b/i,
+  /\b(latest|newest)\s+(update|news|version|release)\s+(in|of|for)\s+202[5-9]\b/i
 ];
 
-const SEARCH_TRIGGER_PATTERNS = [
-  /\b(what|who|when|where|how).*(today|now|current|latest|live|recent|news|score)\b/i,
-  /\b(kya|kaun|kon|kab|kahan|kitna).*(aaj|abhi|latest|taza|khabar|kal)\b/i,
-  /\b(price|cost|rate|market|stock|share).*(of|ka|ki|today|now)\b/i,
-  /\b(today'?s?|aaj ka|aaj ki|aaj).*(news|weather|mausam|score|price|match|khabar)\b/i,
-  /\b(latest|newest|recent).*(version|update|news|release|model|ai|season|episode|show)\b/i,
-  /\b(match|game|tournament|cup).*(score|result|winner|points|table|status|captain)\b/i,
-  /\b(202[4-9]|2030)\b/i,
-  /\b(ipl|wpl|t20|world cup|olympics|trophy)\b/i,
-  /\b(who is the|what is the current|where is the)\b/i,
-  /\b(tell me about|information on|details of|who won|who is)\b/i,
-  /\b(weather|mausam|temperature|temp)\b/i,
-  /\b(captain|kaptaan)\b/i,
-  /\b(show|hustle|season|episode|release date|movie)\b/i,
-  /\b(kal|parso|upcoming|next)\b/i
+// Patterns that MUST NOT trigger web search (coding, math, general concepts, conversation)
+const NON_SEARCH_PATTERNS = [
+  /\b(write|create|build|implement|debug|fix|refactor|optimize|explain|help with|how to|what is|how do|can you)\b.*\b(code|function|component|hook|api|class|algorithm|regex|sql|css|html|javascript|typescript|react|next|node|python|bug|error)\b/i,
+  /\b(tell me about yourself|who are you|how are you|kaise ho|kya haal|kya hal|good morning|hello|hi|hey|thanks|thank you)\b/i
 ];
 
 export function needsWebSearch(query: string): boolean {
   const queryLower = query.toLowerCase().trim();
 
-  // Explicit research command or search intent
-  if (queryLower.startsWith("/research") || queryLower.startsWith("/search")) {
+  // 1. Explicit search command or intent
+  if (
+    queryLower.startsWith("/research") ||
+    queryLower.startsWith("/search") ||
+    queryLower.startsWith("search for ") ||
+    queryLower.startsWith("google for ") ||
+    queryLower.startsWith("browse for ") ||
+    queryLower.startsWith("find online ")
+  ) {
     return true;
   }
 
-  for (const keyword of SEARCH_TRIGGER_KEYWORDS) {
-    const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-    if (regex.test(queryLower)) {
-      return true;
+  // 2. Ignore search for general coding/conceptual questions
+  for (const nonSearchPattern of NON_SEARCH_PATTERNS) {
+    if (nonSearchPattern.test(queryLower)) {
+      return false;
     }
   }
 
-  for (const pattern of SEARCH_TRIGGER_PATTERNS) {
+  // 3. Check for specific time-sensitive live patterns
+  for (const pattern of LIVE_SEARCH_PATTERNS) {
     if (pattern.test(queryLower)) {
       return true;
     }

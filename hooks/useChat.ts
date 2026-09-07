@@ -112,10 +112,12 @@ export function useChat(initialSessionId?: string) {
                 
                 if (data.content) {
                   accumulatedText += data.content;
+                  // Filter out raw suggestions tag from live stream display
+                  const displayContent = accumulatedText.replace(/<<<SUGGESTIONS[\s\S]*$/, "").trimEnd();
                   setMessages((prev) =>
                     prev.map((msg) =>
                       msg.id === assistantMessageId
-                        ? { ...msg, content: accumulatedText }
+                        ? { ...msg, content: displayContent }
                         : msg
                     )
                   );
@@ -126,6 +128,18 @@ export function useChat(initialSessionId?: string) {
                   if (data.conversation_id) {
                     setSessionId(data.conversation_id);
                   }
+                  const finalContent = data.clean_content || accumulatedText.replace(/<<<SUGGESTIONS[\s\S]*$/, "").trim();
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === assistantMessageId
+                        ? {
+                            ...msg,
+                            content: finalContent,
+                            suggestions: data.suggestions && Array.isArray(data.suggestions) ? data.suggestions : msg.suggestions,
+                          }
+                        : msg
+                    )
+                  );
                 }
 
                 if (data.error) {

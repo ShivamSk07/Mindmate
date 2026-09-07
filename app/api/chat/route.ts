@@ -320,18 +320,6 @@ export async function POST(request: NextRequest) {
       // Execute DuckDuckGo Web Search
       let results = await searchWeb(searchDecision.searchQuery, 5);
 
-      // If 0 results, retry with a shorter/simpler query (strip filler words)
-      if (results.length === 0) {
-        const simpleQuery = searchDecision.searchQuery
-          .replace(/forecast|today|2026|2025|current|latest/gi, "")
-          .replace(/\s+/g, " ")
-          .trim();
-        if (simpleQuery.length > 3) {
-          console.log(`[Search Retry with simpler query]: "${simpleQuery}"`);
-          results = await searchWeb(simpleQuery, 5);
-        }
-      }
-
       if (results.length > 0) {
         searched = true;
         searchResults = results;
@@ -367,7 +355,7 @@ export async function POST(request: NextRequest) {
     let maxTokens = 1024;
 
     if (mode === "fast") {
-      targetModel = MODEL;
+      targetModel = "qwen/qwen3.6-27b";
       maxTokens = 350;
       queryMessages.push({
         role: "system",
@@ -431,11 +419,30 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Save assistant message to database
+          // Parse and extract adaptive follow-up suggestions
+          let cleanResponse = fullResponse;
+          let suggestions: string[] = [];
+          const sugMatch = fullResponse.match(/<<<SUGGESTIONS:\s*(\[[\s\S]*?\])\s*>>>/);
+          if (sugMatch) {
+            try {
+              const parsed = JSON.parse(sugMatch[1]);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                suggestions = parsed
+                  .map((s: any) => String(s).trim())
+                  .filter((s: string) => s.length > 0)
+                  .slice(0, 3);
+                cleanResponse = fullResponse.replace(/<<<SUGGESTIONS:\s*\[[\s\S]*?\]\s*>>>/g, "").trim();
+              }
+            } catch (e) {
+              console.warn("[Failed to parse adaptive suggestions JSON]", e);
+            }
+          }
+
+          // Save assistant message to database with clean response
           await prisma.message.create({
             data: {
               role: "assistant",
-              content: fullResponse,
+              content: cleanResponse,
               searched,
               sources: sources.length > 0 ? sources : undefined,
               sessionId: conv.id
@@ -443,7 +450,7 @@ export async function POST(request: NextRequest) {
           });
 
           // Memory extraction in background (non-blocking)
-          extractAndUpdateMemory(userId, message, fullResponse);
+          extractAndUpdateMemory(userId, message, cleanResponse);
 
           // Update Session modified timestamp
           await prisma.session.update({
@@ -451,7 +458,12 @@ export async function POST(request: NextRequest) {
             data: { updatedAt: new Date() }
           });
 
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, conversation_id: conv.id })}\n\n`));
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            done: true,
+            conversation_id: conv.id,
+            clean_content: cleanResponse,
+            suggestions: suggestions.length > 0 ? suggestions : undefined
+          })}\n\n`));
           controller.close();
 
         } catch (err: any) {

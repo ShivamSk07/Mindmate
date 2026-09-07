@@ -30,71 +30,95 @@ interface ChatWindowProps {
 }
 
 /**
- * Intelligent contextual next-step suggestion generator tightly coupled to conversation context
+ * Context-aware dynamic follow-up suggestion generator that adapts to the assistant's exact response
  */
-function getPredictiveFollowUps(lastAssistantMsg: string, lastUserMsg: string): string[] {
-  const combined = (lastAssistantMsg + " " + lastUserMsg).toLowerCase();
-  
-  // Clean last user query to extract topic keywords
-  const cleanTopic = lastUserMsg
-    .replace(/^\[Attachment:[^\]]+\]\s*/i, "")
-    .replace(/^(can you|please|explain|how to|what is|tell me about|write a|show me|help with)\s+/i, "")
-    .trim()
-    .slice(0, 45);
+function getAdaptiveFollowUps(lastAssistantMsg: string, lastUserMsg: string): string[] {
+  if (!lastAssistantMsg || lastAssistantMsg.length < 5) return [];
 
-  if (combined.includes("```") || combined.includes("function") || combined.includes("const ") || combined.includes("import ") || combined.includes("code") || combined.includes("class ")) {
-    return [
-      cleanTopic ? `Show step-by-step implementation for ${cleanTopic}` : "Show a complete working code example",
-      "What are the common edge cases and pitfalls?",
-      "How can we optimize performance here?"
-    ];
+  const isHindi = /\b(kya|hai|ho|kaise|karo|karein|batao|nahi|mera|meri|apna|kaun|kab|kyun|yeh|woh|accha|theek|bhai)\b/i.test(
+    lastAssistantMsg + " " + lastUserMsg
+  );
+
+  const suggestions: string[] = [];
+
+  // 1. Check if assistant asked closing follow-up questions (e.g. "Would you like me to...", "Do you want...")
+  const questionMatches = lastAssistantMsg.match(/([A-Z][^.?!]*\?)/g);
+  if (questionMatches && questionMatches.length > 0) {
+    for (const q of questionMatches) {
+      const cleanQ = q.trim().replace(/^[-*•\d.]+\s*/, "");
+      if (
+        cleanQ.length > 10 &&
+        cleanQ.length < 65 &&
+        !cleanQ.toLowerCase().includes("how can i assist") &&
+        !cleanQ.toLowerCase().includes("anything else")
+      ) {
+        suggestions.push(cleanQ);
+        if (suggestions.length >= 2) break;
+      }
+    }
   }
 
-  if (combined.includes("error") || combined.includes("bug") || combined.includes("exception") || combined.includes("failed") || combined.includes("crash")) {
-    return [
-      "What other root causes could trigger this?",
-      "Show how to write a test case to prevent this",
-      "What are the best practices to handle this safely?"
-    ];
+  // 2. Extract key topics / bold concepts from assistant message
+  const boldMatches = lastAssistantMsg.match(/\*\*([^*]{3,35})\*\*/g);
+  const boldTopics = boldMatches
+    ? boldMatches
+        .map((m) => m.replace(/\*\*/g, "").trim())
+        .filter((t) => t.length > 3 && !t.includes(":") && !t.includes("Note") && !t.includes("Step"))
+    : [];
+
+  const topTopic = boldTopics[0] || "";
+
+  // 3. Detect code content
+  const hasCode =
+    lastAssistantMsg.includes("```") ||
+    /\b(function|const|import|class|interface|def |SELECT |return )\b/.test(lastAssistantMsg);
+
+  if (hasCode) {
+    if (isHindi) {
+      if (topTopic) suggestions.push(`${topTopic} ka working code example dikhao`);
+      suggestions.push("Isme error handling aur edge cases kaise handle karein?");
+      suggestions.push("Is code ko production ke liye optimize kaise karein?");
+    } else {
+      if (topTopic) suggestions.push(`Show complete working code for ${topTopic}`);
+      suggestions.push("How should we handle errors and edge cases here?");
+      suggestions.push("How can we optimize this for production?");
+    }
+  } else if (/\b(step \d|roadmap|phase|guide|first|second)\b/i.test(lastAssistantMsg)) {
+    if (isHindi) {
+      if (topTopic) suggestions.push(`${topTopic} ko detail me explain karo`);
+      suggestions.push("Is process ka step-by-step implementation guide do");
+      suggestions.push("Isme common mistakes kya hoti hain jisse bachna chahiye?");
+    } else {
+      if (topTopic) suggestions.push(`Deep dive into ${topTopic}`);
+      suggestions.push("Show step-by-step implementation for this");
+      suggestions.push("What are the most common pitfalls to avoid?");
+    }
+  } else if (/\b(vs|difference|compare|pros|cons|advantage)\b/i.test(lastAssistantMsg)) {
+    if (isHindi) {
+      suggestions.push("Dono me se production ke liye sabse best option kaunsa hai?");
+      suggestions.push("Inka clear comparison summary table bana do");
+      suggestions.push("Real-world project me iska practical example do");
+    } else {
+      suggestions.push("Which option is best for production use?");
+      suggestions.push("Provide a structured comparison summary table");
+      suggestions.push("Give a real-world case study or example");
+    }
+  } else {
+    // General conversational / factual responses
+    if (isHindi) {
+      if (topTopic) suggestions.push(`${topTopic} ke baare me detail me batao`);
+      suggestions.push("Iska ek practical real-world example do");
+      suggestions.push("Isko implement karne me kya challenges aayenge?");
+    } else {
+      if (topTopic) suggestions.push(`Can you explain ${topTopic} in more depth?`);
+      suggestions.push("Can you give a practical real-world example?");
+      suggestions.push("What are the key trade-offs to consider?");
+    }
   }
 
-  if (combined.includes("resume") || combined.includes("cv") || combined.includes("pdf") || combined.includes("document") || combined.includes("mistake") || combined.includes("review")) {
-    return [
-      "Suggest 3 high-impact phrasing improvements",
-      "What are the top 3 strengths and weaknesses?",
-      "Format key takeaways into actionable checklist"
-    ];
-  }
-
-  if (combined.includes("compare") || combined.includes("vs") || combined.includes("difference") || combined.includes("better")) {
-    return [
-      "Provide a clear comparison summary table",
-      "Which option is best for production use?",
-      "What are the trade-offs of each approach?"
-    ];
-  }
-
-  if (combined.includes("step") || combined.includes("guide") || combined.includes("how to") || combined.includes("plan") || combined.includes("roadmap")) {
-    return [
-      "Break down Step 1 into detailed sub-tasks",
-      "What are the biggest risks to watch out for?",
-      "Can you provide a time and effort estimate?"
-    ];
-  }
-
-  if (cleanTopic && cleanTopic.length > 4) {
-    return [
-      `Can you give a real-world example of ${cleanTopic}?`,
-      `Explain key takeaways of ${cleanTopic} in 3 bullet points`,
-      `What are the pros and cons of ${cleanTopic}?`
-    ];
-  }
-
-  return [
-    "Can you give a practical real-world example?",
-    "Explain this in 3 concise bullet points",
-    "What are the pros and cons to consider?"
-  ];
+  // De-duplicate and limit to 3 suggestions
+  const unique = Array.from(new Set(suggestions)).slice(0, 3);
+  return unique;
 }
 
 export function ChatWindow({
@@ -337,30 +361,39 @@ export function ChatWindow({
               ))}
             </div>
 
-            {/* Predictive Follow-Up Suggestions — Minimalist Dark Theme */}
-            {!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && messages[messages.length - 1]?.content && (
-              <div className="flex flex-col gap-2 mt-4 mb-3 animate-fade-in pl-1">
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
-                  <Sparkles size={11} className="text-zinc-500" />
-                  <span>Suggested Next Steps</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {getPredictiveFollowUps(
-                    messages[messages.length - 1]?.content || "",
+            {/* Adaptive Follow-Up Suggestions — Dynamically Generated from AI Response */}
+            {!isLoading && messages.length > 0 && messages[messages.length - 1]?.role === "assistant" && messages[messages.length - 1]?.content && (() => {
+              const lastMsg = messages[messages.length - 1];
+              const suggestions = (lastMsg?.suggestions && lastMsg.suggestions.length > 0)
+                ? lastMsg.suggestions
+                : getAdaptiveFollowUps(
+                    lastMsg?.content || "",
                     messages.length > 1 ? messages[messages.length - 2]?.content || "" : ""
-                  ).map((suggestion, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => onSend(suggestion)}
-                      className="group flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0e0e11] hover:bg-[#18181c] border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all active:scale-95 shadow-none"
-                    >
-                      <span className="font-normal">{suggestion}</span>
-                      <ArrowRight size={11} className="text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                    </button>
-                  ))}
+                  );
+
+              if (!suggestions || suggestions.length === 0) return null;
+
+              return (
+                <div className="flex flex-col gap-2 mt-4 mb-3 animate-fade-in pl-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 uppercase tracking-wider">
+                    <Sparkles size={11} className="text-zinc-500" />
+                    <span>Suggested Next Steps</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => onSend(suggestion)}
+                        className="group flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0e0e11] hover:bg-[#18181c] border border-zinc-800 text-xs text-zinc-300 hover:text-white transition-all active:scale-95 shadow-none"
+                      >
+                        <span className="font-normal">{suggestion}</span>
+                        <ArrowRight size={11} className="text-zinc-500 group-hover:text-zinc-300 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Loading Indicator — ONLY show when response has not started streaming yet */}
             {isLoading && (!messages.length || messages[messages.length - 1]?.role === "user" || !messages[messages.length - 1]?.content) && (

@@ -30,7 +30,7 @@ function sanitizeSnippet(text: string): string {
     .trim();
 }
 
-async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 3500): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 2000): Promise<Response> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

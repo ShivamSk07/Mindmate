@@ -4,6 +4,7 @@ export interface Message {
   content: string;
   searched?: boolean;
   sources?: Source[];
+  suggestions?: string[];
   reaction?: string | null;
   feedback?: number;
   isFlagged?: boolean;
