@@ -60,7 +60,6 @@
       ],
       "icon": "build/icon.png",
       "category": "Utility",
-      "desktopName": "clarity",
       "maintainer": "Indevs"
     },
     "mac": {
