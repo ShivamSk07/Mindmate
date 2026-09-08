@@ -64,7 +64,8 @@
         "zip"
       ],
       "icon": "electron/logo.png",
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "identity": null
     }
   },
   "dependencies": {
