@@ -55,7 +55,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "electron/logo.png",
+      "icon": "electron/icon.png",
       "category": "Utility"
     },
     "mac": {
@@ -63,7 +63,7 @@
         "dmg",
         "zip"
       ],
-      "icon": "electron/logo.png",
+      "icon": "electron/icon.png",
       "category": "public.app-category.productivity",
       "identity": null
     }
