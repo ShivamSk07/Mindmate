@@ -30,7 +30,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libarchive-tools icnsutils graphicsmagick xz-utils
+          sudo apt-get install -y libfuse2t64 libfuse2 libarchive-tools icnsutils graphicsmagick xz-utils || sudo apt-get install -y libarchive-tools icnsutils graphicsmagick xz-utils
 
       - name: Install dependencies
         run: npm install --legacy-peer-deps
