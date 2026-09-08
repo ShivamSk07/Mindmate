@@ -44,6 +44,8 @@ interface ChatWindowProps {
   activeFolder: string | null;
   sessionId?: string;
   onExtractNewChat?: (selectedText: string) => void;
+  onOpenPromptsModal?: () => void;
+  injectedPromptText?: string;
 }
 
 /**
@@ -150,6 +152,8 @@ export function ChatWindow({
   activeFolder,
   sessionId,
   onExtractNewChat,
+  onOpenPromptsModal,
+  injectedPromptText,
 }: ChatWindowProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const selectedTextRef = useRef("");
@@ -197,9 +201,9 @@ export function ChatWindow({
     const el = document.getElementById(`chat-msg-${target.id}`);
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-2", "ring-indigo-500", "bg-indigo-500/10", "rounded-2xl");
+      el.classList.add("ring-1", "ring-white/40", "bg-white/[0.06]", "rounded-2xl");
       setTimeout(() => {
-        el.classList.remove("ring-2", "ring-indigo-500", "bg-indigo-500/10");
+        el.classList.remove("ring-1", "ring-white/40", "bg-white/[0.06]");
       }, 2500);
     }
   };
@@ -368,7 +372,7 @@ export function ChatWindow({
           title="Search in conversation (Ctrl+F)"
           className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-all backdrop-blur-md shadow-lg ${
             showSearch
-              ? "bg-indigo-600 text-white border-indigo-500 shadow-indigo-600/20"
+              ? "bg-white text-black border-white/20 shadow-md font-semibold"
               : "bg-[#0c0c10]/80 hover:bg-zinc-800/90 text-zinc-400 hover:text-white border-zinc-800/90"
           }`}
         >
@@ -418,7 +422,7 @@ export function ChatWindow({
 
             {/* Match Counter */}
             {searchQuery.trim() && (
-              <span className="text-[11px] font-mono text-zinc-400 px-1.5 py-0.5 rounded bg-zinc-800/80">
+              <span className="text-[11px] font-mono text-zinc-300 px-1.5 py-0.5 rounded bg-zinc-800/80 border border-zinc-700/50">
                 {matchingMessages.length > 0
                   ? `${currentMatchIndex + 1} / ${matchingMessages.length}`
                   : "0 matches"}
@@ -461,34 +465,34 @@ export function ChatWindow({
             <span className="text-zinc-500 px-1">Filter:</span>
             <button
               onClick={() => setSearchFilter("all")}
-              className={`px-2 py-0.5 rounded-md transition-colors ${
+              className={`px-2.5 py-1 rounded-lg transition-colors text-xs ${
                 searchFilter === "all"
-                  ? "bg-indigo-600 text-white font-medium"
-                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60"
               }`}
             >
               All
             </button>
             <button
               onClick={() => setSearchFilter("code")}
-              className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors ${
+              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors text-xs ${
                 searchFilter === "code"
-                  ? "bg-indigo-600 text-white font-medium"
-                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60"
               }`}
             >
-              <Code size={10} />
+              <Code size={11} />
               <span>Code Blocks</span>
             </button>
             <button
               onClick={() => setSearchFilter("ai")}
-              className={`px-2 py-0.5 rounded-md flex items-center gap-1 transition-colors ${
+              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors text-xs ${
                 searchFilter === "ai"
-                  ? "bg-indigo-600 text-white font-medium"
-                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200"
+                  ? "bg-white text-black font-semibold shadow-sm"
+                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60"
               }`}
             >
-              <Bot size={10} />
+              <Bot size={11} />
               <span>AI Only</span>
             </button>
           </div>
@@ -501,7 +505,7 @@ export function ChatWindow({
           <div className="relative w-full max-w-md bg-[#0e0e12] border border-zinc-800 rounded-2xl shadow-2xl p-6 flex flex-col space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-white">
-                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <div className="p-2 rounded-xl bg-zinc-800 text-zinc-200 border border-zinc-700">
                   <Share2 size={16} />
                 </div>
                 <div>
@@ -532,9 +536,9 @@ export function ChatWindow({
                     setCopiedShare(true);
                     setTimeout(() => setCopiedShare(false), 2000);
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium transition-colors flex items-center gap-1.5 flex-shrink-0"
+                  className="px-3 py-1.5 rounded-lg bg-white hover:bg-zinc-200 text-black text-xs font-semibold transition-colors flex items-center gap-1.5 flex-shrink-0 shadow-sm"
                 >
-                  {copiedShare ? <Check size={12} className="text-white" /> : <Copy size={12} />}
+                  {copiedShare ? <Check size={12} className="text-black" /> : <Copy size={12} />}
                   <span>{copiedShare ? "Copied" : "Copy"}</span>
                 </button>
               </div>
@@ -542,7 +546,7 @@ export function ChatWindow({
 
             <div className="p-3 bg-zinc-950/60 border border-zinc-800/80 rounded-xl text-xs text-zinc-400 space-y-1">
               <div className="flex items-center gap-1.5 text-zinc-300 font-medium">
-                <GitFork size={13} className="text-indigo-400" />
+                <GitFork size={13} className="text-zinc-300" />
                 <span>Fork & Continue Enabled</span>
               </div>
               <p className="text-[11px] text-zinc-500">
@@ -765,7 +769,8 @@ export function ChatWindow({
           onStop={onStop}
           isLoading={isLoading}
           sessionId={sessionId}
-          injectedText={injectedInputText}
+          injectedText={injectedInputText || injectedPromptText}
+          onOpenPromptsModal={onOpenPromptsModal}
         />
       </div>
     </div>

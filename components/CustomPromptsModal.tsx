@@ -201,12 +201,12 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800/80 bg-zinc-900/40">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-200">
               <Terminal size={16} />
             </div>
             <div>
               <h2 className="text-sm font-semibold text-white tracking-wide">Custom Slash Commands & Prompt Library</h2>
-              <p className="text-xs text-zinc-400">Create reusable shortcuts like <span className="text-indigo-400 font-mono">/audit</span> or <span className="text-indigo-400 font-mono">/test</span></p>
+              <p className="text-xs text-zinc-400">Create reusable shortcuts like <span className="text-zinc-200 font-mono bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700/60">/audit</span> or <span className="text-zinc-200 font-mono bg-zinc-800 px-1.5 py-0.5 rounded border border-zinc-700/60">/test</span></p>
             </div>
           </div>
           <button
@@ -223,7 +223,7 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
             /* Create / Edit Form */
             <div className="space-y-4 bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-5 animate-fade-in">
               <div className="flex items-center justify-between pb-2 border-b border-zinc-800/50">
-                <span className="text-xs font-semibold uppercase tracking-wider text-indigo-400">
+                <span className="text-xs font-semibold uppercase tracking-wider text-zinc-200">
                   {editingPrompt ? "Edit Slash Command" : "New Custom Slash Command"}
                 </span>
                 <span className="text-[11px] text-zinc-500">
@@ -246,7 +246,7 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="e.g. Code Security Audit"
-                    className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
                   />
                 </div>
                 <div>
@@ -256,7 +256,7 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
                     value={formCommand}
                     onChange={(e) => setFormCommand(e.target.value)}
                     placeholder="/audit"
-                    className="w-full px-3 py-2 text-xs font-mono bg-zinc-900 border border-zinc-800 rounded-lg text-indigo-400 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
+                    className="w-full px-3 py-2 text-xs font-mono bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
                   />
                 </div>
               </div>
@@ -268,7 +268,7 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="e.g. Deep security and performance audit"
-                  className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500"
+                  className="w-full px-3 py-2 text-xs bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-500"
                 />
               </div>
 
@@ -279,7 +279,7 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
                   value={formTemplate}
                   onChange={(e) => setFormTemplate(e.target.value)}
                   placeholder="Perform an audit on the following code and list vulnerabilities:\n\n{text}"
-                  className="w-full px-3 py-2 text-xs font-mono bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-indigo-500 resize-none leading-relaxed"
+                  className="w-full px-3 py-2 text-xs font-mono bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 placeholder-zinc-600 focus:outline-none focus:border-zinc-500 resize-none leading-relaxed"
                 />
               </div>
 
@@ -292,7 +292,7 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
                 </button>
                 <button
                   onClick={handleSave}
-                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors shadow-lg shadow-indigo-500/20"
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold bg-white hover:bg-zinc-200 text-black rounded-lg transition-colors shadow-sm"
                 >
                   <Check size={13} />
                   <span>Save Command</span>
@@ -324,7 +324,7 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
                   >
                     <div className="space-y-1 pr-3 flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md font-mono text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        <span className="px-2 py-0.5 rounded-md font-mono text-xs font-semibold bg-zinc-800 text-zinc-200 border border-zinc-700/80">
                           {prompt.command}
                         </span>
                         <span className="text-xs font-medium text-white truncate">{prompt.name}</span>
@@ -339,7 +339,7 @@ export function CustomPromptsModal({ isOpen, onClose, onSelectPrompt, onPromptsU
                             onSelectPrompt(prompt.template);
                             onClose();
                           }}
-                          className="px-2.5 py-1 text-[11px] font-medium text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+                          className="px-2.5 py-1 text-[11px] font-semibold text-black bg-white hover:bg-zinc-200 rounded-lg transition-colors shadow-sm"
                         >
                           Use in Chat
                         </button>

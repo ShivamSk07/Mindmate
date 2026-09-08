@@ -6,7 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Sidebar, type SidebarSession } from "@/components/Sidebar";
 import { ChatWindow } from "@/components/ChatWindow";
 import { useChat } from "@/hooks/useChat";
-import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, PanelLeftOpen, Lock, GitMerge, Briefcase, ArrowRight } from "lucide-react";
+import { ChevronDown, Sparkles, Sliders, FileSpreadsheet, Archive, Trash2, Heart, CheckSquare, Plus, Edit2, Radio, Menu, MoreVertical, PanelLeftOpen, Lock, GitMerge, Briefcase, ArrowRight, Terminal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Message } from "@/types";
@@ -15,6 +15,7 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import { ChatLockModal } from "@/components/ChatLockModal";
 import { MergeChatsModal } from "@/components/MergeChatsModal";
 import { CoworkModal } from "@/components/CoworkModal";
+import { CustomPromptsModal } from "@/components/CustomPromptsModal";
 
 interface Persona {
   id: string;
@@ -65,6 +66,8 @@ export default function ChatPage() {
   const [lockErrorMessage, setLockErrorMessage] = useState<string | null>(null);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showCoworkModal, setShowCoworkModal] = useState(false);
+  const [showPromptsModal, setShowPromptsModal] = useState(false);
+  const [injectedPromptText, setInjectedPromptText] = useState("");
 
   const router = useRouter();
 
@@ -538,6 +541,16 @@ export default function ChatPage() {
 
           {/* Right: Tools (Desktop) */}
           <div className="flex items-center gap-2 text-[#94a3b8]">
+            {/* Prompt Library Button — Top Navbar */}
+            <button
+              onClick={() => setShowPromptsModal(true)}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl hover:bg-[rgba(255,255,255,0.06)] hover:text-white border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] text-xs font-medium text-zinc-300 transition-all active:scale-95 shadow-sm"
+              title="Prompt Library & Custom Shortcuts (/)"
+            >
+              <Terminal size={13} className="text-zinc-400" />
+              <span>Prompt Library</span>
+            </button>
+
             {/* Try CoWork Button — Clean Premium White Style with Black Text & Arrow */}
             <Link
               href="/cowork"
@@ -550,7 +563,7 @@ export default function ChatPage() {
 
             <button
               onClick={() => setShowMergeModal(true)}
-              className="hidden sm:flex p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-indigo-400 border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all items-center justify-center"
+              className="hidden sm:flex p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-zinc-200 border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all items-center justify-center"
               title="Merge Duplicate Chats"
             >
               <GitMerge size={14} />
@@ -574,7 +587,7 @@ export default function ChatPage() {
             </button>
             <button
               onClick={() => setShowKanban(true)}
-              className={`p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-white border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all flex items-center justify-center ${showKanban ? "text-indigo-400 bg-indigo-500/5 border-indigo-500/10" : ""}`}
+              className={`p-2 rounded-xl hover:bg-[rgba(255,255,255,0.04)] hover:text-white border border-transparent hover:border-[rgba(255,255,255,0.03)] transition-all flex items-center justify-center ${showKanban ? "text-zinc-200 bg-white/5 border-white/10" : ""}`}
               title="Task Board"
             >
               <CheckSquare size={14} />
@@ -623,10 +636,17 @@ export default function ChatPage() {
                 }}
               >
                 <button
+                  onClick={() => { setShowToolsDropdown(false); setShowPromptsModal(true); }}
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left w-full"
+                >
+                  <Terminal size={14} className="text-zinc-400" />
+                  <span>Prompt Library</span>
+                </button>
+                <button
                   onClick={() => { setShowToolsDropdown(false); setShowMergeModal(true); }}
                   className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left w-full"
                 >
-                  <GitMerge size={14} className="text-indigo-400" />
+                  <GitMerge size={14} className="text-zinc-400" />
                   <span>Merge Chats</span>
                 </button>
                 {sessionId && (
@@ -636,7 +656,7 @@ export default function ChatPage() {
                     onClick={() => setShowToolsDropdown(false)}
                     className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors"
                   >
-                    <FileSpreadsheet size={14} className="text-indigo-400" />
+                    <FileSpreadsheet size={14} className="text-zinc-400" />
                     <span>Export Chat</span>
                   </a>
                 )}
@@ -644,7 +664,7 @@ export default function ChatPage() {
                   onClick={() => { setShowToolsDropdown(false); router.push("/profile"); }}
                   className="flex items-center gap-2.5 px-3 py-2.5 text-xs font-medium text-white hover:bg-[rgba(255,255,255,0.05)] rounded-xl transition-colors text-left w-full"
                 >
-                  <Sliders size={14} className="text-purple-400" />
+                  <Sliders size={14} className="text-zinc-400" />
                   <span>Settings</span>
                 </button>
                 <button
@@ -687,6 +707,8 @@ export default function ChatPage() {
             activeFolder={activeFolder}
             sessionId={sessionId}
             onExtractNewChat={handleExtractNewChat}
+            onOpenPromptsModal={() => setShowPromptsModal(true)}
+            injectedPromptText={injectedPromptText}
           />
         </div>
       </main>
@@ -821,6 +843,16 @@ export default function ChatPage() {
       <CoworkModal
         isOpen={showCoworkModal}
         onClose={() => setShowCoworkModal(false)}
+      />
+
+      {/* Custom Slash Commands & Prompts Library Modal */}
+      <CustomPromptsModal
+        isOpen={showPromptsModal}
+        onClose={() => setShowPromptsModal(false)}
+        onSelectPrompt={(tpl) => {
+          setInjectedPromptText(tpl.replace("{text}", ""));
+          setShowPromptsModal(false);
+        }}
       />
     </div>
   );

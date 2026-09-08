@@ -21,6 +21,7 @@ interface ChatInputProps {
   injectedText?: string;
   isGhostMode?: boolean;
   onToggleGhostMode?: () => void;
+  onOpenPromptsModal?: () => void;
 }
 
 export function ChatInput({
@@ -32,6 +33,7 @@ export function ChatInput({
   injectedText,
   isGhostMode: externalGhostMode,
   onToggleGhostMode,
+  onOpenPromptsModal,
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [isGhost, setIsGhost] = useState(false);
@@ -71,7 +73,7 @@ export function ChatInput({
         setCustomPrompts(JSON.parse(saved));
       }
     } catch (e) {}
-  }, []);
+  }, [showCustomPromptsModal]);
 
   const builtInCommands = [
     { name: "/image", desc: "Generate FLUX.1 HD AI image", template: "", isCustom: false },
@@ -237,32 +239,41 @@ export function ChatInput({
     setInput((prev) => "Draft a clear, structured response for this query: " + prev);
   };
 
+  const handleOpenPromptManager = () => {
+    setShowSlashMenu(false);
+    if (onOpenPromptsModal) {
+      onOpenPromptsModal();
+    } else {
+      setShowCustomPromptsModal(true);
+    }
+  };
+
   return (
     <div className="bg-transparent px-3 sm:px-4 pb-[max(12px,env(safe-area-inset-bottom))] sm:pb-5 pt-1.5 relative z-10">
       <div className="max-w-3xl mx-auto flex flex-col gap-2 relative">
 
-        {/* Ghost Mode Ambient Banner */}
+        {/* Ghost Mode Ambient Banner — Sleek Minimalist Dark Style */}
         {activeGhost && (
-          <div className="flex items-center justify-between px-3.5 py-1.5 bg-purple-950/40 border border-purple-500/30 rounded-xl text-xs text-purple-300 animate-fade-in shadow-lg shadow-purple-950/20">
+          <div className="flex items-center justify-between px-3.5 py-1.5 bg-[#141418] border border-zinc-700/70 rounded-xl text-xs text-zinc-300 animate-fade-in shadow-lg shadow-black/40">
             <div className="flex items-center gap-2">
-              <Ghost size={14} className="text-purple-400 animate-pulse" />
-              <span className="font-medium text-[11px]">Ghost Mode Active — Zero DB Writes • Ephemeral Session</span>
+              <Ghost size={14} className="text-zinc-300 animate-pulse" />
+              <span className="font-medium text-[11px] text-zinc-200">Ghost Mode Active — Zero DB Writes • Ephemeral Session</span>
             </div>
             <button
               onClick={toggleGhost}
-              className="text-[10px] text-purple-400 hover:text-white underline ml-2 transition-colors"
+              className="text-[11px] text-zinc-400 hover:text-white underline underline-offset-2 ml-2 transition-colors"
             >
               Exit Ghost Mode
             </button>
           </div>
         )}
 
-        {/* Floating Slash Commands Suggestion Menu */}
+        {/* Floating Slash Commands Suggestion Menu — Seamless Dark Glass Style */}
         {showSlashMenu && (
-          <div className="absolute bottom-[105%] left-0 max-w-sm w-full bg-[#0d0d12] backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in py-1 max-h-64 flex flex-col">
-            <div className="px-3 py-1.5 text-[9px] uppercase font-bold tracking-widest text-zinc-500 border-b border-zinc-800/80 bg-zinc-950/40 flex items-center justify-between">
-              <span>Slash Commands & Prompts</span>
-              <span className="text-zinc-600 font-normal">Navigate ↑ ↓</span>
+          <div className="absolute bottom-[105%] left-0 max-w-sm w-full bg-[#0e0e14]/95 backdrop-blur-2xl border border-zinc-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-fade-in py-1 max-h-64 flex flex-col">
+            <div className="px-3 py-1.5 text-[9px] uppercase font-bold tracking-widest text-zinc-500 border-b border-zinc-800/80 bg-zinc-950/60 flex items-center justify-between">
+              <span>Commands & Prompt Shortcuts</span>
+              <span className="text-zinc-500 font-normal">↑ ↓ Enter</span>
             </div>
             <div className="overflow-y-auto custom-scrollbar flex-1 py-1">
               {filteredCommands.map((cmd, idx) => (
@@ -270,32 +281,29 @@ export function ChatInput({
                   key={cmd.name}
                   onClick={() => selectCommand(cmd)}
                   onMouseEnter={() => setSlashIndex(idx)}
-                  className={`flex items-center justify-between px-3.5 py-2 cursor-pointer transition-colors ${
+                  className={`flex items-center justify-between px-3 py-2 cursor-pointer transition-colors mx-1 rounded-xl ${
                     idx === slashIndex
-                      ? "bg-indigo-600/15 text-indigo-300 font-semibold"
+                      ? "bg-white/[0.08] text-white font-medium"
                       : "text-zinc-300 hover:bg-zinc-800/40"
                   }`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-mono text-indigo-400">{cmd.name}</span>
+                    <span className="text-xs font-mono font-semibold text-zinc-200">{cmd.name}</span>
                     <span className="text-[11px] text-zinc-400 truncate max-w-[180px]">{cmd.desc}</span>
                   </div>
                   {cmd.isCustom && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/70">
                       Custom
                     </span>
                   )}
                 </div>
               ))}
             </div>
-            <div className="p-1.5 border-t border-zinc-800/80 bg-zinc-950/40">
+            <div className="p-1.5 border-t border-zinc-800/80 bg-zinc-950/60">
               <button
                 type="button"
-                onClick={() => {
-                  setShowSlashMenu(false);
-                  setShowCustomPromptsModal(true);
-                }}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs text-zinc-400 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-colors"
+                onClick={handleOpenPromptManager}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl text-xs text-zinc-300 hover:text-white bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 transition-colors"
               >
                 <Plus size={12} />
                 <span>+ Create / Manage Custom Prompts</span>
@@ -309,7 +317,7 @@ export function ChatInput({
           <div className="hidden sm:flex justify-end gap-2">
             <button
               onClick={handleImprove}
-              className="text-[10px] border border-dashed border-[rgba(255,255,255,0.08)] hover:border-indigo-400 text-[#94a3b8] hover:text-white rounded-full px-3 py-1 transition-all flex items-center gap-1 flex-shrink-0 tracking-wide"
+              className="text-[10px] border border-dashed border-[rgba(255,255,255,0.08)] hover:border-zinc-400 text-[#94a3b8] hover:text-white rounded-full px-3 py-1 transition-all flex items-center gap-1 flex-shrink-0 tracking-wide"
             >
               <Wand2 size={10} />
               Improve
@@ -321,7 +329,7 @@ export function ChatInput({
         <div
           className={`flex flex-col gap-2 rounded-[24px] px-4 py-2.5 backdrop-blur-2xl border transition-all ${
             activeGhost
-              ? "bg-[#130d1c]/80 border-purple-500/30 shadow-[0_8px_32px_rgba(88,28,135,0.25)] focus-within:border-purple-500/60"
+              ? "bg-[#101014]/90 border-zinc-700/80 shadow-[0_8px_32px_rgba(0,0,0,0.6)] focus-within:border-zinc-500"
               : "bg-[#0e0e14]/75 border-white/[0.09] shadow-[0_8px_32px_rgba(0,0,0,0.5)] focus-within:border-white/[0.18]"
           }`}
         >
@@ -401,11 +409,11 @@ export function ChatInput({
                 title={activeGhost ? "Ghost Mode ON (0 DB Writes)" : "Turn on Ghost Mode (Zero Trace)"}
                 className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                   activeGhost
-                    ? "bg-purple-600/30 text-purple-300 border border-purple-500/50"
+                    ? "bg-zinc-800 text-white border border-zinc-700"
                     : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60"
                 }`}
               >
-                <Ghost size={13} className={activeGhost ? "text-purple-400" : ""} />
+                <Ghost size={13} className={activeGhost ? "text-white" : ""} />
                 <span className="hidden md:inline text-[11px]">Ghost</span>
               </button>
 
@@ -444,16 +452,8 @@ export function ChatInput({
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between text-[10px] text-zinc-500 px-1 font-medium">
-          <button
-            type="button"
-            onClick={() => setShowCustomPromptsModal(true)}
-            className="hover:text-indigo-400 transition-colors flex items-center gap-1"
-          >
-            <Terminal size={11} />
-            <span>Prompt Library (/shortcuts)</span>
-          </button>
+        {/* Developer Credit — Centered at Bottom */}
+        <div className="flex items-center justify-center text-[11px] text-zinc-500 py-1 font-medium text-center">
           <span>
             Created by{" "}
             <a
@@ -468,7 +468,7 @@ export function ChatInput({
         </div>
       </div>
 
-      {/* Custom Prompts Modal */}
+      {/* Fallback Custom Prompts Modal (if opened via slash commands internally) */}
       <CustomPromptsModal
         isOpen={showCustomPromptsModal}
         onClose={() => setShowCustomPromptsModal(false)}

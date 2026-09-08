@@ -11,10 +11,11 @@
 .env.production.local
 *.env
 
-# Next.js Build Output
+# Next.js Build Output & Dist
 /.next/
 /out/
 /build/
+/dist/
 
 # Local databases & logs
 *.log
