@@ -10,6 +10,10 @@
     "lint": "next lint",
     "desktop": "electron .",
     "dist": "electron-builder --win",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac",
+    "dist:all": "electron-builder --win --linux",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
@@ -45,6 +49,22 @@
       "installerIcon": "electron/icon.ico",
       "uninstallerIcon": "electron/icon.ico",
       "runAfterFinish": true
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "electron/logo.png",
+      "category": "Utility"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "electron/logo.png",
+      "category": "public.app-category.productivity"
     }
   },
   "dependencies": {
