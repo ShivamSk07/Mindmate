@@ -1,9 +1,11 @@
-const { app, BrowserWindow, globalShortcut, Tray, Menu, shell, session } = require("electron");
+const { app, BrowserWindow, globalShortcut, Menu, shell, nativeTheme } = require("electron");
 const path = require("path");
 
 const APP_URL = "https://clarity.indevs.in";
 let mainWindow = null;
-let tray = null;
+
+// Force native dark theme for window frame and system controls (prevents Windows red/white accent color)
+nativeTheme.themeSource = "dark";
 
 // Ensure single instance lock
 const gotTheLock = app.requestSingleInstanceLock();
@@ -23,24 +25,18 @@ function createWindow() {
   const fs = require("fs");
   let iconPath = path.join(__dirname, "icon.ico");
   if (!fs.existsSync(iconPath)) {
-    iconPath = path.join(__dirname, "logo.png");
+    iconPath = path.join(__dirname, "icon.png");
   }
 
   mainWindow = new BrowserWindow({
     width: 1360,
     height: 880,
-    minWidth: 900,
-    minHeight: 600,
+    minWidth: 960,
+    minHeight: 640,
     title: "Clarity",
     backgroundColor: "#09090b",
     icon: iconPath,
     autoHideMenuBar: true,
-    titleBarStyle: "hidden",
-    titleBarOverlay: {
-      color: "#09090b",
-      symbolColor: "#a1a1aa",
-      height: 36,
-    },
     show: false,
     webPreferences: {
       nodeIntegration: false,
@@ -66,7 +62,7 @@ function createWindow() {
     mainWindow.show();
     mainWindow.focus();
 
-    // 2. Smoothly transition to live workspace after brief briefing display
+    // 2. Smoothly transition to live workspace after briefing display
     setTimeout(() => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.loadURL(APP_URL);
@@ -89,80 +85,15 @@ function createWindow() {
     return { action: "deny" };
   });
 
-  // Handle close to minimize to tray instead of quitting
-  mainWindow.on("close", (event) => {
-    if (!app.isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-    }
-    return false;
+  // When user clicks [X] cross button, fully terminate app (do NOT hide in background)
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+    app.quit();
   });
-
-  // Create System Tray
-  createTray(iconPath);
-}
-
-function createTray(iconPath) {
-  if (tray) return;
-
-  try {
-    tray = new Tray(iconPath);
-    tray.setToolTip("Clarity — AI Agentic Workspace");
-
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: "Open Clarity",
-        click: () => {
-          if (mainWindow) {
-            mainWindow.show();
-            mainWindow.focus();
-          }
-        },
-      },
-      {
-        label: "Reload App",
-        click: () => {
-          if (mainWindow) mainWindow.loadURL(APP_URL);
-        },
-      },
-      { type: "separator" },
-      {
-        label: "Quit Clarity",
-        click: () => {
-          app.isQuitting = true;
-          app.quit();
-        },
-      },
-    ]);
-
-    tray.setContextMenu(contextMenu);
-
-    tray.on("click", () => {
-      if (mainWindow.isVisible()) {
-        mainWindow.hide();
-      } else {
-        mainWindow.show();
-        mainWindow.focus();
-      }
-    });
-  } catch (err) {
-    console.warn("[Tray creation notice]", err);
-  }
 }
 
 app.whenReady().then(() => {
   createWindow();
-
-  // Register Global Hotkey (Alt+Space) to summon/toggle Clarity
-  globalShortcut.register("Alt+Space", () => {
-    if (!mainWindow) return;
-    if (mainWindow.isVisible() && mainWindow.isFocused()) {
-      mainWindow.hide();
-    } else {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -174,7 +105,5 @@ app.on("will-quit", () => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+  app.quit();
 });
