@@ -26,7 +26,8 @@
     "productName": "Clarity",
     "directories": {
       "app": "electron",
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "build"
     },
     "files": [
       "**/*"
@@ -39,7 +40,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "electron/icon.ico"
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": true,
@@ -48,8 +49,8 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Clarity",
-      "installerIcon": "electron/icon.ico",
-      "uninstallerIcon": "electron/icon.ico",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
       "runAfterFinish": true
     },
     "linux": {
@@ -57,7 +58,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "electron/icon.png",
+      "icon": "build/icon.png",
       "category": "Utility",
       "desktopName": "clarity",
       "maintainer": "Indevs"
@@ -67,7 +68,7 @@
         "dmg",
         "zip"
       ],
-      "icon": "electron/icon.png",
+      "icon": "build/icon.png",
       "category": "public.app-category.productivity",
       "identity": null
     }
