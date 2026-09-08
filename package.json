@@ -19,10 +19,11 @@
     "appId": "in.indevs.clarity",
     "productName": "Clarity",
     "directories": {
+      "app": "electron",
       "output": "dist"
     },
     "files": [
-      "electron/**/*"
+      "**/*"
     ],
     "asar": true,
     "npmRebuild": false,
@@ -43,7 +44,6 @@
       "shortcutName": "Clarity",
       "installerIcon": "electron/icon.ico",
       "uninstallerIcon": "electron/icon.ico",
-      "installerHeaderIcon": "electron/icon.ico",
       "runAfterFinish": true
     }
   },
