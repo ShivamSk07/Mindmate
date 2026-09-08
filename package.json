@@ -22,8 +22,7 @@
       "output": "dist"
     },
     "files": [
-      "electron/**/*",
-      "public/img/logo.png"
+      "electron/**/*"
     ],
     "asar": true,
     "npmRebuild": false,
@@ -33,11 +32,12 @@
         "nsis",
         "portable"
       ],
-      "icon": "public/img/logo.png"
+      "icon": "electron/icon.ico"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Clarity"

@@ -21,9 +21,9 @@ if (!gotTheLock) {
 
 function createWindow() {
   const fs = require("fs");
-  let iconPath = path.join(__dirname, "logo.png");
+  let iconPath = path.join(__dirname, "icon.ico");
   if (!fs.existsSync(iconPath)) {
-    iconPath = path.join(__dirname, "..", "public", "img", "logo.png");
+    iconPath = path.join(__dirname, "logo.png");
   }
 
   mainWindow = new BrowserWindow({
@@ -35,6 +35,12 @@ function createWindow() {
     backgroundColor: "#09090b",
     icon: iconPath,
     autoHideMenuBar: true,
+    titleBarStyle: "hidden",
+    titleBarOverlay: {
+      color: "#09090b",
+      symbolColor: "#a1a1aa",
+      height: 36,
+    },
     show: false,
     webPreferences: {
       nodeIntegration: false,
@@ -49,13 +55,23 @@ function createWindow() {
     mainWindow.webContents.getUserAgent() + " ClarityDesktopApp/1.0"
   );
 
-  // Load live website
-  mainWindow.loadURL(APP_URL);
+  // 1. Instant local load: Launch editorial tour without any black screen delay
+  const splashPath = path.join(__dirname, "splash.html");
+  if (fs.existsSync(splashPath)) {
+    mainWindow.loadFile(splashPath);
+  }
 
-  // Show window smoothly once DOM is ready
+  // Show window immediately once local splash is ready
   mainWindow.once("ready-to-show", () => {
     mainWindow.show();
     mainWindow.focus();
+
+    // 2. Smoothly transition to live workspace after brief briefing display
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.loadURL(APP_URL);
+      }
+    }, 2800);
   });
 
   // Open external links in user's default browser
