@@ -1,0 +1,42 @@
+{
+  "name": "clarity-installer",
+  "version": "1.0.0",
+  "description": "Clarity Desktop Installer",
+  "main": "main.js",
+  "author": "Shivam Kothekar",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "in.shivamkothekar.clarity.installer",
+    "productName": "Clarity Setup",
+    "copyright": "Copyright © 2026 Shivam Kothekar",
+    "compression": "normal",
+    "directories": {
+      "output": "../dist-installer"
+    },
+    "win": {
+      "target": "portable",
+      "icon": "../build/icon.ico"
+    },
+    "extraResources": [
+      {
+        "from": "../dist/win-unpacked",
+        "to": "ClarityApp",
+        "filter": ["**/*"]
+      }
+    ],
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "styles.css"
+    ]
+  },
+  "devDependencies": {
+    "electron": "^44.2.0",
+    "electron-builder": "^26.15.3"
+  }
+}

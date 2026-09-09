@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clarity Setup</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- Titlebar drag region -->
+  <div class="titlebar"></div>
+  <button class="close-btn" id="closeBtn" title="Cancel">✕</button>
+
+  <div class="container">
+
+    <!-- ═══════════ SCREEN 1: WELCOME ═══════════ -->
+    <div class="screen active" id="screen-welcome">
+
+      <div class="logo-row">
+        <span class="app-name">Clarity</span>
+        <span class="version-badge">v1.0.0</span>
+      </div>
+
+      <h1 class="headline">Install Clarity<br>on your desktop.</h1>
+      <p class="sub-text">
+        AI workspace with reasoning models, document synthesis,<br>
+        and autonomous tools — focused and fast.
+      </p>
+
+      <div class="path-row">
+        <span class="path-label">Install to</span>
+        <span class="path-value" id="pathDisplay">Loading...</span>
+      </div>
+
+      <div class="divider" style="margin-top: auto;"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="welcomeCancelBtn">Cancel</button>
+        <button class="btn btn-primary" id="installBtn">Install</button>
+      </div>
+    </div>
+
+    <!-- ═══════════ SCREEN 2: INSTALLING ═══════════ -->
+    <div class="screen" id="screen-installing">
+
+      <div class="logo-row">
+        <span class="app-name">Clarity</span>
+        <span class="version-badge">v1.0.0</span>
+      </div>
+
+      <p class="install-title">Installing...</p>
+      <p class="install-status" id="statusLabel">Preparing files...</p>
+
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+      <p class="pct-label" id="pctLabel">0%</p>
+
+      <div class="steps-list">
+        <div class="step-item" id="step-copy">
+          <div class="step-dot"></div>
+          <span>Copying application files</span>
+        </div>
+        <div class="step-item" id="step-shortcuts">
+          <div class="step-dot"></div>
+          <span>Creating shortcuts</span>
+        </div>
+        <div class="step-item" id="step-registry">
+          <div class="step-dot"></div>
+          <span>Registering application</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ SCREEN 3: DONE ═══════════ -->
+    <div class="screen" id="screen-done">
+
+      <div class="logo-row">
+        <span class="app-name">Clarity</span>
+        <span class="version-badge">v1.0.0</span>
+      </div>
+
+      <h1 class="done-title">Installation<br>complete.</h1>
+      <p class="done-sub">Clarity has been installed on your computer.</p>
+
+      <div class="divider" style="margin-top: auto;"></div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="doneCloseBtn">Close</button>
+        <button class="btn btn-primary" id="launchBtn">Launch Clarity</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const { installer } = window;
+
+    let defaultPath = "";
+
+    // Load default install path
+    installer.getDefaultPath().then((p) => {
+      defaultPath = p;
+      document.getElementById("pathDisplay").textContent = p;
+    });
+
+    // Close / Cancel
+    document.getElementById("closeBtn").onclick = () => installer.quit();
+    document.getElementById("welcomeCancelBtn").onclick = () => installer.quit();
+    document.getElementById("doneCloseBtn").onclick = () => installer.quit();
+
+    // Install button
+    document.getElementById("installBtn").onclick = async () => {
+      showScreen("installing");
+
+      // Listen for progress updates
+      installer.onProgress(({ pct, label }) => {
+        document.getElementById("progressFill").style.width = pct + "%";
+        document.getElementById("pctLabel").textContent = pct + "%";
+        document.getElementById("statusLabel").textContent = label;
+
+        // Mark steps done
+        if (pct >= 20) markStep("step-copy");
+        if (pct >= 80) markStep("step-shortcuts");
+        if (pct >= 93) markStep("step-registry");
+      });
+
+      const result = await installer.install(defaultPath);
+
+      if (result.success) {
+        showScreen("done");
+      } else {
+        document.getElementById("statusLabel").textContent =
+          "Error: " + result.error;
+      }
+    };
+
+    // Launch button
+    document.getElementById("launchBtn").onclick = () => installer.launch();
+
+    // Helpers
+    function showScreen(name) {
+      document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+      document.getElementById("screen-" + name).classList.add("active");
+    }
+
+    function markStep(id) {
+      const el = document.getElementById(id);
+      if (el && !el.classList.contains("done")) {
+        el.classList.add("done");
+      }
+    }
+  </script>
+</body>
+</html>

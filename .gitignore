@@ -1,7 +1,7 @@
 # Dependencies
-/node_modules
-/.pnpm
-/.yarn
+node_modules/
+.pnpm/
+.yarn/
 
 # Environment & Secret Files (NEVER push to GitHub)
 .env
@@ -12,9 +12,10 @@
 *.env
 
 # Next.js Build Output & Dist
-/.next/
-/out/
-/dist/
+.next/
+out/
+dist/
+dist-installer/
 
 # Local databases & logs
 *.log

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Clarity AI Workspace Desktop",
-  "author": "Indevs",
+  "author": "Shivam Kothekar",
   "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
@@ -22,15 +22,29 @@
     "db:generate": "prisma generate"
   },
   "build": {
-    "appId": "in.indevs.clarity",
+    "appId": "in.shivamkothekar.clarity",
     "productName": "Clarity",
+    "copyright": "Copyright © 2026 Shivam Kothekar",
+    "protocols": [
+      {
+        "name": "Clarity Protocol",
+        "schemes": [
+          "clarity"
+        ]
+      }
+    ],
     "directories": {
       "app": "electron",
       "output": "dist",
       "buildResources": "build"
     },
     "files": [
-      "**/*"
+      "main.js",
+      "splash.html",
+      "offline.html",
+      "icon.ico",
+      "icon.png",
+      "package.json"
     ],
     "asar": true,
     "npmRebuild": false,
@@ -51,7 +65,9 @@
       "shortcutName": "Clarity",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "runAfterFinish": true
+      "installerHeaderIcon": "build/icon.ico",
+      "runAfterFinish": true,
+      "include": "build/installer.nsh"
     },
     "linux": {
       "target": [
@@ -60,7 +76,7 @@
       ],
       "icon": "build/icon.png",
       "category": "Utility",
-      "maintainer": "Indevs"
+      "maintainer": "Shivam Kothekar"
     },
     "mac": {
       "target": [

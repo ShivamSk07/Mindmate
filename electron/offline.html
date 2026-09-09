@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clarity - Offline</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      background-color: #09090b;
+      color: #f4f4f5;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Inter", sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Draggable window titlebar region */
+    .titlebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      -webkit-app-region: drag;
+      z-index: 1000;
+    }
+
+    /* Ambient background glow */
+    .glow-orb {
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.035) 0%, rgba(0,0,0,0) 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+
+    .card {
+      position: relative;
+      z-index: 10;
+      max-width: 440px;
+      width: 90%;
+      background: rgba(18, 18, 20, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 36px 32px;
+      text-align: center;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .icon-wrapper {
+      width: 56px;
+      height: 56px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      color: #a1a1aa;
+      position: relative;
+    }
+
+    .icon-wrapper::after {
+      content: "";
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f59e0b;
+      bottom: -2px;
+      right: -2px;
+      box-shadow: 0 0 8px #f59e0b;
+      animation: pulse 2s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.6; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.3); }
+    }
+
+    h1 {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+      color: #f4f4f5;
+    }
+
+    p {
+      font-size: 13.5px;
+      color: #71717a;
+      line-height: 1.5;
+      margin-bottom: 24px;
+    }
+
+    .btn-retry {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 11px 18px;
+      background: #f4f4f5;
+      color: #09090b;
+      border: none;
+      border-radius: 9px;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      -webkit-app-region: no-drag;
+    }
+
+    .btn-retry:hover {
+      background: #ffffff;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-retry:active {
+      transform: translateY(0);
+    }
+
+    .btn-retry:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 18px;
+      font-size: 12px;
+      color: #a1a1aa;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #71717a;
+    }
+
+    .spinner {
+      display: none;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      border-top-color: #09090b;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="titlebar"></div>
+  <div class="glow-orb"></div>
+
+  <div class="card">
+    <div class="icon-wrapper">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="1" y1="1" x2="23" y2="23"></line>
+        <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path>
+        <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path>
+        <path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path>
+        <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path>
+        <path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path>
+        <line x1="12" y1="20" x2="12.01" y2="20"></line>
+      </svg>
+    </div>
+
+    <h1>No Internet Connection</h1>
+    <p>Clarity is unable to reach the workspace servers. Please check your network connection.</p>
+
+    <button class="btn-retry" id="retryBtn" onclick="tryReconnect()">
+      <span class="spinner" id="btnSpinner"></span>
+      <span id="btnText">Retry Connection</span>
+    </button>
+
+    <div class="status-badge">
+      <span class="status-dot"></span>
+      <span id="statusText">Auto-reconnecting when online...</span>
+    </div>
+  </div>
+
+  <script>
+    const APP_URL = "https://clarity.indevs.in/chat";
+    const retryBtn = document.getElementById("retryBtn");
+    const btnSpinner = document.getElementById("btnSpinner");
+    const btnText = document.getElementById("btnText");
+    const statusText = document.getElementById("statusText");
+
+    async function checkConnection() {
+      try {
+        const res = await fetch(APP_URL, { method: "HEAD", mode: "no-cors", cache: "no-store" });
+        return true;
+      } catch (_e) {
+        return false;
+      }
+    }
+
+    async function tryReconnect() {
+      retryBtn.disabled = true;
+      btnSpinner.style.display = "inline-block";
+      btnText.textContent = "Connecting...";
+      statusText.textContent = "Testing connection...";
+
+      const isOnline = await checkConnection();
+      if (isOnline) {
+        statusText.textContent = "Connected! Loading workspace...";
+        window.location.href = APP_URL;
+      } else {
+        setTimeout(() => {
+          retryBtn.disabled = false;
+          btnSpinner.style.display = "none";
+          btnText.textContent = "Retry Connection";
+          statusText.textContent = "Connection failed. Retrying in background...";
+        }, 1200);
+      }
+    }
+
+    // Auto-reconnect when browser fires online event
+    window.addEventListener("online", () => {
+      tryReconnect();
+    });
+
+    // Periodic ping every 4 seconds to reconnect automatically
+    setInterval(async () => {
+      if (navigator.onLine) {
+        const isOnline = await checkConnection();
+        if (isOnline) {
+          window.location.href = APP_URL;
+        }
+      }
+    }, 4000);
+  </script>
+</body>
+</html>
