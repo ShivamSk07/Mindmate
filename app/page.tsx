@@ -1,269 +1,499 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Download,
   Github,
-  Triangle,
-  Plug,
-  Globe,
   ArrowRight,
   Check,
-  CheckCircle2,
-  Lock,
-  ChevronRight,
   ExternalLink,
   Laptop,
   Terminal,
   Monitor,
-  GitBranch,
-  GitPullRequest,
-  Workflow,
-  Sparkles,
-  Layers,
-  Code2,
-  Brain,
-  ShieldCheck,
-  Kanban,
-  FileCode2,
-  Play,
-  RotateCw,
-  FolderLock,
-  SlidersHorizontal,
+  Globe,
 } from "lucide-react";
 
-export default function AppleOpenAILandingPage() {
-  const [selectedOS, setSelectedOS] = useState<"windows" | "mac" | "linux">("windows");
-  const [activeTab, setActiveTab] = useState<"cowork" | "response" | "thought">("cowork");
+/* ─────────────────────────────────────────────
+   Minimal animated counter for social proof
+────────────────────────────────────────────── */
+function Counter({ target, suffix = "" }: { target: number; suffix?: string }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        observer.disconnect();
+        let start = 0;
+        const step = Math.ceil(target / 60);
+        const interval = setInterval(() => {
+          start += step;
+          if (start >= target) { setCount(target); clearInterval(interval); }
+          else setCount(start);
+        }, 16);
+      },
+      { threshold: 0.3 }
+    );
+    if (ref.current) observer.observe(ref.current);
+    return () => observer.disconnect();
+  }, [target]);
+  return <span ref={ref}>{count}{suffix}</span>;
+}
+
+export default function ClarityLanding() {
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const ua = window.navigator.userAgent.toLowerCase();
-      if (ua.includes("mac")) {
-        setSelectedOS("mac");
-      } else if (ua.includes("linux")) {
-        setSelectedOS("linux");
-      } else {
-        setSelectedOS("windows");
-      }
-    }
+    const el = document.getElementById("scroll-root");
+    if (!el) return;
+    const handler = () => setScrolled(el.scrollTop > 24);
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
   }, []);
 
   return (
-    <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-[#000000] text-[#ededed] selection:bg-zinc-800 selection:text-white font-sans antialiased scroll-smooth">
-      {/* ═════════════════════ APEX NAVIGATION ═════════════════════ */}
-      <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#000000]/80 backdrop-blur-xl">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center p-1.5 shadow-sm group-hover:border-white/30 transition-colors">
-              <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
+    <div
+      id="scroll-root"
+      style={{
+        height: "100dvh",
+        overflowY: "auto",
+        overflowX: "hidden",
+        background: "#000",
+        color: "#ededed",
+        fontFamily:
+          "-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Inter, sans-serif",
+        WebkitFontSmoothing: "antialiased",
+        scrollBehavior: "smooth",
+      }}
+    >
+      {/* ══════════════ NAV ══════════════ */}
+      <header
+        style={{
+          position: "sticky",
+          top: 0,
+          zIndex: 50,
+          width: "100%",
+          borderBottom: scrolled ? "1px solid rgba(255,255,255,0.07)" : "1px solid transparent",
+          background: scrolled ? "rgba(0,0,0,0.82)" : "transparent",
+          backdropFilter: scrolled ? "blur(20px)" : "none",
+          transition: "all 0.3s ease",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1080,
+            margin: "0 auto",
+            padding: "0 24px",
+            height: 60,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          {/* Logo */}
+          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
+            <div
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                background: "#111",
+                border: "1px solid rgba(255,255,255,0.1)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 5,
+              }}
+            >
+              <img src="/img/logo.png" alt="Clarity" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="font-semibold text-base tracking-tight text-white">Clarity</span>
-              <span className="text-[11px] font-medium text-zinc-400">in devs</span>
-            </div>
+            <span style={{ fontWeight: 600, fontSize: 15, color: "#fff", letterSpacing: "-0.02em" }}>Clarity</span>
+            <span style={{ fontSize: 11, color: "#666", fontWeight: 500 }}>in devs</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-[13px] text-zinc-400 font-medium">
-            <a href="#cowork" className="hover:text-white transition-colors">
-              Cowork
-            </a>
-            <a href="#response" className="hover:text-white transition-colors">
-              Response
-            </a>
-            <a href="#thought" className="hover:text-white transition-colors">
-              Thought
-            </a>
-            <a href="#downloads" className="hover:text-white transition-colors">
-              Downloads
-            </a>
+          {/* Nav links */}
+          <nav
+            style={{
+              display: "flex",
+              gap: 28,
+              fontSize: 13,
+              color: "#888",
+              fontWeight: 500,
+            }}
+            className="hide-mobile"
+          >
+            <a href="#cowork" style={{ color: "inherit", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#fff")} onMouseLeave={e => (e.currentTarget.style.color = "#888")}>Cowork</a>
+            <a href="#response" style={{ color: "inherit", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#fff")} onMouseLeave={e => (e.currentTarget.style.color = "#888")}>Response</a>
+            <a href="#thought" style={{ color: "inherit", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#fff")} onMouseLeave={e => (e.currentTarget.style.color = "#888")}>Thought</a>
+            <a href="#downloads" style={{ color: "inherit", textDecoration: "none" }} onMouseEnter={e => (e.currentTarget.style.color = "#fff")} onMouseLeave={e => (e.currentTarget.style.color = "#888")}>Download</a>
           </nav>
 
-          <div className="flex items-center gap-3">
+          {/* Actions */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Link
               href="/login"
-              className="text-[13px] font-medium text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.04] transition-colors"
+              style={{
+                fontSize: 13,
+                fontWeight: 500,
+                color: "#aaa",
+                textDecoration: "none",
+                padding: "6px 14px",
+                borderRadius: 8,
+                transition: "color 0.2s",
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.color = "#fff")}
+              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.color = "#aaa")}
             >
               Sign in
             </Link>
             <Link
               href="/chat"
-              className="text-[13px] font-medium px-3.5 py-1.5 rounded-lg bg-white text-zinc-950 hover:bg-zinc-200 transition-all flex items-center gap-1 shadow-sm"
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: "#000",
+                textDecoration: "none",
+                padding: "7px 16px",
+                borderRadius: 9,
+                background: "#fff",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "#e0e0e0")}
+              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = "#fff")}
             >
-              <span>Launch App</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Try free <ArrowRight size={12} />
             </Link>
           </div>
         </div>
       </header>
 
-      {/* ═════════════════════ HERO: APPLE / OPENAI STYLE ═════════════════════ */}
-      <section className="pt-24 pb-20 md:pt-36 md:pb-28 px-6 text-center">
-        <div className="max-w-4xl mx-auto flex flex-col items-center">
-          {/* Eyebrow Tagline */}
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.12] bg-white/[0.04] text-xs font-medium text-zinc-300 mb-8 tracking-wide">
-            <span className="text-zinc-400">Vision</span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-white font-semibold">Clarity in devs (developers)</span>
+      {/* ══════════════ HERO ══════════════ */}
+      <section
+        style={{
+          paddingTop: "clamp(72px, 10vw, 130px)",
+          paddingBottom: "clamp(64px, 9vw, 110px)",
+          paddingLeft: 24,
+          paddingRight: 24,
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Subtle radial glow behind headline */}
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            top: "20%",
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 700,
+            height: 380,
+            background: "radial-gradient(ellipse at center, rgba(255,255,255,0.04) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div style={{ maxWidth: 760, margin: "0 auto", position: "relative" }}>
+          {/* Eyebrow */}
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "5px 14px",
+              borderRadius: 999,
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "rgba(255,255,255,0.03)",
+              fontSize: 11,
+              fontWeight: 600,
+              color: "#999",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              marginBottom: 28,
+            }}
+          >
+            <span
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: "50%",
+                background: "#4ade80",
+                display: "inline-block",
+              }}
+            />
+            Agentic AI workspace for developers
           </div>
 
-          {/* Main Headline */}
-          <h1 className="text-5xl sm:text-7xl md:text-8xl font-semibold tracking-tight text-white leading-[1.05] mb-8">
-            Pure thought. <br />
-            <span className="text-zinc-400">Pure clarity in response.</span>
+          {/* Headline */}
+          <h1
+            style={{
+              fontSize: "clamp(44px, 7vw, 84px)",
+              fontWeight: 700,
+              color: "#fff",
+              letterSpacing: "-0.04em",
+              lineHeight: 1.02,
+              marginBottom: 24,
+            }}
+          >
+            Clarity
+            <br />
+            <span style={{ color: "#555" }}>in devs.</span>
           </h1>
 
-          {/* Subheading */}
-          <p className="text-lg sm:text-xl text-zinc-400 max-w-2xl font-normal leading-relaxed mb-12">
-            The autonomous AI cowork workspace engineered for developers. No noise, no hallucinated clutter — just
-            structured first-principles reasoning and agentic execution.
+          {/* Subline */}
+          <p
+            style={{
+              fontSize: "clamp(16px, 2vw, 20px)",
+              color: "#666",
+              fontWeight: 400,
+              lineHeight: 1.65,
+              maxWidth: 520,
+              margin: "0 auto 44px",
+            }}
+          >
+            Pure thought. Pure response. An autonomous cowork
+            AI built for developers who demand precision.
           </p>
 
-          {/* Primary Action Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mb-10">
-            <a
-              href="/api/download?type=installer"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white text-zinc-950 font-medium text-sm flex items-center justify-center gap-2.5 shadow-sm hover:bg-zinc-200 transition-all"
-            >
-              <Download className="w-4 h-4 text-zinc-950" />
-              <span>Download Clarity for Windows (.exe)</span>
-              <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-800 font-mono">180 MB</span>
-            </a>
-
-            <Link
-              href="/chat"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 border border-white/[0.1] text-sm font-medium flex items-center justify-center gap-2 transition-colors"
-            >
-              <span>Try in Browser</span>
-              <ExternalLink className="w-4 h-4 text-zinc-400" />
-            </Link>
-          </div>
-
-          {/* Minimalist OS Switcher Hint */}
-          <div className="flex items-center gap-4 text-xs text-zinc-500 font-medium">
-            <span>Also available on</span>
-            <a href="#downloads" className="text-zinc-400 hover:text-white transition-colors underline underline-offset-4">
-              macOS (.dmg)
-            </a>
-            <span>•</span>
-            <a href="#downloads" className="text-zinc-400 hover:text-white transition-colors underline underline-offset-4">
-              Linux (.AppImage)
-            </a>
-            <span>•</span>
-            <a href="#downloads" className="text-zinc-400 hover:text-white transition-colors underline underline-offset-4">
-              Portable Windows
-            </a>
-          </div>
-        </div>
-
-        {/* ═════════════════════ CLEAN MINIMALIST PRODUCT SHOWCASE ═════════════════════ */}
-        <div className="max-w-5xl mx-auto mt-20">
-          <div className="rounded-2xl border border-white/[0.12] bg-[#0c0c0e] shadow-2xl overflow-hidden text-left">
-            {/* Titlebar */}
-            <div className="h-11 px-4 flex items-center justify-between border-b border-white/[0.08] bg-[#121215] text-xs text-zinc-400">
-              <div className="flex items-center gap-2">
-                <span className="w-3 h-3 rounded-full bg-zinc-700/80" />
-                <span className="w-3 h-3 rounded-full bg-zinc-700/80" />
-                <span className="w-3 h-3 rounded-full bg-zinc-700/80" />
-                <span className="ml-3 font-medium text-zinc-300">Clarity // Workspace</span>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-zinc-400">
-                <span className="flex items-center gap-1.5 text-zinc-300">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Cowork Agent Ready
+          {/* CTAs */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 12,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              <a
+                href="/api/download?type=installer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "13px 28px",
+                  borderRadius: 12,
+                  background: "#fff",
+                  color: "#000",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  transition: "all 0.2s",
+                  boxShadow: "0 2px 16px rgba(255,255,255,0.08)",
+                }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = "#e0e0e0"; el.style.transform = "translateY(-1px)"; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "#fff"; el.style.transform = "translateY(0)"; }}
+              >
+                <Download size={15} />
+                Download for Windows
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontFamily: "monospace",
+                    background: "#e5e5e5",
+                    color: "#555",
+                    padding: "2px 6px",
+                    borderRadius: 4,
+                  }}
+                >
+                  180 MB
                 </span>
-                <span className="text-zinc-600">|</span>
-                <span>GitHub & MCP Synced</span>
-              </div>
+              </a>
+
+              <Link
+                href="/chat"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "13px 22px",
+                  borderRadius: 12,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#ccc",
+                  fontSize: 14,
+                  fontWeight: 500,
+                  textDecoration: "none",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.09)"; el.style.color = "#fff"; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.background = "rgba(255,255,255,0.05)"; el.style.color = "#ccc"; }}
+              >
+                Open in browser <ExternalLink size={13} />
+              </Link>
             </div>
 
-            {/* Split Screen UI: Cowork Left & Response Right */}
-            <div className="grid grid-cols-1 md:grid-cols-12 min-h-[460px]">
-              {/* Left Pane: Agentic Plan & Integrations */}
-              <div className="md:col-span-5 border-r border-white/[0.08] bg-[#0f0f12] p-6 space-y-6">
-                <div>
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                      Connected Workflows
-                    </span>
-                    <span className="text-[11px] font-mono text-zinc-500">Autonomous</span>
-                  </div>
+            <p style={{ fontSize: 12, color: "#444", marginTop: 4 }}>
+              Also available for&nbsp;
+              <a href="#downloads" style={{ color: "#666", textDecoration: "underline", textUnderlineOffset: 3 }}>macOS</a>
+              &nbsp;and&nbsp;
+              <a href="#downloads" style={{ color: "#666", textDecoration: "underline", textUnderlineOffset: 3 }}>Linux</a>
+            </p>
+          </div>
+        </div>
+      </section>
 
-                  {/* Integration Pills */}
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="p-2.5 rounded-lg bg-zinc-900 border border-white/[0.06] flex items-center gap-2 text-zinc-200">
-                      <Github className="w-3.5 h-3.5 text-zinc-400" />
-                      <span className="text-[11px]">GitHub</span>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-zinc-900 border border-white/[0.06] flex items-center gap-2 text-zinc-200">
-                      <Triangle className="w-3.5 h-3.5 text-zinc-400" />
-                      <span className="text-[11px]">Vercel</span>
-                    </div>
-                    <div className="p-2.5 rounded-lg bg-zinc-900 border border-white/[0.06] flex items-center gap-2 text-zinc-200">
-                      <Plug className="w-3.5 h-3.5 text-zinc-400" />
-                      <span className="text-[11px]">MCP</span>
-                    </div>
-                  </div>
-                </div>
+      {/* ══════════════ PRODUCT PREVIEW FRAME ══════════════ */}
+      <section style={{ padding: "0 24px 100px", position: "relative" }}>
+        <div style={{ maxWidth: 960, margin: "0 auto" }}>
+          {/* Frame */}
+          <div
+            style={{
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "#0a0a0c",
+              overflow: "hidden",
+              boxShadow: "0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
+            }}
+          >
+            {/* Titlebar */}
+            <div
+              style={{
+                height: 42,
+                background: "#111115",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                display: "flex",
+                alignItems: "center",
+                padding: "0 16px",
+                gap: 8,
+              }}
+            >
+              <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#3a3a3a", display: "inline-block" }} />
+              <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#3a3a3a", display: "inline-block" }} />
+              <span style={{ width: 11, height: 11, borderRadius: "50%", background: "#3a3a3a", display: "inline-block" }} />
+              <span style={{ marginLeft: 12, fontSize: 12, color: "#555", fontFamily: "monospace" }}>Clarity // Workspace</span>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 11,
+                  color: "#4ade80",
+                  fontWeight: 500,
+                }}
+              >
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#4ade80", animation: "pulse 2s infinite" }} />
+                Cowork agent active
+              </span>
+            </div>
 
-                {/* Plan Execution Sequence */}
-                <div className="space-y-3">
-                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
-                    Execution Plan
-                  </span>
-                  <div className="space-y-2 text-xs">
-                    <div className="p-3 rounded-lg bg-zinc-900/90 border border-white/[0.06] flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-white block">1. Clone & inspect codebase schema</span>
-                        <span className="text-zinc-500 text-[11px]">Parsed Prisma schema & route handlers</span>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-zinc-900/90 border border-white/[0.06] flex items-start gap-2.5">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-white block">2. Decompose logic & synthesize architecture</span>
-                        <span className="text-zinc-500 text-[11px]">Zero-overhead clean refactor</span>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-zinc-900/90 border border-emerald-500/30 flex items-start gap-2.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 mt-1.5 animate-pulse" />
-                      <div>
-                        <span className="font-medium text-emerald-400 block">3. Code diff & live artifact generated</span>
-                        <span className="text-zinc-400 text-[11px]">Waiting for one-click approval</span>
-                      </div>
+            {/* Content area – two pane */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", minHeight: 380 }}>
+              {/* Left – execution plan */}
+              <div
+                style={{
+                  borderRight: "1px solid rgba(255,255,255,0.06)",
+                  padding: 28,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 20,
+                }}
+              >
+                <div style={{ fontSize: 10, fontWeight: 700, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  Execution Plan
+                </div>
+                {[
+                  { done: true, text: "Clone & inspect codebase schema", sub: "Prisma schema + route handlers parsed" },
+                  { done: true, text: "Decompose & synthesize architecture", sub: "Zero-overhead clean refactor" },
+                  { done: false, text: "Code diff + live artifact", sub: "Awaiting one-click approval" },
+                ].map((step, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      padding: "14px 14px",
+                      borderRadius: 10,
+                      background: step.done ? "rgba(255,255,255,0.02)" : "rgba(74,222,128,0.04)",
+                      border: `1px solid ${step.done ? "rgba(255,255,255,0.05)" : "rgba(74,222,128,0.2)"}`,
+                    }}
+                  >
+                    {step.done ? (
+                      <Check size={15} style={{ color: "#4ade80", flexShrink: 0, marginTop: 1 }} />
+                    ) : (
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: "#4ade80",
+                          flexShrink: 0,
+                          marginTop: 4,
+                        }}
+                      />
+                    )}
+                    <div>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: step.done ? "#ccc" : "#4ade80" }}>{step.text}</div>
+                      <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{step.sub}</div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
 
-              {/* Right Pane: High-Signal Code & Mermaid Output */}
-              <div className="md:col-span-7 p-6 md:p-8 bg-[#09090b] flex flex-col justify-between space-y-6">
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs">
-                    <span className="text-zinc-400 font-medium">Clarity Synthesizer</span>
-                    <span className="text-emerald-400 font-mono text-[11px]">Clean Architecture Output</span>
-                  </div>
-
-                  <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
-                    Here is the refactored agentic pipeline with human-in-the-loop approvals and automated PR generation:
-                  </p>
-
-                  {/* Code Diff Mockup */}
-                  <div className="rounded-xl bg-[#121215] border border-white/[0.08] p-4 text-xs font-mono space-y-1 overflow-hidden">
-                    <div className="text-zinc-500 pb-2 mb-1 border-b border-white/[0.04] text-[10px]">
-                      // src/agent/pipeline.ts
-                    </div>
-                    <div className="text-emerald-400">+ export async function executePlan(task: CoworkTask) &#123;</div>
-                    <div className="text-emerald-400">+ const approval = await requireUserApproval(task);</div>
-                    <div className="text-emerald-400">+ if (approval.granted) return task.deployToVercel();</div>
-                    <div className="text-zinc-400">&#125;</div>
-                  </div>
+              {/* Right – code output */}
+              <div style={{ padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    paddingBottom: 14,
+                    borderBottom: "1px solid rgba(255,255,255,0.05)",
+                  }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#aaa" }}>Clarity Output</span>
+                  <span style={{ fontSize: 11, color: "#4ade80", fontFamily: "monospace" }}>verified · no hallucinations</span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[#121215] border border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
-                  <span>Artifacts: Mermaid Diagram + Git Branch</span>
-                  <button className="px-3 py-1.5 rounded-lg bg-white text-zinc-950 font-semibold text-xs hover:bg-zinc-200 transition-colors">
+                <div
+                  style={{
+                    background: "#000",
+                    border: "1px solid rgba(255,255,255,0.07)",
+                    borderRadius: 10,
+                    padding: "16px 18px",
+                    fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
+                    fontSize: 12,
+                    lineHeight: 1.7,
+                  }}
+                >
+                  <div style={{ color: "#555", marginBottom: 8, fontSize: 10 }}>// agent/pipeline.ts</div>
+                  <div style={{ color: "#4ade80" }}>+ export async function executePlan(task: CoworkTask) {"{"}</div>
+                  <div style={{ color: "#4ade80" }}>+   const approval = await requireUserApproval(task);</div>
+                  <div style={{ color: "#4ade80" }}>+   if (approval.granted) return task.deployToVercel();</div>
+                  <div style={{ color: "#555" }}>{"}"}</div>
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "auto",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 14px",
+                    background: "rgba(255,255,255,0.02)",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.06)",
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: "#666" }}>Artifacts: Mermaid Diagram + Git Branch</span>
+                  <button
+                    style={{
+                      padding: "7px 16px",
+                      borderRadius: 7,
+                      background: "#fff",
+                      color: "#000",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      border: "none",
+                      cursor: "pointer",
+                    }}
+                  >
                     Approve & Merge
                   </button>
                 </div>
@@ -273,311 +503,533 @@ export default function AppleOpenAILandingPage() {
         </div>
       </section>
 
-      {/* ═════════════════════ PILLAR 1: CLARITY COWORK ═════════════════════ */}
-      <section id="cowork" className="py-24 px-6 border-t border-white/[0.08] bg-[#050507]">
-        <div className="max-w-6xl mx-auto">
-          <div className="max-w-3xl mb-16">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 block">
-              Autonomous Cowork Mode
-            </span>
-            <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white mb-4">
-              Your AI Coworker for Real Engineering.
-            </h2>
-            <p className="text-zinc-400 text-base sm:text-lg leading-relaxed">
-              Clarity doesn't just chat. It acts as an autonomous pair programmer and collaborator that integrates with
-              your GitHub repositories, Vercel deployments, and MCP tool ecosystems.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#0d0d10] space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
-                <Github className="w-5 h-5" />
+      {/* ══════════════ STAT BAR ══════════════ */}
+      <section
+        style={{
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          padding: "32px 24px",
+          background: "#050507",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 860,
+            margin: "0 auto",
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 24,
+            textAlign: "center",
+          }}
+        >
+          {[
+            { n: 3, s: " pillars", label: "Core product pillars" },
+            { n: 100, s: "%", label: "Local — your data stays yours" },
+            { n: 0, s: " noise", label: "Zero hallucinated filler in output" },
+          ].map((item, i) => (
+            <div key={i}>
+              <div style={{ fontSize: "clamp(28px, 4vw, 42px)", fontWeight: 700, color: "#fff", letterSpacing: "-0.03em" }}>
+                <Counter target={item.n} suffix={item.s} />
               </div>
-              <h3 className="text-lg font-semibold text-white">GitHub & Vercel Automation</h3>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Connect your repositories to autonomously inspect codebases, execute refactors, generate pull
-                requests, and trigger preview deployments.
-              </p>
+              <div style={{ fontSize: 12, color: "#555", marginTop: 4 }}>{item.label}</div>
             </div>
-
-            <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#0d0d10] space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
-                <Plug className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-semibold text-white">Model Context Protocol (MCP)</h3>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                Extend Clarity with your own MCP servers and browser agents. Give your AI teammate direct access to your
-                APIs, local databases, and custom CLI tools.
-              </p>
-            </div>
-
-            <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#0d0d10] space-y-4">
-              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <h3 className="text-lg font-semibold text-white">Human-in-the-Loop Approvals</h3>
-              <p className="text-sm text-zinc-400 leading-relaxed">
-                You maintain total authority. Whenever Clarity needs to write files, push branches, or run critical
-                scripts, it stops and prompts for your approval.
-              </p>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* ═════════════════════ PILLAR 2: CLARITY IN RESPONSE ═════════════════════ */}
-      <section id="response" className="py-24 px-6 border-t border-white/[0.08]">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
-            <div className="md:col-span-6 space-y-6">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
-                Deterministic Precision
-              </span>
-              <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white leading-tight">
-                Clarity in Response. <br />
-                Zero Fluff.
-              </h2>
-              <p className="text-base text-zinc-400 leading-relaxed">
-                Traditional AI chat models bury the real solution under conversational filler. Clarity is tuned for
-                high-density, actionable output: clean syntax-highlighted code, LaTeX equations, and architectural
-                diagrams.
-              </p>
-              <div className="space-y-3 pt-2 text-sm text-zinc-300">
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span>Mermaid.js sequence diagrams & interactive flowcharts</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span>Document synthesis from multi-page PDFs, TXT & codebases</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                  <span>Interactive Kanban boards generated straight from chat discussions</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="md:col-span-6 p-7 rounded-2xl border border-white/[0.08] bg-[#0c0c0e] space-y-4 shadow-xl">
-              <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs text-zinc-400 font-mono">
-                <span>Architecture Diagram</span>
-                <span className="text-emerald-400">Mermaid Rendered</span>
-              </div>
-              <div className="p-4 rounded-xl bg-black/50 border border-white/[0.04] text-xs font-mono text-zinc-300 leading-relaxed">
-                <span className="text-zinc-500 block mb-2">// System Sequence Flow</span>
-                <div className="space-y-1">
-                  <div>User &rarr; Clarity: Request Complex Task</div>
-                  <div className="text-emerald-400">Clarity &rarr; MCP: Query Local Schema &amp; DB</div>
-                  <div className="text-zinc-400">MCP &rarr; Clarity: Return Exact Context</div>
-                  <div className="text-blue-400">Clarity &rarr; User: Output Verified Plan</div>
-                </div>
-              </div>
-              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
-                Every technical response is verified against active project context to eliminate hallucinations before
-                they reach your terminal.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═════════════════════ PILLAR 3: CLARITY IN THOUGHT ═════════════════════ */}
-      <section id="thought" className="py-24 px-6 border-t border-white/[0.08] bg-[#050507]">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
-            <div className="md:col-span-6 order-2 md:order-1 p-7 rounded-2xl border border-white/[0.08] bg-[#0c0c0e] space-y-4 shadow-xl">
-              <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs text-zinc-400">
-                <span className="font-semibold text-white">Memory Vault & Privacy</span>
-                <span className="text-zinc-500 font-mono">Client-Side SHA-512</span>
-              </div>
-              <div className="space-y-3">
-                <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/[0.06] text-xs">
-                  <div className="flex items-center gap-2 text-white font-medium mb-1">
-                    <Brain className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Cross-Chat Memory Vault</span>
-                  </div>
-                  <p className="text-zinc-400 leading-relaxed">
-                    Remembers your project structure, coding standards, and directives across all future sessions.
-                  </p>
-                </div>
-                <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/[0.06] text-xs">
-                  <div className="flex items-center gap-2 text-white font-medium mb-1">
-                    <Lock className="w-3.5 h-3.5 text-amber-400" />
-                    <span>PIN-Locked Confidential Vault</span>
-                  </div>
-                  <p className="text-zinc-400 leading-relaxed">
-                    Client-side 4-digit PIN lock encryption for private chats and sensitive project files.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="md:col-span-6 order-1 md:order-2 space-y-6">
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
-                Cognitive Foundation
-              </span>
-              <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white leading-tight">
-                Clarity in Thought. <br />
-                First-Principles Logic.
-              </h2>
-              <p className="text-base text-zinc-400 leading-relaxed">
-                True clarity starts before generating a single character. Clarity deconstructs questions into core
-                axioms, isolates project constraints, and builds reasoning step-by-step so you understand exactly how
-                conclusions were reached.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═════════════════════ APPLE-STYLE DOWNLOAD DOCK (NO EDTECH PRICING) ═════════════════════ */}
-      <section id="downloads" className="py-24 px-6 border-t border-white/[0.08] text-center">
-        <div className="max-w-4xl mx-auto space-y-12">
+      {/* ══════════════ PILLAR 1: COWORK ══════════════ */}
+      <section id="cowork" style={{ padding: "100px 24px", background: "#000" }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
           <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 block">
-              Native Downloads
-            </span>
-            <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white mb-4">
-              Get Clarity for Your System.
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
+              Autonomous Cowork Mode
+            </div>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 700, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20 }}>
+              Your AI coworker.<br />Not a chatbot.
             </h2>
-            <p className="text-zinc-400 text-base max-w-lg mx-auto">
-              Optimized desktop executables crafted for speed, offline recovery, and native window persistence.
+            <p style={{ fontSize: 15, color: "#666", lineHeight: 1.75, marginBottom: 32 }}>
+              Clarity integrates into your GitHub, Vercel, and MCP tool ecosystem to act as a true peer engineer — cloning, inspecting, refactoring, and shipping — while you retain full approval authority at every step.
             </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                "Connect GitHub repos for autonomous PR generation",
+                "Human-in-loop: approve before every write or deploy",
+                "Extend with MCP servers and local browser agents",
+              ].map((f, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "#aaa" }}>
+                  <Check size={15} style={{ color: "#4ade80", flexShrink: 0, marginTop: 2 }} />
+                  {f}
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Unified Apple-Style Download Deck */}
-          <div className="p-8 rounded-3xl border border-white/[0.12] bg-[#0c0c0e] shadow-2xl text-left">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-white/[0.08]">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-white text-zinc-950 flex items-center justify-center font-bold">
-                  <Monitor className="w-6 h-6" />
+          {/* Visual: workflow steps */}
+          <div
+            style={{
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "#0c0c0f",
+              padding: 28,
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#555", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 4 }}>Live workflow</div>
+            {[
+              { icon: "⬢", label: "GitHub connected", status: "synced", color: "#4ade80" },
+              { icon: "⬡", label: "MCP tool query", status: "running", color: "#facc15" },
+              { icon: "⬡", label: "Vercel preview deploy", status: "queued", color: "#555" },
+              { icon: "⬢", label: "PR generated + approval", status: "waiting", color: "#a78bfa" },
+            ].map((row, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ color: row.color, fontSize: 14 }}>{row.icon}</span>
+                  <span style={{ fontSize: 13, color: "#ccc", fontWeight: 500 }}>{row.label}</span>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Clarity for Windows</h3>
-                  <p className="text-xs text-zinc-400">Windows 10 / 11 (64-bit) • v1.0.0 • 180 MB</p>
-                </div>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    padding: "3px 8px",
+                    borderRadius: 999,
+                    background: `${row.color}18`,
+                    color: row.color,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {row.status}
+                </span>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <div className="flex flex-wrap gap-3">
-                <a
-                  href="/api/download?type=installer"
-                  className="px-6 py-3 rounded-xl bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-200 transition-all flex items-center gap-2 shadow-sm"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Download Setup (.exe)</span>
-                </a>
-                <a
-                  href="/api/download?type=portable"
-                  className="px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/[0.1] text-xs font-medium flex items-center gap-2 transition-colors"
-                >
-                  <span>Portable (.exe)</span>
-                </a>
-              </div>
+      {/* ══════════════ PILLAR 2: RESPONSE ══════════════ */}
+      <section id="response" style={{ padding: "100px 24px", background: "#050507", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+          {/* Visual: response sample */}
+          <div
+            style={{
+              borderRadius: 16,
+              border: "1px solid rgba(255,255,255,0.08)",
+              background: "#0c0c0f",
+              overflow: "hidden",
+            }}
+          >
+            <div
+              style={{
+                padding: "12px 18px",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <span style={{ fontSize: 11, color: "#666", fontFamily: "monospace" }}>clarity_response.md</span>
+              <span style={{ fontSize: 10, color: "#4ade80", fontWeight: 600 }}>no fluff</span>
             </div>
-
-            {/* Other Platforms in a Single Minimalist Row */}
-            <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-              <div className="p-4 rounded-xl bg-[#141418] border border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Laptop className="w-4 h-4 text-zinc-400" />
-                  <span className="font-medium text-white">macOS Universal</span>
-                </div>
-                <Link href="/chat" className="text-zinc-400 hover:text-white underline underline-offset-4">
-                  .dmg
-                </Link>
+            <div style={{ padding: 24, fontFamily: "monospace", fontSize: 12, lineHeight: 1.8, color: "#aaa" }}>
+              <div style={{ color: "#fff", fontWeight: 600, marginBottom: 10 }}>## Architecture Decision</div>
+              <div style={{ marginBottom: 6 }}>The bottleneck is at <span style={{ color: "#60a5fa" }}>db.query()</span> — here's why:</div>
+              <div style={{ background: "#000", borderRadius: 8, padding: "12px 14px", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 12 }}>
+                <div style={{ color: "#a3e635" }}>graph TD</div>
+                <div style={{ color: "#aaa" }}>{"  A[Request] --> B{Cache?}"}</div>
+                <div style={{ color: "#aaa" }}>{"  B -->|miss| C[DB Query ⚠️]"}</div>
+                <div style={{ color: "#4ade80" }}>{"  B -->|hit| D[Response < 1ms]"}</div>
               </div>
+              <div style={{ color: "#555", fontSize: 11 }}>• 3-step fix below. No boilerplate. No padding text.</div>
+            </div>
+          </div>
 
-              <div className="p-4 rounded-xl bg-[#141418] border border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Terminal className="w-4 h-4 text-zinc-400" />
-                  <span className="font-medium text-white">Linux Package</span>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
+              Deterministic Precision
+            </div>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 700, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20 }}>
+              Clarity in response.<br />Zero fluff.
+            </h2>
+            <p style={{ fontSize: 15, color: "#666", lineHeight: 1.75, marginBottom: 32 }}>
+              Traditional AI buries answers under paragraphs of filler. Clarity outputs structured, actionable responses — syntax-highlighted code, Mermaid diagrams, LaTeX, and Kanban boards, generated straight from context.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                "Mermaid.js sequence diagrams & flowcharts rendered live",
+                "Document synthesis from multi-page PDFs & codebases",
+                "Kanban boards generated from natural language tasks",
+              ].map((f, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "#aaa" }}>
+                  <Check size={15} style={{ color: "#4ade80", flexShrink: 0, marginTop: 2 }} />
+                  {f}
                 </div>
-                <Link href="/chat" className="text-zinc-400 hover:text-white underline underline-offset-4">
-                  .AppImage
-                </Link>
-              </div>
-
-              <div className="p-4 rounded-xl bg-[#141418] border border-white/[0.06] flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <Globe className="w-4 h-4 text-zinc-400" />
-                  <span className="font-medium text-white">Cloud Web App</span>
-                </div>
-                <Link href="/chat" className="text-zinc-400 hover:text-white underline underline-offset-4">
-                  Instant Access
-                </Link>
-              </div>
+              ))}
             </div>
           </div>
         </div>
       </section>
 
-      {/* ═════════════════════ DEVELOPER & VISION STATEMENT ═════════════════════ */}
-      <section className="py-24 px-6 border-t border-white/[0.08] bg-[#050507] text-center">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
-            Crafted for Builders
-          </span>
-          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white">
-            Clarity in devs. <br />
-            Built by Shivam Kothekar.
+      {/* ══════════════ PILLAR 3: THOUGHT ══════════════ */}
+      <section id="thought" style={{ padding: "100px 24px", background: "#000", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: 1040, margin: "0 auto", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 64, alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
+              Cognitive Foundation
+            </div>
+            <h2 style={{ fontSize: "clamp(28px, 4vw, 48px)", fontWeight: 700, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.1, marginBottom: 20 }}>
+              Clarity in thought.<br />First-principles logic.
+            </h2>
+            <p style={{ fontSize: 15, color: "#666", lineHeight: 1.75, marginBottom: 32 }}>
+              Clarity deconstructs problems to core axioms before generating a single character. Cross-chat memory persists your project structure and directives. A PIN-locked vault keeps sensitive context private and local.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                "Cross-session memory vault — remembers your codebase rules",
+                "First-principles reasoning shown step by step",
+                "PIN-encrypted confidential chat vault — stays on device",
+              ].map((f, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 14, color: "#aaa" }}>
+                  <Check size={15} style={{ color: "#4ade80", flexShrink: 0, marginTop: 2 }} />
+                  {f}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Visual: memory vault */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {[
+              { title: "Memory Vault", desc: "Coding standards, directives & project schema retained across every session.", icon: "🧠", badge: "always-on" },
+              { title: "PIN Lock Vault", desc: "Client-side 4-digit PIN encrypts sensitive chats. Never leaves your device.", icon: "🔒", badge: "private" },
+              { title: "Context Isolation", desc: "Each reasoning chain is scoped. No cross-contamination between projects.", icon: "⬡", badge: "scoped" },
+            ].map((card, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: "18px 20px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  background: "#0c0c0f",
+                  display: "flex",
+                  gap: 16,
+                  alignItems: "flex-start",
+                }}
+              >
+                <span style={{ fontSize: 20, flexShrink: 0 }}>{card.icon}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "#ddd" }}>{card.title}</span>
+                    <span
+                      style={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        padding: "2px 7px",
+                        borderRadius: 999,
+                        background: "rgba(255,255,255,0.06)",
+                        color: "#777",
+                        letterSpacing: "0.05em",
+                        textTransform: "uppercase",
+                      }}
+                    >
+                      {card.badge}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "#555", lineHeight: 1.6 }}>{card.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════ DOWNLOAD ══════════════ */}
+      <section id="downloads" style={{ padding: "100px 24px", background: "#050507", borderTop: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
+        <div style={{ maxWidth: 760, margin: "0 auto" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 16 }}>
+            Native app
+          </div>
+          <h2 style={{ fontSize: "clamp(28px, 4vw, 52px)", fontWeight: 700, color: "#fff", letterSpacing: "-0.03em", lineHeight: 1.08, marginBottom: 16 }}>
+            Get Clarity.
           </h2>
-          <p className="text-sm sm:text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
-            "We built Clarity because modern AI tools were becoming too noisy, cluttered, and distracted. Our mission is
-            simple: deliver pure clarity in thought, pure clarity in response, and empowering cowork capabilities to
-            every developer."
+          <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, marginBottom: 52 }}>
+            Optimized native desktop executables. Fast startup, offline recovery, persistent window state.
           </p>
-          <div className="pt-4 flex items-center justify-center gap-4">
+
+          {/* Windows — primary */}
+          <div
+            style={{
+              borderRadius: 18,
+              border: "1px solid rgba(255,255,255,0.1)",
+              background: "#0d0d10",
+              padding: 32,
+              marginBottom: 16,
+              textAlign: "left",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 24,
+              flexWrap: "wrap",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Monitor size={24} color="#000" />
+              </div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 700, color: "#fff" }}>Clarity for Windows</div>
+                <div style={{ fontSize: 12, color: "#555", marginTop: 2 }}>Windows 10 / 11 (64-bit) · v1.0.0 · ~180 MB</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <a
+                href="/api/download?type=installer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "11px 22px",
+                  borderRadius: 10,
+                  background: "#fff",
+                  color: "#000",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textDecoration: "none",
+                  transition: "background 0.2s",
+                }}
+                onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "#e0e0e0")}
+                onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = "#fff")}
+              >
+                <Download size={14} /> Download Setup (.exe)
+              </a>
+              <a
+                href="/api/download?type=portable"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  padding: "11px 18px",
+                  borderRadius: 10,
+                  background: "transparent",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  color: "#aaa",
+                  fontSize: 13,
+                  fontWeight: 500,
+                  textDecoration: "none",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.color = "#fff"; el.style.borderColor = "rgba(255,255,255,0.25)"; }}
+                onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.color = "#aaa"; el.style.borderColor = "rgba(255,255,255,0.12)"; }}
+              >
+                Portable (.exe)
+              </a>
+            </div>
+          </div>
+
+          {/* Other platforms */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+            {[
+              { icon: <Laptop size={16} />, name: "macOS Universal", link: ".dmg" },
+              { icon: <Terminal size={16} />, name: "Linux Package", link: ".AppImage" },
+              { icon: <Globe size={16} />, name: "Web App", link: "Launch" },
+            ].map((p, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: "16px 18px",
+                  borderRadius: 12,
+                  border: "1px solid rgba(255,255,255,0.07)",
+                  background: "#0d0d10",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10, color: "#777" }}>
+                  {p.icon}
+                  <span style={{ fontSize: 13, color: "#bbb", fontWeight: 500 }}>{p.name}</span>
+                </div>
+                <Link href="/chat" style={{ fontSize: 12, color: "#555", textDecoration: "underline", textUnderlineOffset: 3 }}>{p.link}</Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════ BUILDER QUOTE ══════════════ */}
+      <section style={{ padding: "100px 24px", background: "#000", borderTop: "1px solid rgba(255,255,255,0.06)", textAlign: "center" }}>
+        <div style={{ maxWidth: 620, margin: "0 auto" }}>
+          <blockquote
+            style={{
+              fontSize: "clamp(18px, 3vw, 26px)",
+              fontWeight: 500,
+              color: "#888",
+              lineHeight: 1.6,
+              letterSpacing: "-0.02em",
+              marginBottom: 32,
+              fontStyle: "normal",
+            }}
+          >
+            "We built Clarity because modern AI tools were becoming
+            too noisy, too cluttered, too distracted. Our mission is
+            simple:&nbsp;
+            <span style={{ color: "#fff", fontWeight: 600 }}>pure clarity in thought, pure clarity in response</span>
+            , and real cowork capability for every developer."
+          </blockquote>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "#1a1a1e",
+                border: "1px solid rgba(255,255,255,0.1)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 14,
+                fontWeight: 700,
+                color: "#888",
+              }}
+            >
+              S
+            </div>
+            <div style={{ textAlign: "left" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: "#ccc" }}>Shivam Kothekar</div>
+              <div style={{ fontSize: 11, color: "#555" }}>Builder of Clarity</div>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginTop: 40 }}>
             <Link
               href="/signup"
-              className="px-6 py-3 rounded-xl bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-200 transition-all shadow-sm"
+              style={{
+                padding: "12px 28px",
+                borderRadius: 10,
+                background: "#fff",
+                color: "#000",
+                fontSize: 14,
+                fontWeight: 600,
+                textDecoration: "none",
+                transition: "background 0.2s",
+              }}
+              onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background = "#e0e0e0")}
+              onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background = "#fff")}
             >
-              Get Started for Free
+              Get started free
             </Link>
             <a
               href="https://github.com/ShivamSk07/Mindmate"
               target="_blank"
               rel="noreferrer"
-              className="px-6 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/[0.1] text-sm font-medium transition-colors"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "12px 22px",
+                borderRadius: 10,
+                background: "transparent",
+                border: "1px solid rgba(255,255,255,0.12)",
+                color: "#aaa",
+                fontSize: 14,
+                fontWeight: 500,
+                textDecoration: "none",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.color = "#fff"; el.style.borderColor = "rgba(255,255,255,0.25)"; }}
+              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.color = "#aaa"; el.style.borderColor = "rgba(255,255,255,0.12)"; }}
             >
-              View on GitHub
+              <Github size={14} /> View on GitHub
             </a>
           </div>
         </div>
       </section>
 
-      {/* ═════════════════════ FOOTER ═════════════════════ */}
-      <footer className="py-12 px-6 border-t border-white/[0.08] bg-[#000000] text-xs text-zinc-500">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center p-0.5">
-              <img src="/img/logo.png" alt="Logo" className="w-full h-full object-contain" />
+      {/* ══════════════ FOOTER ══════════════ */}
+      <footer
+        style={{
+          padding: "28px 24px",
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          background: "#000",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 1040,
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 6,
+                background: "#111",
+                border: "1px solid rgba(255,255,255,0.1)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 3,
+              }}
+            >
+              <img src="/img/logo.png" alt="Clarity" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
             </div>
-            <span className="font-semibold text-zinc-300">Clarity</span>
-            <span>—</span>
-            <span>Clarity in devs by <strong className="text-zinc-300 font-medium">Shivam Kothekar</strong></span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#888" }}>Clarity</span>
+            <span style={{ fontSize: 12, color: "#333" }}>— by Shivam Kothekar</span>
           </div>
 
-          <div className="flex items-center gap-6">
-            <Link href="/privacy" className="hover:text-zinc-300 transition-colors">
-              Privacy Policy
-            </Link>
-            <Link href="/terms" className="hover:text-zinc-300 transition-colors">
-              Terms
-            </Link>
-            <Link href="/login" className="hover:text-zinc-300 transition-colors">
-              Sign In
-            </Link>
-            <Link href="/signup" className="hover:text-zinc-300 transition-colors">
-              Sign Up
-            </Link>
+          <div style={{ display: "flex", gap: 20, fontSize: 12, color: "#555" }}>
+            <Link href="/privacy" style={{ color: "inherit", textDecoration: "none" }}>Privacy</Link>
+            <Link href="/terms" style={{ color: "inherit", textDecoration: "none" }}>Terms</Link>
+            <Link href="/login" style={{ color: "inherit", textDecoration: "none" }}>Sign in</Link>
+            <Link href="/signup" style={{ color: "inherit", textDecoration: "none" }}>Sign up</Link>
           </div>
 
-          <div className="text-zinc-600 font-mono">
-            © {new Date().getFullYear()} Shivam Kothekar. All rights reserved.
+          <div style={{ fontSize: 11, color: "#333", fontFamily: "monospace" }}>
+            © {new Date().getFullYear()} Shivam Kothekar
           </div>
         </div>
       </footer>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .hide-mobile { display: none !important; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        * { scroll-margin-top: 70px; }
+      `}</style>
     </div>
   );
 }
