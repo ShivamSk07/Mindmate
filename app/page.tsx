@@ -4,92 +4,92 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Download,
-  Sparkles,
-  Zap,
-  Shield,
-  Monitor,
-  Terminal,
-  Cpu,
-  Layers,
+  Github,
+  Triangle,
+  Plug,
   Globe,
   ArrowRight,
   Check,
+  CheckCircle2,
   Lock,
   ChevronRight,
   ExternalLink,
   Laptop,
-  CheckCircle2,
-  Share2,
-  FolderLock,
-  Kanban as KanbanIcon,
-  Bot,
-  Users2,
-  Brain,
-  MessageSquareCode,
-  FileText,
-  Sliders,
+  Terminal,
+  Monitor,
+  GitBranch,
+  GitPullRequest,
   Workflow,
-  Sparkle,
+  Sparkles,
+  Layers,
+  Code2,
+  Brain,
+  ShieldCheck,
+  Kanban,
+  FileCode2,
+  Play,
+  RotateCw,
+  FolderLock,
+  SlidersHorizontal,
 } from "lucide-react";
 
-export default function ProfessionalLandingPage() {
-  const [userOS, setUserOS] = useState<"windows" | "mac" | "linux">("windows");
+export default function AppleOpenAILandingPage() {
+  const [selectedOS, setSelectedOS] = useState<"windows" | "mac" | "linux">("windows");
+  const [activeTab, setActiveTab] = useState<"cowork" | "response" | "thought">("cowork");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const ua = window.navigator.userAgent.toLowerCase();
       if (ua.includes("mac")) {
-        setUserOS("mac");
+        setSelectedOS("mac");
       } else if (ua.includes("linux")) {
-        setUserOS("linux");
+        setSelectedOS("linux");
       } else {
-        setUserOS("windows");
+        setSelectedOS("windows");
       }
     }
   }, []);
 
   return (
-    <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-[#09090b] text-[#f4f4f5] selection:bg-zinc-800 selection:text-white font-sans antialiased scroll-smooth">
-      {/* ═════════════════════ NAVBAR ═════════════════════ */}
-      <header className="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-[#09090b]/90 backdrop-blur-md">
+    <div className="h-screen w-full overflow-y-auto overflow-x-hidden bg-[#000000] text-[#ededed] selection:bg-zinc-800 selection:text-white font-sans antialiased scroll-smooth">
+      {/* ═════════════════════ APEX NAVIGATION ═════════════════════ */}
+      <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#000000]/80 backdrop-blur-xl">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#18181b] border border-zinc-700/60 flex items-center justify-center p-1.5 shadow-sm">
-              <img src="/img/logo.png" alt="Clarity Logo" className="w-full h-full object-contain" />
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-white/10 flex items-center justify-center p-1.5 shadow-sm group-hover:border-white/30 transition-colors">
+              <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain" />
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-baseline gap-2">
               <span className="font-semibold text-base tracking-tight text-white">Clarity</span>
-              <span className="text-[11px] font-medium px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/50">
-                v1.0
-              </span>
+              <span className="text-[11px] font-medium text-zinc-400">in devs</span>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8 text-sm text-zinc-400">
-            <a href="#thought" className="hover:text-white transition-colors">
-              Thought Clarity
-            </a>
+          <nav className="hidden md:flex items-center gap-8 text-[13px] text-zinc-400 font-medium">
             <a href="#cowork" className="hover:text-white transition-colors">
-              Cowork Workspace
+              Cowork
+            </a>
+            <a href="#response" className="hover:text-white transition-colors">
+              Response
+            </a>
+            <a href="#thought" className="hover:text-white transition-colors">
+              Thought
             </a>
             <a href="#downloads" className="hover:text-white transition-colors">
               Downloads
-            </a>
-            <a href="#developer" className="hover:text-white transition-colors">
-              About
             </a>
           </nav>
 
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="text-sm text-zinc-400 hover:text-white px-3 py-2 rounded-lg hover:bg-zinc-800/50 transition-colors"
+              className="text-[13px] font-medium text-zinc-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/[0.04] transition-colors"
             >
-              Sign In
+              Sign in
             </Link>
             <Link
               href="/chat"
-              className="text-sm font-medium px-4 py-2 rounded-lg bg-white text-zinc-950 hover:bg-zinc-200 transition-all flex items-center gap-1.5 shadow-sm"
+              className="text-[13px] font-medium px-3.5 py-1.5 rounded-lg bg-white text-zinc-950 hover:bg-zinc-200 transition-all flex items-center gap-1 shadow-sm"
             >
               <span>Launch App</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -98,123 +98,174 @@ export default function ProfessionalLandingPage() {
         </div>
       </header>
 
-      {/* ═════════════════════ HERO SECTION ═════════════════════ */}
-      <section className="pt-20 pb-20 md:pt-28 md:pb-28 px-6 border-b border-zinc-800/60 bg-gradient-to-b from-[#09090b] via-[#0d0d10] to-[#09090b]">
-        <div className="max-w-4xl mx-auto text-center flex flex-col items-center">
-          {/* Version Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 mb-8">
-            <span className="w-1.5 h-1.5 rounded-full bg-zinc-400" />
-            <span>Clarity AI Workspace — Desktop & Web</span>
+      {/* ═════════════════════ HERO: APPLE / OPENAI STYLE ═════════════════════ */}
+      <section className="pt-24 pb-20 md:pt-36 md:pb-28 px-6 text-center">
+        <div className="max-w-4xl mx-auto flex flex-col items-center">
+          {/* Eyebrow Tagline */}
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/[0.12] bg-white/[0.04] text-xs font-medium text-zinc-300 mb-8 tracking-wide">
+            <span className="text-zinc-400">Vision</span>
+            <span className="text-zinc-600">•</span>
+            <span className="text-white font-semibold">Clarity in devs (developers)</span>
           </div>
 
-          {/* Headline */}
-          <h1 className="text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white leading-[1.1] mb-6">
-            Clarity in Thought. <br />
-            <span className="text-zinc-400">Clarity in Response.</span>
+          {/* Main Headline */}
+          <h1 className="text-5xl sm:text-7xl md:text-8xl font-semibold tracking-tight text-white leading-[1.05] mb-8">
+            Pure thought. <br />
+            <span className="text-zinc-400">Pure clarity in response.</span>
           </h1>
 
           {/* Subheading */}
-          <p className="text-base sm:text-lg md:text-xl text-zinc-400 max-w-2xl font-normal leading-relaxed mb-10">
-            A focused workspace built to eliminate AI noise. Experience structured reasoning, high-signal responses,
-            and seamless cowork collaboration across desktop and web.
+          <p className="text-lg sm:text-xl text-zinc-400 max-w-2xl font-normal leading-relaxed mb-12">
+            The autonomous AI cowork workspace engineered for developers. No noise, no hallucinated clutter — just
+            structured first-principles reasoning and agentic execution.
           </p>
 
-          {/* Download CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3.5 w-full sm:w-auto mb-6">
+          {/* Primary Action Buttons */}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mb-10">
             <a
               href="/api/download?type=installer"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2.5 shadow-sm hover:bg-zinc-200 transition-all"
+              className="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-white text-zinc-950 font-medium text-sm flex items-center justify-center gap-2.5 shadow-sm hover:bg-zinc-200 transition-all"
             >
               <Download className="w-4 h-4 text-zinc-950" />
-              <span>Download for Windows (.exe)</span>
-              <span className="text-xs px-2 py-0.5 rounded bg-zinc-200 text-zinc-800 font-medium">180 MB</span>
+              <span>Download Clarity for Windows (.exe)</span>
+              <span className="text-xs px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-800 font-mono">180 MB</span>
             </a>
 
             <Link
               href="/chat"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+              className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-200 border border-white/[0.1] text-sm font-medium flex items-center justify-center gap-2 transition-colors"
             >
-              <Globe className="w-4 h-4 text-zinc-400" />
-              <span>Open in Web Browser</span>
+              <span>Try in Browser</span>
+              <ExternalLink className="w-4 h-4 text-zinc-400" />
             </Link>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-zinc-500">
-            <span>Also available for:</span>
-            <a href="#downloads" className="text-zinc-400 hover:text-white underline underline-offset-4">
+          {/* Minimalist OS Switcher Hint */}
+          <div className="flex items-center gap-4 text-xs text-zinc-500 font-medium">
+            <span>Also available on</span>
+            <a href="#downloads" className="text-zinc-400 hover:text-white transition-colors underline underline-offset-4">
               macOS (.dmg)
             </a>
             <span>•</span>
-            <a href="#downloads" className="text-zinc-400 hover:text-white underline underline-offset-4">
+            <a href="#downloads" className="text-zinc-400 hover:text-white transition-colors underline underline-offset-4">
               Linux (.AppImage)
             </a>
             <span>•</span>
-            <a href="#downloads" className="text-zinc-400 hover:text-white underline underline-offset-4">
-              Windows Portable
+            <a href="#downloads" className="text-zinc-400 hover:text-white transition-colors underline underline-offset-4">
+              Portable Windows
             </a>
           </div>
         </div>
 
-        {/* ═════════════════════ CLEAN APP SHOWCASE ═════════════════════ */}
-        <div className="max-w-5xl mx-auto mt-16">
-          <div className="rounded-2xl border border-zinc-800 bg-[#121215] shadow-2xl overflow-hidden">
-            {/* Window Frame Header */}
-            <div className="h-11 px-4 flex items-center justify-between border-b border-zinc-800 bg-[#16161a] text-xs text-zinc-400">
+        {/* ═════════════════════ CLEAN MINIMALIST PRODUCT SHOWCASE ═════════════════════ */}
+        <div className="max-w-5xl mx-auto mt-20">
+          <div className="rounded-2xl border border-white/[0.12] bg-[#0c0c0e] shadow-2xl overflow-hidden text-left">
+            {/* Titlebar */}
+            <div className="h-11 px-4 flex items-center justify-between border-b border-white/[0.08] bg-[#121215] text-xs text-zinc-400">
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-zinc-700/80" />
                 <span className="w-3 h-3 rounded-full bg-zinc-700/80" />
                 <span className="w-3 h-3 rounded-full bg-zinc-700/80" />
-                <span className="ml-3 font-medium text-zinc-300">Clarity Workspace</span>
+                <span className="ml-3 font-medium text-zinc-300">Clarity // Workspace</span>
               </div>
-              <div className="flex items-center gap-3 text-xs text-zinc-500 font-mono">
-                <span>Thought Chain: Verified</span>
-                <span>•</span>
-                <span>Memory Vault: Active</span>
+              <div className="flex items-center gap-3 text-xs text-zinc-400">
+                <span className="flex items-center gap-1.5 text-zinc-300">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> Cowork Agent Ready
+                </span>
+                <span className="text-zinc-600">|</span>
+                <span>GitHub & MCP Synced</span>
               </div>
             </div>
 
-            {/* Conversation Stream Content */}
-            <div className="p-6 md:p-8 bg-[#0d0d10] space-y-6">
-              {/* User Prompt */}
-              <div className="flex justify-end">
-                <div className="max-w-xl rounded-2xl rounded-tr-sm bg-zinc-800 border border-zinc-700/60 px-5 py-3.5 text-sm text-zinc-100">
-                  Analyze our project bottlenecks and structure an actionable execution plan for the engineering team.
+            {/* Split Screen UI: Cowork Left & Response Right */}
+            <div className="grid grid-cols-1 md:grid-cols-12 min-h-[460px]">
+              {/* Left Pane: Agentic Plan & Integrations */}
+              <div className="md:col-span-5 border-r border-white/[0.08] bg-[#0f0f12] p-6 space-y-6">
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                      Connected Workflows
+                    </span>
+                    <span className="text-[11px] font-mono text-zinc-500">Autonomous</span>
+                  </div>
+
+                  {/* Integration Pills */}
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="p-2.5 rounded-lg bg-zinc-900 border border-white/[0.06] flex items-center gap-2 text-zinc-200">
+                      <Github className="w-3.5 h-3.5 text-zinc-400" />
+                      <span className="text-[11px]">GitHub</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-zinc-900 border border-white/[0.06] flex items-center gap-2 text-zinc-200">
+                      <Triangle className="w-3.5 h-3.5 text-zinc-400" />
+                      <span className="text-[11px]">Vercel</span>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-zinc-900 border border-white/[0.06] flex items-center gap-2 text-zinc-200">
+                      <Plug className="w-3.5 h-3.5 text-zinc-400" />
+                      <span className="text-[11px]">MCP</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Plan Execution Sequence */}
+                <div className="space-y-3">
+                  <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">
+                    Execution Plan
+                  </span>
+                  <div className="space-y-2 text-xs">
+                    <div className="p-3 rounded-lg bg-zinc-900/90 border border-white/[0.06] flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-white block">1. Clone & inspect codebase schema</span>
+                        <span className="text-zinc-500 text-[11px]">Parsed Prisma schema & route handlers</span>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-zinc-900/90 border border-white/[0.06] flex items-start gap-2.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-white block">2. Decompose logic & synthesize architecture</span>
+                        <span className="text-zinc-500 text-[11px]">Zero-overhead clean refactor</span>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-zinc-900/90 border border-emerald-500/30 flex items-start gap-2.5">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 flex-shrink-0 mt-1.5 animate-pulse" />
+                      <div>
+                        <span className="font-medium text-emerald-400 block">3. Code diff & live artifact generated</span>
+                        <span className="text-zinc-400 text-[11px]">Waiting for one-click approval</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* AI Thought & Response */}
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 text-white font-bold text-xs">
-                  C
-                </div>
-                <div className="max-w-3xl rounded-2xl rounded-tl-sm bg-[#16161a] border border-zinc-800 p-6 text-sm text-zinc-300 space-y-4 shadow-sm">
-                  {/* Reasoning Process Header */}
-                  <div className="flex items-center gap-2 text-xs text-zinc-400 pb-3 border-b border-zinc-800/80">
-                    <Brain className="w-4 h-4 text-zinc-400" />
-                    <span className="font-medium text-zinc-300">Thought Process Synthesized</span>
-                    <span className="text-zinc-600">|</span>
-                    <span className="text-zinc-500">First-principles breakdown</span>
+              {/* Right Pane: High-Signal Code & Mermaid Output */}
+              <div className="md:col-span-7 p-6 md:p-8 bg-[#09090b] flex flex-col justify-between space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs">
+                    <span className="text-zinc-400 font-medium">Clarity Synthesizer</span>
+                    <span className="text-emerald-400 font-mono text-[11px]">Clean Architecture Output</span>
                   </div>
 
-                  <p className="leading-relaxed text-zinc-200">
-                    Here is the clear architectural breakdown categorized into core deliverables, ownership, and
-                    immediate risk mitigations:
+                  <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed font-sans">
+                    Here is the refactored agentic pipeline with human-in-the-loop approvals and automated PR generation:
                   </p>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs pt-1">
-                    <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
-                      <span className="font-semibold text-white block">1. Core Engine</span>
-                      <span className="text-zinc-400">Low-latency streaming & memory persistence.</span>
+                  {/* Code Diff Mockup */}
+                  <div className="rounded-xl bg-[#121215] border border-white/[0.08] p-4 text-xs font-mono space-y-1 overflow-hidden">
+                    <div className="text-zinc-500 pb-2 mb-1 border-b border-white/[0.04] text-[10px]">
+                      // src/agent/pipeline.ts
                     </div>
-                    <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
-                      <span className="font-semibold text-white block">2. Cowork Kanban</span>
-                      <span className="text-zinc-400">Automated task tracking & shared team canvas.</span>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
-                      <span className="font-semibold text-white block">3. Security Vault</span>
-                      <span className="text-zinc-400">PIN-protected encrypted conversation channels.</span>
-                    </div>
+                    <div className="text-emerald-400">+ export async function executePlan(task: CoworkTask) &#123;</div>
+                    <div className="text-emerald-400">+ const approval = await requireUserApproval(task);</div>
+                    <div className="text-emerald-400">+ if (approval.granted) return task.deployToVercel();</div>
+                    <div className="text-zinc-400">&#125;</div>
                   </div>
+                </div>
+
+                <div className="p-3 rounded-xl bg-[#121215] border border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
+                  <span>Artifacts: Mermaid Diagram + Git Branch</span>
+                  <button className="px-3 py-1.5 rounded-lg bg-white text-zinc-950 font-semibold text-xs hover:bg-zinc-200 transition-colors">
+                    Approve & Merge
+                  </button>
                 </div>
               </div>
             </div>
@@ -222,310 +273,264 @@ export default function ProfessionalLandingPage() {
         </div>
       </section>
 
-      {/* ═════════════════════ 01. CLARITY IN THOUGHT ═════════════════════ */}
-      <section id="thought" className="py-24 px-6 border-b border-zinc-800/60 max-w-6xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
-          <div className="md:col-span-6 space-y-4">
-            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
-              01 // Clear Thinking
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white leading-tight">
-              Clarity in Thought. <br />
-              Zero Cognitive Overload.
-            </h2>
-            <p className="text-sm sm:text-base text-zinc-400 leading-relaxed">
-              Standard AI tools flood you with unorganized text. Clarity breaks down complex problems using structured
-              first-principles logic, isolating core premises before delivering conclusions.
-            </p>
-            <ul className="space-y-3 pt-3 text-sm text-zinc-300">
-              <li className="flex items-center gap-3">
-                <Check className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                <span>Multi-step reasoning tree without hallucination noise</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                <span>Transparent step-by-step synthesis and thought inspection</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <Check className="w-4 h-4 text-zinc-400 flex-shrink-0" />
-                <span>Custom reasoning personas tailored to specific domain tasks</span>
-              </li>
-            </ul>
-          </div>
-
-          <div className="md:col-span-6 p-6 rounded-2xl border border-zinc-800 bg-[#121215] space-y-3">
-            <div className="flex items-center justify-between text-xs text-zinc-400 pb-3 border-b border-zinc-800">
-              <span className="font-medium text-white">Thought Architecture</span>
-              <span className="font-mono text-zinc-500">Reasoning Chain</span>
-            </div>
-            <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 space-y-2">
-              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide block">
-                Stage 1: Problem Isolation
-              </span>
-              <p className="text-zinc-400">Identifies core dependencies and eliminates extraneous variables.</p>
-            </div>
-            <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 space-y-2">
-              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide block">
-                Stage 2: Critical Evaluation
-              </span>
-              <p className="text-zinc-400">Cross-references constraints against memory vault context.</p>
-            </div>
-            <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 space-y-2">
-              <span className="text-[11px] font-semibold text-zinc-400 uppercase tracking-wide block">
-                Stage 3: High-Signal Delivery
-              </span>
-              <p className="text-zinc-400">Produces clear, actionable synthesis with verified accuracy.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═════════════════════ 02. COWORK CAPABILITIES ═════════════════════ */}
-      <section id="cowork" className="py-24 px-6 border-b border-zinc-800/60 bg-[#0d0d10]">
+      {/* ═════════════════════ PILLAR 1: CLARITY COWORK ═════════════════════ */}
+      <section id="cowork" className="py-24 px-6 border-t border-white/[0.08] bg-[#050507]">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center max-w-3xl mx-auto mb-16">
+          <div className="max-w-3xl mb-16">
             <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 block">
-              02 // Cowork Workspace
+              Autonomous Cowork Mode
             </span>
-            <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mb-4">
-              Collaborative Intelligence & Artifacts.
+            <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white mb-4">
+              Your AI Coworker for Real Engineering.
             </h2>
-            <p className="text-zinc-400 text-base">
-              Turn raw conversations into living task boards, memory vaults, and project artifacts.
+            <p className="text-zinc-400 text-base sm:text-lg leading-relaxed">
+              Clarity doesn't just chat. It acts as an autonomous pair programmer and collaborator that integrates with
+              your GitHub repositories, Vercel deployments, and MCP tool ecosystems.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Card 1: Interactive Kanban */}
-            <div className="p-7 rounded-2xl border border-zinc-800 bg-[#141418] flex flex-col justify-between space-y-4">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-5 text-white">
-                  <KanbanIcon className="w-5 h-5" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">Autonomous Kanban Boards</h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
-                  Automatically convert discussions into structured task boards with interactive status tracking and
-                  deliverables.
-                </p>
+            <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#0d0d10] space-y-4">
+              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
+                <Github className="w-5 h-5" />
               </div>
-              <div className="pt-4 border-t border-zinc-800/80 text-xs text-zinc-400 flex items-center justify-between">
-                <span>Task Management</span>
-                <span className="font-medium text-white">Interactive Canvas</span>
+              <h3 className="text-lg font-semibold text-white">GitHub & Vercel Automation</h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Connect your repositories to autonomously inspect codebases, execute refactors, generate pull
+                requests, and trigger preview deployments.
+              </p>
+            </div>
+
+            <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#0d0d10] space-y-4">
+              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
+                <Plug className="w-5 h-5" />
               </div>
+              <h3 className="text-lg font-semibold text-white">Model Context Protocol (MCP)</h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Extend Clarity with your own MCP servers and browser agents. Give your AI teammate direct access to your
+                APIs, local databases, and custom CLI tools.
+              </p>
             </div>
 
-            {/* Card 2: Memory Vault */}
-            <div className="p-7 rounded-2xl border border-zinc-800 bg-[#141418] flex flex-col justify-between space-y-4">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-5 text-white">
-                  <Brain className="w-5 h-5" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">Persistent Memory Vault</h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
-                  Clarity remembers project rules, user directives, and active persona preferences across all your
-                  chats.
-                </p>
+            <div className="p-7 rounded-2xl border border-white/[0.08] bg-[#0d0d10] space-y-4">
+              <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-white/10 flex items-center justify-center text-white">
+                <ShieldCheck className="w-5 h-5" />
               </div>
-              <div className="pt-4 border-t border-zinc-800/80 text-xs text-zinc-400 flex items-center justify-between">
-                <span>Context Persistence</span>
-                <span className="font-medium text-white">Cross-Session Recall</span>
-              </div>
-            </div>
-
-            {/* Card 3: PIN Locked Vaults */}
-            <div className="p-7 rounded-2xl border border-zinc-800 bg-[#141418] flex flex-col justify-between space-y-4">
-              <div>
-                <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-5 text-white">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <h3 className="text-lg font-bold text-white mb-2">PIN-Locked Chat Vaults</h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">
-                  Protect sensitive conversations and confidential notes with client-side 4-digit PIN lock encryption.
-                </p>
-              </div>
-              <div className="pt-4 border-t border-zinc-800/80 text-xs text-zinc-400 flex items-center justify-between">
-                <span>Confidential Channels</span>
-                <span className="font-medium text-white">Zero-Knowledge Lock</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═════════════════════ 03. DOWNLOAD MATRIX ═════════════════════ */}
-      <section id="downloads" className="py-24 px-6 border-b border-zinc-800/60 max-w-6xl mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 block">
-            03 // Native Desktop & Web
-          </span>
-          <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-white mb-4">
-            Get Clarity for Your Operating System.
-          </h2>
-          <p className="text-zinc-400 text-base">
-            Engineered as a lightweight, fast executable for Windows, macOS, and Linux — plus zero-install cloud access.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {/* Windows Download Card */}
-          <div className="p-8 rounded-2xl border border-zinc-700 bg-[#121215] flex flex-col justify-between space-y-6 shadow-xl">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-5 text-white">
-                <Monitor className="w-5 h-5" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-1">Windows</h3>
-              <p className="text-xs text-zinc-400 mb-5">Windows 10 / 11 (64-bit)</p>
-
-              <ul className="space-y-2.5 text-xs text-zinc-300">
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>One-click setup installer (.exe)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Standalone Portable .exe included</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Taskbar JumpList & Toast Alerts</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Offline auto-reconnect fallback</span>
-                </li>
-              </ul>
-            </div>
-
-            <div className="space-y-2">
-              <a
-                href="/api/download?type=installer"
-                className="w-full py-3 rounded-xl bg-white text-zinc-950 font-semibold text-sm flex items-center justify-center gap-2 hover:bg-zinc-200 transition-all shadow-sm"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download Installer (.exe)</span>
-              </a>
-              <a
-                href="/api/download?type=portable"
-                className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
-              >
-                <span>Download Portable (.exe)</span>
-              </a>
-            </div>
-          </div>
-
-          {/* macOS Download Card */}
-          <div className="p-8 rounded-2xl border border-zinc-800 bg-[#121215] flex flex-col justify-between space-y-6">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-5 text-white">
-                <Laptop className="w-5 h-5" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-1">macOS</h3>
-              <p className="text-xs text-zinc-400 mb-5">macOS 12 Monterey or later</p>
-
-              <ul className="space-y-2.5 text-xs text-zinc-300">
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Universal DMG (Apple Silicon & Intel)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Spotlight-style global summon</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Retina display high-DPI scaling</span>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <Link
-                href="/chat"
-                className="w-full py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors border border-zinc-700"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download DMG (Universal)</span>
-              </Link>
-            </div>
-          </div>
-
-          {/* Linux Download Card */}
-          <div className="p-8 rounded-2xl border border-zinc-800 bg-[#121215] flex flex-col justify-between space-y-6">
-            <div>
-              <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center mb-5 text-white">
-                <Terminal className="w-5 h-5" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-1">Linux</h3>
-              <p className="text-xs text-zinc-400 mb-5">Ubuntu, Debian, Fedora, Arch</p>
-
-              <ul className="space-y-2.5 text-xs text-zinc-300">
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Universal AppImage binary</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Debian package (.deb)</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <Check className="w-3.5 h-3.5 text-zinc-400 flex-shrink-0" />
-                  <span>Low memory usage & system tray</span>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <Link
-                href="/chat"
-                className="w-full py-3 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-medium text-sm flex items-center justify-center gap-2 transition-colors border border-zinc-700"
-              >
-                <Download className="w-4 h-4" />
-                <span>Download AppImage</span>
-              </Link>
-            </div>
-          </div>
-        </div>
-
-        {/* Web Access Callout */}
-        <div className="rounded-2xl border border-zinc-800 bg-[#121215] p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white flex-shrink-0">
-              <Globe className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-base font-semibold text-white">Prefer using Clarity online?</h4>
-              <p className="text-xs text-zinc-400">
-                Access your chat sessions, memory vaults, and cowork boards with zero installation in any web browser.
+              <h3 className="text-lg font-semibold text-white">Human-in-the-Loop Approvals</h3>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                You maintain total authority. Whenever Clarity needs to write files, push branches, or run critical
+                scripts, it stops and prompts for your approval.
               </p>
             </div>
           </div>
-          <Link
-            href="/chat"
-            className="px-6 py-2.5 rounded-xl bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-200 transition-all flex items-center gap-2 whitespace-nowrap shadow-sm"
-          >
-            <span>Launch Web App</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
         </div>
       </section>
 
-      {/* ═════════════════════ 04. DEVELOPER & CRAFTSMANSHIP ═════════════════════ */}
-      <section id="developer" className="py-20 px-6 border-b border-zinc-800/60 bg-[#0d0d10]">
-        <div className="max-w-4xl mx-auto text-center space-y-4">
+      {/* ═════════════════════ PILLAR 2: CLARITY IN RESPONSE ═════════════════════ */}
+      <section id="response" className="py-24 px-6 border-t border-white/[0.08]">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
+            <div className="md:col-span-6 space-y-6">
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
+                Deterministic Precision
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white leading-tight">
+                Clarity in Response. <br />
+                Zero Fluff.
+              </h2>
+              <p className="text-base text-zinc-400 leading-relaxed">
+                Traditional AI chat models bury the real solution under conversational filler. Clarity is tuned for
+                high-density, actionable output: clean syntax-highlighted code, LaTeX equations, and architectural
+                diagrams.
+              </p>
+              <div className="space-y-3 pt-2 text-sm text-zinc-300">
+                <div className="flex items-center gap-3">
+                  <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span>Mermaid.js sequence diagrams & interactive flowcharts</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span>Document synthesis from multi-page PDFs, TXT & codebases</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  <span>Interactive Kanban boards generated straight from chat discussions</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-6 p-7 rounded-2xl border border-white/[0.08] bg-[#0c0c0e] space-y-4 shadow-xl">
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs text-zinc-400 font-mono">
+                <span>Architecture Diagram</span>
+                <span className="text-emerald-400">Mermaid Rendered</span>
+              </div>
+              <div className="p-4 rounded-xl bg-black/50 border border-white/[0.04] text-xs font-mono text-zinc-300 leading-relaxed">
+                <span className="text-zinc-500 block mb-2">// System Sequence Flow</span>
+                <div className="space-y-1">
+                  <div>User &rarr; Clarity: Request Complex Task</div>
+                  <div className="text-emerald-400">Clarity &rarr; MCP: Query Local Schema &amp; DB</div>
+                  <div className="text-zinc-400">MCP &rarr; Clarity: Return Exact Context</div>
+                  <div className="text-blue-400">Clarity &rarr; User: Output Verified Plan</div>
+                </div>
+              </div>
+              <p className="text-xs text-zinc-400 font-sans leading-relaxed">
+                Every technical response is verified against active project context to eliminate hallucinations before
+                they reach your terminal.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════════════ PILLAR 3: CLARITY IN THOUGHT ═════════════════════ */}
+      <section id="thought" className="py-24 px-6 border-t border-white/[0.08] bg-[#050507]">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center">
+            <div className="md:col-span-6 order-2 md:order-1 p-7 rounded-2xl border border-white/[0.08] bg-[#0c0c0e] space-y-4 shadow-xl">
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.06] text-xs text-zinc-400">
+                <span className="font-semibold text-white">Memory Vault & Privacy</span>
+                <span className="text-zinc-500 font-mono">Client-Side SHA-512</span>
+              </div>
+              <div className="space-y-3">
+                <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/[0.06] text-xs">
+                  <div className="flex items-center gap-2 text-white font-medium mb-1">
+                    <Brain className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Cross-Chat Memory Vault</span>
+                  </div>
+                  <p className="text-zinc-400 leading-relaxed">
+                    Remembers your project structure, coding standards, and directives across all future sessions.
+                  </p>
+                </div>
+                <div className="p-3.5 rounded-xl bg-zinc-900 border border-white/[0.06] text-xs">
+                  <div className="flex items-center gap-2 text-white font-medium mb-1">
+                    <Lock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>PIN-Locked Confidential Vault</span>
+                  </div>
+                  <p className="text-zinc-400 leading-relaxed">
+                    Client-side 4-digit PIN lock encryption for private chats and sensitive project files.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="md:col-span-6 order-1 md:order-2 space-y-6">
+              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
+                Cognitive Foundation
+              </span>
+              <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white leading-tight">
+                Clarity in Thought. <br />
+                First-Principles Logic.
+              </h2>
+              <p className="text-base text-zinc-400 leading-relaxed">
+                True clarity starts before generating a single character. Clarity deconstructs questions into core
+                axioms, isolates project constraints, and builds reasoning step-by-step so you understand exactly how
+                conclusions were reached.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════════════ APPLE-STYLE DOWNLOAD DOCK (NO EDTECH PRICING) ═════════════════════ */}
+      <section id="downloads" className="py-24 px-6 border-t border-white/[0.08] text-center">
+        <div className="max-w-4xl mx-auto space-y-12">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 mb-2 block">
+              Native Downloads
+            </span>
+            <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white mb-4">
+              Get Clarity for Your System.
+            </h2>
+            <p className="text-zinc-400 text-base max-w-lg mx-auto">
+              Optimized desktop executables crafted for speed, offline recovery, and native window persistence.
+            </p>
+          </div>
+
+          {/* Unified Apple-Style Download Deck */}
+          <div className="p-8 rounded-3xl border border-white/[0.12] bg-[#0c0c0e] shadow-2xl text-left">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-8 border-b border-white/[0.08]">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-white text-zinc-950 flex items-center justify-center font-bold">
+                  <Monitor className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Clarity for Windows</h3>
+                  <p className="text-xs text-zinc-400">Windows 10 / 11 (64-bit) • v1.0.0 • 180 MB</p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-3">
+                <a
+                  href="/api/download?type=installer"
+                  className="px-6 py-3 rounded-xl bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-200 transition-all flex items-center gap-2 shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Download Setup (.exe)</span>
+                </a>
+                <a
+                  href="/api/download?type=portable"
+                  className="px-5 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/[0.1] text-xs font-medium flex items-center gap-2 transition-colors"
+                >
+                  <span>Portable (.exe)</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Other Platforms in a Single Minimalist Row */}
+            <div className="pt-6 grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-xl bg-[#141418] border border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Laptop className="w-4 h-4 text-zinc-400" />
+                  <span className="font-medium text-white">macOS Universal</span>
+                </div>
+                <Link href="/chat" className="text-zinc-400 hover:text-white underline underline-offset-4">
+                  .dmg
+                </Link>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#141418] border border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Terminal className="w-4 h-4 text-zinc-400" />
+                  <span className="font-medium text-white">Linux Package</span>
+                </div>
+                <Link href="/chat" className="text-zinc-400 hover:text-white underline underline-offset-4">
+                  .AppImage
+                </Link>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#141418] border border-white/[0.06] flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <Globe className="w-4 h-4 text-zinc-400" />
+                  <span className="font-medium text-white">Cloud Web App</span>
+                </div>
+                <Link href="/chat" className="text-zinc-400 hover:text-white underline underline-offset-4">
+                  Instant Access
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═════════════════════ DEVELOPER & VISION STATEMENT ═════════════════════ */}
+      <section className="py-24 px-6 border-t border-white/[0.08] bg-[#050507] text-center">
+        <div className="max-w-3xl mx-auto space-y-6">
           <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400 block">
-            Crafted for Thinkers & Builders
+            Crafted for Builders
           </span>
-          <h2 className="text-2xl sm:text-4xl font-bold tracking-tight text-white">
-            Designed & Developed by Shivam Kothekar.
+          <h2 className="text-3xl sm:text-5xl font-semibold tracking-tight text-white">
+            Clarity in devs. <br />
+            Built by Shivam Kothekar.
           </h2>
-          <p className="text-sm text-zinc-400 max-w-xl mx-auto leading-relaxed">
-            Clarity was built to restore signal and focus to modern computing. Fast, private, and distraction-free
-            intelligence for developers, researchers, and creators.
+          <p className="text-sm sm:text-base text-zinc-400 leading-relaxed max-w-xl mx-auto">
+            "We built Clarity because modern AI tools were becoming too noisy, cluttered, and distracted. Our mission is
+            simple: deliver pure clarity in thought, pure clarity in response, and empowering cowork capabilities to
+            every developer."
           </p>
           <div className="pt-4 flex items-center justify-center gap-4">
             <Link
               href="/signup"
-              className="px-6 py-3 rounded-xl bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-200 transition-all"
+              className="px-6 py-3 rounded-xl bg-white text-zinc-950 font-semibold text-sm hover:bg-zinc-200 transition-all shadow-sm"
             >
               Get Started for Free
             </Link>
@@ -533,7 +538,7 @@ export default function ProfessionalLandingPage() {
               href="https://github.com/ShivamSk07/Mindmate"
               target="_blank"
               rel="noreferrer"
-              className="px-6 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-sm font-medium transition-colors"
+              className="px-6 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-white/[0.1] text-sm font-medium transition-colors"
             >
               View on GitHub
             </a>
@@ -542,15 +547,15 @@ export default function ProfessionalLandingPage() {
       </section>
 
       {/* ═════════════════════ FOOTER ═════════════════════ */}
-      <footer className="py-12 px-6 bg-[#070709] text-xs text-zinc-500">
+      <footer className="py-12 px-6 border-t border-white/[0.08] bg-[#000000] text-xs text-zinc-500">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3">
             <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center p-0.5">
               <img src="/img/logo.png" alt="Logo" className="w-full h-full object-contain" />
             </div>
-            <span className="font-semibold text-zinc-300">Clarity AI Workspace</span>
+            <span className="font-semibold text-zinc-300">Clarity</span>
             <span>—</span>
-            <span>By <strong className="text-zinc-300 font-medium">Shivam Kothekar</strong></span>
+            <span>Clarity in devs by <strong className="text-zinc-300 font-medium">Shivam Kothekar</strong></span>
           </div>
 
           <div className="flex items-center gap-6">
