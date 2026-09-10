@@ -12,6 +12,7 @@ import {
   Languages,
   ArrowRight,
   Share2,
+  X,
   GitFork,
   ExternalLink,
 } from "lucide-react";
