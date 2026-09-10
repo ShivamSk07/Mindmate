@@ -11,14 +11,7 @@ import {
   CheckCircle2,
   Languages,
   ArrowRight,
-  Search,
   Share2,
-  ChevronUp,
-  ChevronDown,
-  X,
-  Code,
-  Bot,
-  Globe,
   GitFork,
   ExternalLink,
 } from "lucide-react";
@@ -162,79 +155,11 @@ export function ChatWindow({
   const [selectionPos, setSelectionPos] = useState<{ top: number; left: number } | null>(null);
   const [copiedSelection, setCopiedSelection] = useState(false);
 
-  // In-Chat Search State (Ctrl+F)
-  const [showSearch, setShowSearch] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchFilter, setSearchFilter] = useState<"all" | "code" | "ai">("all");
-  const [currentMatchIndex, setCurrentMatchIndex] = useState(0);
-  const searchInputRef = useRef<HTMLInputElement>(null);
-
   // Share Modal State
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareUrl, setShareUrl] = useState("");
   const [isSharing, setIsSharing] = useState(false);
   const [copiedShare, setCopiedShare] = useState(false);
-
-  // Filter matching messages
-  const matchingMessages = messages.filter((m) => {
-    if (!searchQuery.trim()) return false;
-    const content = m.content.toLowerCase();
-    const query = searchQuery.toLowerCase().trim();
-
-    if (!content.includes(query)) return false;
-
-    if (searchFilter === "code") {
-      return content.includes("```") || /\b(function|const|import|class|def|interface)\b/.test(content);
-    }
-    if (searchFilter === "ai") {
-      return m.role === "assistant";
-    }
-    return true;
-  });
-
-  const jumpToMatch = (index: number) => {
-    if (matchingMessages.length === 0) return;
-    const target = matchingMessages[index];
-    if (!target) return;
-
-    setCurrentMatchIndex(index);
-    const el = document.getElementById(`chat-msg-${target.id}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-      el.classList.add("ring-1", "ring-white/40", "bg-white/[0.06]", "rounded-2xl");
-      setTimeout(() => {
-        el.classList.remove("ring-1", "ring-white/40", "bg-white/[0.06]");
-      }, 2500);
-    }
-  };
-
-  const handleNextMatch = () => {
-    if (matchingMessages.length === 0) return;
-    const nextIdx = (currentMatchIndex + 1) % matchingMessages.length;
-    jumpToMatch(nextIdx);
-  };
-
-  const handlePrevMatch = () => {
-    if (matchingMessages.length === 0) return;
-    const prevIdx = (currentMatchIndex - 1 + matchingMessages.length) % matchingMessages.length;
-    jumpToMatch(prevIdx);
-  };
-
-  // Keyboard shortcut Ctrl+F / Cmd+F listener
-  useEffect(() => {
-    const handleKeyDown = (e: globalThis.KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        setShowSearch(true);
-        setTimeout(() => searchInputRef.current?.focus(), 50);
-      } else if (e.key === "Escape" && showSearch) {
-        setShowSearch(false);
-        setSearchQuery("");
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [showSearch]);
 
   const handleShareSession = async () => {
     if (!sessionId) {
@@ -258,13 +183,6 @@ export function ChatWindow({
     }
   };
 
-  useEffect(() => {
-    if (matchingMessages.length > 0) {
-      jumpToMatch(0);
-    } else {
-      setCurrentMatchIndex(0);
-    }
-  }, [searchQuery, searchFilter]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -362,28 +280,9 @@ export function ChatWindow({
   return (
     <div className="flex flex-col h-full bg-[var(--bg-main)] main-chat overflow-hidden relative">
 
-      {/* Top Floating Control Bar — Search & Share */}
-      <div className="absolute top-3 right-4 z-30 flex items-center gap-1.5">
-        <button
-          onClick={() => {
-            setShowSearch((prev) => !prev);
-            if (!showSearch) setTimeout(() => searchInputRef.current?.focus(), 50);
-          }}
-          title="Search in conversation (Ctrl+F)"
-          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-medium transition-all backdrop-blur-md shadow-lg ${
-            showSearch
-              ? "bg-white text-black border-white/20 shadow-md font-semibold"
-              : "bg-[#0c0c10]/80 hover:bg-zinc-800/90 text-zinc-400 hover:text-white border-zinc-800/90"
-          }`}
-        >
-          <Search size={13} />
-          <span className="hidden sm:inline text-[11px]">Find</span>
-          <kbd className="hidden md:inline-block text-[9px] px-1.5 py-0.5 rounded bg-black/40 text-zinc-400 font-mono">
-            Ctrl+F
-          </kbd>
-        </button>
-
-        {sessionId && (
+      {/* Top Floating Control Bar — Share */}
+      {sessionId && (
+        <div className="absolute top-3 right-4 z-30 flex items-center gap-1.5">
           <button
             onClick={handleShareSession}
             disabled={isSharing}
@@ -393,109 +292,6 @@ export function ChatWindow({
             <Share2 size={13} className={isSharing ? "animate-spin" : ""} />
             <span className="hidden sm:inline text-[11px]">{isSharing ? "Sharing..." : "Share"}</span>
           </button>
-        )}
-      </div>
-
-      {/* Floating In-Chat Search Toolbar (Ctrl+F) */}
-      {showSearch && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 w-[95%] max-w-lg bg-[#0e0e14]/95 backdrop-blur-2xl border border-zinc-700/80 rounded-2xl shadow-2xl p-2.5 animate-fade-in flex flex-col gap-2">
-          <div className="flex items-center gap-2">
-            <Search size={14} className="text-zinc-400 flex-shrink-0 ml-1" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  if (e.shiftKey) handlePrevMatch();
-                  else handleNextMatch();
-                } else if (e.key === "Escape") {
-                  setShowSearch(false);
-                  setSearchQuery("");
-                }
-              }}
-              placeholder="Find in this chat..."
-              className="flex-1 bg-transparent text-xs text-white placeholder-zinc-500 outline-none"
-            />
-
-            {/* Match Counter */}
-            {searchQuery.trim() && (
-              <span className="text-[11px] font-mono text-zinc-300 px-1.5 py-0.5 rounded bg-zinc-800/80 border border-zinc-700/50">
-                {matchingMessages.length > 0
-                  ? `${currentMatchIndex + 1} / ${matchingMessages.length}`
-                  : "0 matches"}
-              </span>
-            )}
-
-            {/* Stepper Navigation */}
-            <div className="flex items-center gap-0.5 border-l border-zinc-800 pl-1.5">
-              <button
-                onClick={handlePrevMatch}
-                disabled={matchingMessages.length <= 1}
-                title="Previous Match (Shift+Enter)"
-                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition-colors"
-              >
-                <ChevronUp size={14} />
-              </button>
-              <button
-                onClick={handleNextMatch}
-                disabled={matchingMessages.length <= 1}
-                title="Next Match (Enter)"
-                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 disabled:opacity-30 transition-colors"
-              >
-                <ChevronDown size={14} />
-              </button>
-              <button
-                onClick={() => {
-                  setShowSearch(false);
-                  setSearchQuery("");
-                }}
-                className="p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors ml-1"
-                title="Close Search (Esc)"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          </div>
-
-          {/* Quick Filter Pills */}
-          <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-800/60 text-[10px]">
-            <span className="text-zinc-500 px-1">Filter:</span>
-            <button
-              onClick={() => setSearchFilter("all")}
-              className={`px-2.5 py-1 rounded-lg transition-colors text-xs ${
-                searchFilter === "all"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60"
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setSearchFilter("code")}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors text-xs ${
-                searchFilter === "code"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60"
-              }`}
-            >
-              <Code size={11} />
-              <span>Code Blocks</span>
-            </button>
-            <button
-              onClick={() => setSearchFilter("ai")}
-              className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors text-xs ${
-                searchFilter === "ai"
-                  ? "bg-white text-black font-semibold shadow-sm"
-                  : "bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800/60"
-              }`}
-            >
-              <Bot size={11} />
-              <span>AI Only</span>
-            </button>
-          </div>
         </div>
       )}
 

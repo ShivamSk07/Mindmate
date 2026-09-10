@@ -208,7 +208,8 @@ export function Sidebar({
         {/* Header Logo + Collapse button */}
         <div className="px-5 py-4 flex items-center justify-between border-b border-white/[0.05]">
           <div className="flex items-center gap-2.5 tracking-tight text-white">
-            <img src="/img/branding.png" alt="Clarity" className="h-6 object-contain brightness-0 invert opacity-90" />
+            <img src="/img/logo.png" alt="Clarity" className="w-6 h-6 object-contain" />
+            <span className="text-sm font-semibold tracking-tight text-white">Clarity</span>
           </div>
           <div className="flex items-center gap-1">
             {/* Desktop collapse button */}
