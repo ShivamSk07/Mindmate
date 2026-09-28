@@ -806,20 +806,33 @@ export default function ClarityLandingPage() {
               </div>
             </div>
 
-            {/* Right: Founder Photo */}
+            {/* Right: Architectural Philosophy Card */}
             <div className="lg:col-span-6 relative reveal-on-scroll">
-              <div className="relative rounded-2xl overflow-hidden border border-white/15 shadow-[0_20px_80px_rgba(0,0,0,0.9)] aspect-[4/3] group">
-                <img
-                  src="/img/builder-shivam.jpg"
-                  alt="Shivam Kothekar — Founder, Clarity"
-                  className="w-full h-full object-cover filter grayscale contrast-110 brightness-95 group-hover:scale-[1.02] transition-transform duration-700"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
-                <div className="absolute bottom-6 left-6 right-6 z-10 text-left">
-                  <span className="text-zinc-500 text-3xl font-serif leading-none block mb-1">"</span>
-                  <blockquote className="font-serif text-xl text-white font-normal leading-snug">
-                    "Better tools<br />create brighter days."
+              <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-[#09090d]/80 backdrop-blur-xl shadow-[0_20px_80px_rgba(0,0,0,0.9)] aspect-[4/3] p-8 md:p-12 flex flex-col justify-between group">
+                {/* Ambient glow and subtle branding watermark */}
+                <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-white/[0.05] via-transparent to-transparent rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-10 -right-10 w-52 h-52 opacity-[0.05] pointer-events-none group-hover:scale-105 transition-transform duration-700">
+                  <img src="/img/logo.png" alt="Clarity" className="w-full h-full object-contain filter grayscale" />
+                </div>
+
+                <div className="relative z-10 flex items-center justify-between">
+                  <span className="text-[11px] font-mono tracking-[0.25em] text-zinc-500 uppercase">PHILOSOPHY</span>
+                  <span className="text-zinc-600 font-mono text-xs">05 // ESSENCE</span>
+                </div>
+
+                <div className="relative z-10 my-auto py-6">
+                  <span className="text-zinc-600 text-4xl font-serif leading-none block mb-3">“</span>
+                  <blockquote className="font-serif text-2xl md:text-3xl text-white font-normal leading-snug">
+                    Better tools<br />
+                    <span className="text-zinc-400">create brighter days.</span>
                   </blockquote>
+                </div>
+
+                <div className="relative z-10 flex items-center justify-between pt-6 border-t border-white/[0.06]">
+                  <div className="text-[11px] font-mono tracking-widest text-zinc-400 uppercase">
+                    ENGINEERED FOR THINKERS
+                  </div>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500/70 animate-pulse" />
                 </div>
               </div>
               <div className="mt-4 text-right text-[10px] font-mono tracking-[0.25em] text-zinc-600 uppercase">
@@ -886,10 +899,10 @@ export default function ClarityLandingPage() {
                   <div className="w-7 h-7 rounded-full border border-black bg-zinc-700 overflow-hidden">
                     <img src="/img/avatars.jpg" alt="Member" className="w-full h-full object-cover filter grayscale" />
                   </div>
-                  <div className="w-7 h-7 rounded-full border border-black bg-zinc-600 overflow-hidden">
-                    <img src="/img/builder-shivam.jpg" alt="Member" className="w-full h-full object-cover filter grayscale" />
+                  <div className="w-7 h-7 rounded-full border border-black bg-zinc-800 flex items-center justify-center text-[10px] text-zinc-400 font-medium">
+                    <Users size={12} className="text-zinc-400" />
                   </div>
-                  <div className="w-7 h-7 rounded-full border border-black bg-zinc-800 flex items-center justify-center text-[10px] text-white font-medium">
+                  <div className="w-7 h-7 rounded-full border border-black bg-zinc-900 flex items-center justify-center text-[10px] text-zinc-300 font-medium">
                     +
                   </div>
                 </div>

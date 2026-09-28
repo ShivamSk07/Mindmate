@@ -269,10 +269,10 @@ function createWindow() {
 
   // Show window immediately once local splash is ready
   mainWindow.once("ready-to-show", () => {
-    mainWindow.show();
     if (isMaximized) {
       mainWindow.maximize();
     }
+    mainWindow.show();
     mainWindow.focus();
 
     // 2. Smoothly transition to live workspace or pending deep link
