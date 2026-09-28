@@ -16,6 +16,9 @@ export async function GET() {
   let liName: string | null = null;
   let vercelUsername: string | null = null;
 
+  let isCanvaConnected = true;
+  let canvaName: string | null = "Canva Design Studio";
+
   try {
     let profile = null;
     if (user) {
@@ -40,9 +43,11 @@ export async function GET() {
       isLinkedInConnected = Boolean(profile.linkedinConnected);
       isVercelConnected = Boolean(profile.vercelConnected);
       isMcpConnected = Boolean(profile.mcpConnected);
+      isCanvaConnected = Boolean((profile as any).canvaConnected ?? true);
       ghUsername = profile.githubUsername;
       liName = profile.linkedinName;
       vercelUsername = profile.vercelUsername;
+      canvaName = (profile as any).canvaUserDisplayName || "Canva Design Studio";
     }
 
     // Check if any other profile in single-user dev environment has active integrations
@@ -82,6 +87,14 @@ export async function GET() {
   const mcpServers = listMCPServers();
 
   const integrations = [
+    {
+      id: "canva",
+      name: "Canva",
+      icon: "Palette",
+      connected: isCanvaConnected,
+      username: isCanvaConnected ? (canvaName || "Canva Workspace") : null,
+      details: "Design Generator & Autofill",
+    },
     {
       id: "github",
       name: "GitHub",

@@ -19,6 +19,10 @@ import {
   vercel_list_projects,
   vercel_list_deployments,
 } from "./vercel";
+import {
+  canva_create_design,
+  CanvaDesignSpec,
+} from "./canva";
 import { listMCPServers } from "./mcp";
 import { searchWeb, SearchResult } from "./search";
 import { getCerebrasClient, MODEL } from "./cerebras";
@@ -39,7 +43,7 @@ export interface ActivityItem {
   id: string;
   timestamp: string;
   type: "connect" | "tool_call" | "reasoning" | "approval_request" | "success" | "error";
-  category?: "github" | "linkedin" | "vercel" | "mcp" | "browser" | "system";
+  category?: "github" | "linkedin" | "vercel" | "canva" | "mcp" | "browser" | "system";
   title: string;
   description: string;
   toolName?: string;
@@ -49,7 +53,7 @@ export interface ActivityItem {
 
 export interface PendingApproval {
   toolName: string;
-  category: "github" | "linkedin" | "vercel" | "mcp" | "browser";
+  category: "github" | "linkedin" | "vercel" | "canva" | "mcp" | "browser";
   params: any;
   title: string;
   description: string;
@@ -59,7 +63,7 @@ export interface PendingApproval {
 export interface Artifact {
   id: string;
   title: string;
-  type: "report" | "plan" | "linkedin_post" | "code_diff" | "review" | "visualization" | "vercel_deployment";
+  type: "report" | "plan" | "linkedin_post" | "code_diff" | "review" | "visualization" | "vercel_deployment" | "canva_design";
   content: string;
   createdAt: string;
 }
@@ -158,6 +162,12 @@ export function detectToolRequirements(userQuery: string) {
     /\b(linkedin|linkdin|linked in|linkedin post|post on linkedin|post to linkedin|share on linkedin|thought leadership|hiring post|connection note|professional update|linkedin profile)\b/i.test(q) ||
     q.includes("@linkedin");
 
+  // Canva keywords & intents
+  const isCanva =
+    /\b(canva|design|instagram post|poster|banner|thumbnail|flyer|social media post|graphic|infographic|presentation slide|carousel|ad creative|card design|template)\b/i.test(q) ||
+    q.includes("@canva") ||
+    q.includes("@design");
+
   // Vercel keywords & intents
   const isVercel =
     /\b(vercel|deploy|host|hosting|live url|publish online|deploy on vercel|deploy to vercel|host my site|host my app)\b/i.test(q) ||
@@ -175,7 +185,7 @@ export function detectToolRequirements(userQuery: string) {
     q.includes("@browser") ||
     q.includes("@web");
 
-  const anyWorkspaceTool = isGitHub || isLinkedIn || isVercel || isMCP;
+  const anyWorkspaceTool = isGitHub || isLinkedIn || isVercel || isCanva || isMCP;
 
   // Run web search ONLY IF explicitly requested OR if no workspace tools are matched
   const isWeb = isExplicitWeb || !anyWorkspaceTool;
@@ -184,6 +194,7 @@ export function detectToolRequirements(userQuery: string) {
     needsGitHub: isGitHub,
     needsLinkedIn: isLinkedIn,
     needsVercel: isVercel,
+    needsCanva: isCanva,
     needsMCP: isMCP,
     needsBrowser: isWeb,
   };
@@ -253,6 +264,7 @@ export async function createAndRunTask(
     initialPlan.push({ id: "step_init", title: "Analyzing request", status: "completed" });
     if (flags.needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub Repositories", status: "waiting" });
     if (flags.needsLinkedIn) initialPlan.push({ id: "step_linkedin", title: "LinkedIn Network", status: "waiting" });
+    if (flags.needsCanva) initialPlan.push({ id: "step_canva", title: "Canva Design Studio", status: "waiting" });
     if (flags.needsVercel) initialPlan.push({ id: "step_vercel", title: "Vercel Deployment", status: "waiting" });
     if (flags.needsBrowser) initialPlan.push({ id: "step_browser", title: "Live Web Search", status: "waiting" });
     if (flags.needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP Servers", status: "waiting" });
@@ -502,6 +514,45 @@ Rules:
     }
 
     setStep(task, "step_linkedin", "completed");
+    await delay(30);
+  }
+
+  // ── CANVA DESIGN STUDIO ──────────────────────────────────────
+  if (flags.needsCanva) {
+    setStep(task, "step_canva", "running");
+    addLog(task, "tool_call", "Generating Canva Design Spec", `"${task.userQuery.slice(0, 60)}"`, "canva", { toolName: "canva_create_design" });
+    await delay(50);
+
+    try {
+      const designResult = await canva_create_design(task.userQuery, canvaAccessToken);
+      if (designResult.success) {
+        task.usedTools.push("canva_create_design");
+        addLog(task, "success", `Canva Layout Created: ${designResult.designSpec.title}`, `${designResult.designSpec.category} (${designResult.designSpec.width}x${designResult.designSpec.height}px)`, "canva");
+
+        canvaText = `CANVA DESIGN SPECIFICATION & DIRECT WORKSPACE LAUNCHER:
+Title: ${designResult.designSpec.title}
+Format: ${designResult.designSpec.category} (${designResult.designSpec.width}x${designResult.designSpec.height}px)
+Palette: Primary ${designResult.designSpec.palette.primary}, Secondary ${designResult.designSpec.palette.secondary}, Accent ${designResult.designSpec.palette.accent}, Background ${designResult.designSpec.palette.background}, Text ${designResult.designSpec.palette.text}
+Typography: Heading "${designResult.designSpec.typography.headingFont}", Body "${designResult.designSpec.typography.bodyFont}"
+Main Headline: "${designResult.designSpec.content.headline}"
+Visual Elements: ${designResult.designSpec.visualElements.join(", ")}
+Direct One-Click Canva Launcher: ${designResult.editUrl}`;
+
+        // Add rich Canva Design Artifact
+        task.artifacts.unshift({
+          id: `art_canva_${Date.now()}`,
+          title: `Canva: ${designResult.designSpec.title}`,
+          type: "canva_design",
+          content: JSON.stringify(designResult.designSpec),
+          createdAt: ts(),
+        });
+      }
+    } catch (e: any) {
+      addLog(task, "error", "Canva design generation failed", e.message || "Unknown error", "canva");
+      canvaText = `⚠️ Canva Generation Notice: ${e.message || "Drafted design specs"}`;
+    }
+
+    setStep(task, "step_canva", "completed");
     await delay(30);
   }
 
@@ -770,6 +821,7 @@ Return ONLY the raw HTML code with inline CSS styling in <style> and JavaScript 
   await finalizeReport(task, {
     owner,
     repo,
+    canvaText,
     linkedinText,
     githubText,
     vercelText,
@@ -786,6 +838,7 @@ async function finalizeReport(
   ctx: {
     owner: string;
     repo: string;
+    canvaText?: string;
     linkedinText: string;
     githubText: string;
     vercelText?: string;
@@ -799,15 +852,17 @@ async function finalizeReport(
 
   const contextParts: string[] = [];
   if (ctx.webText) contextParts.push(`WEB:\n${ctx.webText}`);
+  if (ctx.canvaText) contextParts.push(`CANVA DESIGN:\n${ctx.canvaText}`);
   if (ctx.linkedinText) contextParts.push(`LINKEDIN:\n${ctx.linkedinText}`);
   if (ctx.githubText) contextParts.push(`GITHUB:\n${ctx.githubText}`);
   if (ctx.vercelText) contextParts.push(`VERCEL DEPLOYMENT:\n${ctx.vercelText}`);
   if (ctx.writeActionResult) contextParts.push(`ACTION RESULT:\n${ctx.writeActionResult}`);
 
-  const sysPrompt = `You are Clarity, an autonomous AI workspace agent specializing in GitHub codebase analysis, LinkedIn content & social growth automation, Vercel cloud hosting & deployments, and live web intelligence.
+  const sysPrompt = `You are Clarity, an autonomous AI workspace agent specializing in Canva visual design generation, GitHub codebase analysis, LinkedIn content & social growth automation, Vercel cloud hosting & deployments, and live web intelligence.
 Answer the user's request directly and clearly using the retrieved data below.
-Format the response with clean markdown: use headers, bullet lists, code blocks, or links where relevant.
-Be specific, factual, engaging, and concise. Do not use filler phrases.
+Format the response with clean markdown: use headers, bullet lists, design color palette tags, typography recommendations, and prominent direct links.
+If a Canva design was generated, prominently feature the direct one-click Canva Workspace Launcher link and design breakdown.
+Be specific, visual, engaging, and concise. Do not use filler phrases.
 If a live Vercel URL was generated, prominently feature it as a clickable markdown link.
 
 CRITICAL FORMATTING RULES:

@@ -11,6 +11,7 @@ import {
   Loader2,
   Check,
   AlertCircle,
+  Palette,
 } from "lucide-react";
 
 export interface IntegrationItem {
@@ -43,6 +44,39 @@ export default function IntegrationsModal({
   const githubIntegration = integrations.find((i) => i.id === "github");
   const linkedinIntegration = integrations.find((i) => i.id === "linkedin");
   const vercelIntegration = integrations.find((i) => i.id === "vercel");
+  const canvaIntegration = integrations.find((i) => i.id === "canva");
+
+  const [canvaApiKey, setCanvaApiKey] = useState("");
+
+  const handleToggleCanva = async (connect: boolean) => {
+    setIsProcessing(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/cowork/canva/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: connect ? "connect" : "disconnect",
+          token: canvaApiKey.trim() || undefined,
+          displayName: "Canva Design Studio",
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setMessage({
+          type: "success",
+          text: connect ? "Canva connected successfully" : "Canva disconnected",
+        });
+        onStatusChange();
+      } else {
+        setMessage({ type: "error", text: data.error || "Failed to update Canva" });
+      }
+    } catch (e: any) {
+      setMessage({ type: "error", text: e.message || "Failed to update Canva" });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   const handleDisconnectGitHub = async () => {
     setIsProcessing(true);
@@ -114,6 +148,7 @@ export default function IntegrationsModal({
   };
 
   const INTEGRATION_TABS = [
+    { id: "canva", name: "Canva Studio", icon: Palette, connected: !!canvaIntegration?.connected },
     { id: "github", name: "GitHub", icon: Github, connected: !!githubIntegration?.connected },
     { id: "linkedin", name: "LinkedIn", icon: Linkedin, connected: !!linkedinIntegration?.connected },
     { id: "vercel", name: "Vercel", icon: Triangle, connected: !!vercelIntegration?.connected },
@@ -181,6 +216,65 @@ export default function IntegrationsModal({
                 >
                   {message.type === "success" ? <Check size={13} /> : <AlertCircle size={13} />}
                   <span>{message.text}</span>
+                </div>
+              )}
+
+              {selectedTab === "canva" && (
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-md bg-gradient-to-tr from-[#00C4CC] to-[#7D2AE8] flex items-center justify-center text-white">
+                        <Palette size={12} />
+                      </div>
+                      <h3 className="text-xs font-semibold text-zinc-200">Canva Design Studio</h3>
+                    </div>
+                    <p className="text-[11px] text-zinc-500 mt-1">
+                      Allows CoWork to generate social media banners, Instagram posts, posters, and pitch decks with 1-click Canva launch.
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 rounded-lg bg-zinc-950 border border-zinc-900 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-zinc-600 font-medium">Status</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              canvaIntegration?.connected ? "bg-emerald-500" : "bg-zinc-700"
+                            }`}
+                          />
+                          <span className="text-xs font-medium text-zinc-300">
+                            {canvaIntegration?.connected ? "Ready & Enabled" : "Disconnected"}
+                          </span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => handleToggleCanva(!canvaIntegration?.connected)}
+                        disabled={isProcessing}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
+                          canvaIntegration?.connected
+                            ? "bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-red-400"
+                            : "bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] hover:opacity-90 text-white"
+                        }`}
+                      >
+                        {isProcessing ? (
+                          <Loader2 size={12} className="animate-spin" />
+                        ) : canvaIntegration?.connected ? (
+                          "Disconnect"
+                        ) : (
+                          "Enable Canva"
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="pt-2 border-t border-zinc-900/60 text-[11px] text-zinc-500 space-y-1">
+                      <p className="text-zinc-400 font-medium">Supported Formats:</p>
+                      <p>• Instagram Posts (1080x1080) & Stories (1080x1920)</p>
+                      <p>• YouTube Thumbnails & Social Banners (1200x630)</p>
+                      <p>• Presentations, Marketing Posters & Business Flyers</p>
+                    </div>
+                  </div>
                 </div>
               )}
 

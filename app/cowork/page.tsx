@@ -28,6 +28,8 @@ import {
   Loader2,
   Circle,
   Download,
+  Palette,
+  ExternalLink,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -107,6 +109,7 @@ const TOOL_COLOR: Record<string, string> = {
   github: "text-zinc-300",
   linkedin: "text-[#0a66c2]",
   vercel: "text-zinc-100",
+  canva: "text-[#00C4CC]",
   mcp: "text-zinc-300",
   browser: "text-zinc-300",
   system: "text-zinc-500",
@@ -116,12 +119,14 @@ const TOOL_DOT: Record<string, string> = {
   github: "bg-violet-400",
   linkedin: "bg-[#0a66c2]",
   vercel: "bg-zinc-100",
+  canva: "bg-[#00C4CC]",
   mcp: "bg-amber-400",
   browser: "bg-sky-400",
   system: "bg-zinc-500",
 };
 
 const INTEGRATION_ICON: Record<string, any> = {
+  canva: Palette,
   github: Github,
   linkedin: Linkedin,
   vercel: Triangle,
@@ -825,7 +830,9 @@ export default function CoworkPage() {
 
               {/* Canvas body */}
               <div className="flex-1 overflow-hidden relative flex flex-col min-h-0">
-                {activeArtifact?.type === "visualization" ? (
+                {activeArtifact?.type === "canva_design" ? (
+                  <CanvaDesignViewer content={activeArtifact.content} />
+                ) : activeArtifact?.type === "visualization" ? (
                   <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#0a0a0b] relative">
                     <MermaidViewer
                       code={activeArtifact.content}
@@ -963,6 +970,187 @@ export default function CoworkPage() {
             </section>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function CanvaDesignViewer({ content }: { content: string }) {
+  let spec: any = null;
+  try {
+    spec = JSON.parse(content);
+  } catch (e) {
+    return (
+      <div className="p-8 text-zinc-400">
+        <p>Design Specification:</p>
+        <pre className="mt-2 font-mono text-xs">{content}</pre>
+      </div>
+    );
+  }
+
+  const [copiedColor, setCopiedColor] = useState<string | null>(null);
+  const [copiedCopy, setCopiedCopy] = useState(false);
+
+  const copyHex = (hex: string) => {
+    navigator.clipboard.writeText(hex);
+    setCopiedColor(hex);
+    setTimeout(() => setCopiedColor(null), 2000);
+  };
+
+  const copyAllCopy = () => {
+    const text = [
+      spec.content?.headline ? `Headline: ${spec.content.headline}` : "",
+      spec.content?.subheadline ? `Subheadline: ${spec.content.subheadline}` : "",
+      spec.content?.bodyText ? `Body: ${spec.content.bodyText}` : "",
+      spec.content?.callToAction ? `CTA: ${spec.content.callToAction}` : "",
+    ].filter(Boolean).join("\n");
+    navigator.clipboard.writeText(text);
+    setCopiedCopy(true);
+    setTimeout(() => setCopiedCopy(false), 2000);
+  };
+
+  return (
+    <div className="flex-1 overflow-y-auto w-full h-full p-6 md:p-8 space-y-6">
+      {/* Top Banner with Direct Canva Link */}
+      <div className="p-5 rounded-xl bg-gradient-to-r from-[#00C4CC]/15 via-[#7D2AE8]/15 to-transparent border border-[#00C4CC]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] text-white">
+              Canva Connected
+            </span>
+            <span className="text-xs text-zinc-400">
+              {spec.category || "Design"} • {spec.width}x{spec.height}px
+            </span>
+          </div>
+          <h2 className="text-base font-semibold text-white">{spec.title}</h2>
+        </div>
+
+        <a
+          href={spec.canvaLaunchUrl || "https://www.canva.com"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] text-white text-xs font-medium hover:opacity-95 transition-all shadow-[0_4px_20px_rgba(0,196,204,0.3)] active:scale-95 flex-shrink-0"
+        >
+          <Palette size={14} />
+          <span>Open in Canva Workspace</span>
+          <ExternalLink size={13} />
+        </a>
+      </div>
+
+      {/* Visual Mock Canvas */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left: Design Layout Card */}
+        <div
+          className="lg:col-span-7 rounded-xl border border-zinc-800 p-6 md:p-8 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[380px]"
+          style={{ backgroundColor: spec.palette?.background || "#09090b" }}
+        >
+          <div
+            className="absolute top-0 right-0 w-64 h-64 opacity-25 pointer-events-none rounded-full blur-3xl"
+            style={{ backgroundColor: spec.palette?.primary || "#00C4CC" }}
+          />
+          
+          <div className="relative z-10 flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+            <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400">
+              {spec.category}
+            </span>
+            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: spec.palette?.primary || "#00C4CC" }} />
+          </div>
+
+          <div className="relative z-10 space-y-3 my-auto py-4">
+            <h1
+              className="text-2xl md:text-3xl font-bold tracking-tight leading-tight"
+              style={{ color: spec.palette?.text || "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+            >
+              {spec.content?.headline || spec.title}
+            </h1>
+            {spec.content?.subheadline && (
+              <p className="text-sm md:text-base text-zinc-300 font-normal leading-relaxed">
+                {spec.content.subheadline}
+              </p>
+            )}
+          </div>
+
+          <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between">
+            <span
+              className="px-4 py-1.5 rounded-full text-xs font-semibold shadow"
+              style={{
+                backgroundColor: spec.palette?.primary || "#00C4CC",
+                color: "#000000",
+              }}
+            >
+              {spec.content?.callToAction || "Get Started"}
+            </span>
+            <span className="text-[10px] font-mono text-zinc-500 uppercase">
+              {spec.width} × {spec.height} PX
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Design Specs & Color Palette */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* Color Palette */}
+          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-900 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-200">Color Palette</span>
+              <span className="text-[10px] text-zinc-500 font-mono">Click hex to copy</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              {spec.palette && Object.entries(spec.palette).map(([key, hex]: any) => (
+                <button
+                  key={key}
+                  onClick={() => copyHex(hex)}
+                  className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 flex items-center gap-2.5 text-left transition-colors group"
+                >
+                  <div className="w-4 h-4 rounded-full border border-white/20 flex-shrink-0 shadow-sm" style={{ backgroundColor: hex }} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10px] uppercase text-zinc-500 capitalize">{key}</p>
+                    <p className="text-xs font-mono text-zinc-200 truncate group-hover:text-white">
+                      {copiedColor === hex ? "✓ Copied" : hex}
+                    </p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Typography & Elements */}
+          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-900 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-zinc-200">Typography & Assets</span>
+              <button
+                onClick={copyAllCopy}
+                className="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+              >
+                {copiedCopy ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                <span>{copiedCopy ? "Copied" : "Copy Copywriting"}</span>
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <div className="p-2 rounded bg-zinc-900 border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase block">Heading Font</span>
+                <span className="text-zinc-200 font-medium">{spec.typography?.headingFont || "Plus Jakarta Sans"}</span>
+              </div>
+              <div className="p-2 rounded bg-zinc-900 border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 uppercase block">Body Font</span>
+                <span className="text-zinc-200 font-medium">{spec.typography?.bodyFont || "Inter / Roboto"}</span>
+              </div>
+            </div>
+
+            {spec.visualElements && spec.visualElements.length > 0 && (
+              <div className="pt-2 border-t border-zinc-900 text-[11px] text-zinc-400 space-y-1">
+                <span className="text-zinc-500 font-medium block">Visual Elements:</span>
+                {spec.visualElements.map((el: string, idx: number) => (
+                  <p key={idx} className="flex items-center gap-1.5 text-zinc-300">
+                    <span className="w-1 h-1 rounded-full bg-violet-400" />
+                    <span>{el}</span>
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
