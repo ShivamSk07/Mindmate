@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     return sendRedirect(`/cowork?error=${encodeURIComponent(error || "Canva authorization failed")}`);
   }
 
-  const clientId = process.env.CANVA_CLIENT_ID || process.env.NEXT_PUBLIC_CANVA_CLIENT_ID || "";
+  const clientId = process.env.CANVA_CLIENT_ID || process.env.NEXT_PUBLIC_CANVA_CLIENT_ID || "OC-AaDoY4HR7fJE";
   const clientSecret = process.env.CANVA_CLIENT_SECRET || "";
   const redirectUri = `${appUrl}/api/auth/canva/callback`;
 

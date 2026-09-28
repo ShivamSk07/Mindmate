@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
   }
 
-  const clientId = process.env.CANVA_CLIENT_ID || process.env.NEXT_PUBLIC_CANVA_CLIENT_ID || "";
+  const clientId = process.env.CANVA_CLIENT_ID || process.env.NEXT_PUBLIC_CANVA_CLIENT_ID || "OC-AaDoY4HR7fJE";
   const redirectUri = encodeURIComponent(`${appUrl}/api/auth/canva/callback`);
 
   // Generate PKCE code_verifier and code_challenge
