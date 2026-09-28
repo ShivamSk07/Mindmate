@@ -411,6 +411,9 @@ function createWindow() {
       url.startsWith("https://github.com/login") ||
       url.startsWith("https://www.linkedin.com/oauth") ||
       url.startsWith("https://vercel.com/oauth") ||
+      url.startsWith("https://www.canva.com/api/oauth") ||
+      url.startsWith("https://canva.com/api/oauth") ||
+      url.startsWith("https://www.canva.com/oauth") ||
       url.includes("indevs.in")
     ) {
       return { action: "allow" };

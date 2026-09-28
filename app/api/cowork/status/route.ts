@@ -16,8 +16,8 @@ export async function GET() {
   let liName: string | null = null;
   let vercelUsername: string | null = null;
 
-  let isCanvaConnected = true;
-  let canvaName: string | null = "Canva Design Studio";
+  let isCanvaConnected = false;
+  let canvaName: string | null = null;
 
   try {
     let profile = null;
@@ -34,7 +34,7 @@ export async function GET() {
 
     if (!profile) {
       profile = await prisma.userProfile.findFirst({
-        where: { OR: [{ githubConnected: true }, { linkedinConnected: true }, { vercelConnected: true }] },
+        where: { OR: [{ githubConnected: true }, { linkedinConnected: true }, { vercelConnected: true }, { canvaConnected: true }] },
       });
     }
 
@@ -43,11 +43,11 @@ export async function GET() {
       isLinkedInConnected = Boolean(profile.linkedinConnected);
       isVercelConnected = Boolean(profile.vercelConnected);
       isMcpConnected = Boolean(profile.mcpConnected);
-      isCanvaConnected = Boolean((profile as any).canvaConnected ?? true);
+      isCanvaConnected = Boolean((profile as any).canvaConnected);
       ghUsername = profile.githubUsername;
       liName = profile.linkedinName;
       vercelUsername = profile.vercelUsername;
-      canvaName = (profile as any).canvaUserDisplayName || "Canva Design Studio";
+      canvaName = (profile as any).canvaUserDisplayName || "Canva Account";
     }
 
     // Check if any other profile in single-user dev environment has active integrations

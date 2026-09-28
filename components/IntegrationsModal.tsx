@@ -229,7 +229,7 @@ export default function IntegrationsModal({
                       <h3 className="text-xs font-semibold text-zinc-200">Canva Design Studio</h3>
                     </div>
                     <p className="text-[11px] text-zinc-500 mt-1">
-                      Allows CoWork to generate social media banners, Instagram posts, posters, and pitch decks with 1-click Canva launch.
+                      Connect your Canva account to create designs, social posts, banners, and slides directly from CoWork.
                     </p>
                   </div>
 
@@ -244,34 +244,62 @@ export default function IntegrationsModal({
                             }`}
                           />
                           <span className="text-xs font-medium text-zinc-300">
-                            {canvaIntegration?.connected ? "Ready & Enabled" : "Disconnected"}
+                            {canvaIntegration?.connected
+                              ? `@${canvaIntegration.username || "Canva Account"} (Connected)`
+                              : "Not Connected"}
                           </span>
                         </div>
                       </div>
 
-                      <button
-                        onClick={() => handleToggleCanva(!canvaIntegration?.connected)}
-                        disabled={isProcessing}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors disabled:opacity-50 ${
-                          canvaIntegration?.connected
-                            ? "bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-red-400"
-                            : "bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] hover:opacity-90 text-white"
-                        }`}
-                      >
-                        {isProcessing ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : canvaIntegration?.connected ? (
-                          "Disconnect"
-                        ) : (
-                          "Enable Canva"
-                        )}
-                      </button>
+                      {canvaIntegration?.connected ? (
+                        <button
+                          onClick={() => handleToggleCanva(false)}
+                          disabled={isProcessing}
+                          className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-300 hover:text-red-400 transition-colors disabled:opacity-50"
+                        >
+                          {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Disconnect"}
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <a
+                            href="/api/auth/canva"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] hover:opacity-90 text-white text-xs font-medium transition-opacity shadow-sm"
+                          >
+                            <Palette size={12} />
+                            <span>Connect Canva OAuth</span>
+                          </a>
+                        </div>
+                      )}
                     </div>
 
+                    {!canvaIntegration?.connected && (
+                      <div className="pt-2 border-t border-zinc-900/60 space-y-2">
+                        <label className="text-[11px] text-zinc-400 block font-medium">
+                          Or connect with Canva API Token / Access Key:
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="password"
+                            value={canvaApiKey}
+                            onChange={(e) => setCanvaApiKey(e.target.value)}
+                            placeholder="canva_token_..."
+                            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-zinc-600 font-mono"
+                          />
+                          <button
+                            onClick={() => handleToggleCanva(true)}
+                            disabled={isProcessing}
+                            className="px-3 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-medium transition-colors disabled:opacity-50"
+                          >
+                            {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="pt-2 border-t border-zinc-900/60 text-[11px] text-zinc-500 space-y-1">
-                      <p className="text-zinc-400 font-medium">Supported Formats:</p>
-                      <p>• Instagram Posts (1080x1080) & Stories (1080x1920)</p>
-                      <p>• YouTube Thumbnails & Social Banners (1200x630)</p>
+                      <p className="text-zinc-400 font-medium">Capabilities:</p>
+                      <p>• Instagram Posts & Stories, TikTok Formats</p>
+                      <p>• YouTube Thumbnails & Social Banners</p>
                       <p>• Presentations, Marketing Posters & Business Flyers</p>
                     </div>
                   </div>
