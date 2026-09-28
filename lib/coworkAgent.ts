@@ -299,9 +299,11 @@ export async function createAndRunTask(
 
   taskStore.set(taskId, initialTask);
 
-  // Run agent loop asynchronously
+  // Run agent loop to completion (guarantees execution on serverless Vercel lambdas)
   if (isVis) {
-    executeVisualizationLoop(taskId, owner, repo, preferredBranch).catch((err) => {
+    try {
+      await executeVisualizationLoop(taskId, owner, repo, preferredBranch);
+    } catch (err: any) {
       console.error(`Visualization task ${taskId} failed:`, err);
       const t = taskStore.get(taskId);
       if (t) {
@@ -309,10 +311,12 @@ export async function createAndRunTask(
         addLog(t, "error", "Visualization failed", err.message || "Unexpected error");
         taskStore.set(taskId, t);
       }
-    });
+    }
   } else {
     const flags = detectToolRequirements(userQuery);
-    executeAgentLoop(taskId, flags).catch((err) => {
+    try {
+      await executeAgentLoop(taskId, flags);
+    } catch (err: any) {
       console.error(`Task ${taskId} failed:`, err);
       const t = taskStore.get(taskId);
       if (t) {
@@ -320,10 +324,10 @@ export async function createAndRunTask(
         addLog(t, "error", "Execution failed", err.message || "Unexpected error");
         taskStore.set(taskId, t);
       }
-    });
+    }
   }
 
-  return initialTask;
+  return taskStore.get(taskId) || initialTask;
 }
 
 // ─────────────────────────────────────────────────────────────

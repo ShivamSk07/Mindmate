@@ -9,9 +9,6 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   const task = getTask(params.id);
   if (!task) {

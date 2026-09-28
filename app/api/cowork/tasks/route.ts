@@ -6,19 +6,12 @@ import { createAndRunTask, getAllTasks } from "@/lib/coworkAgent";
 
 export async function GET() {
   const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const tasks = getAllTasks();
   return NextResponse.json({ tasks });
 }
 
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   try {
     const body = await request.json();
