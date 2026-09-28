@@ -335,6 +335,7 @@ async function executeAgentLoop(
   flags: {
     needsGitHub: boolean;
     needsLinkedIn: boolean;
+    needsCanva: boolean;
     needsVercel: boolean;
     needsBrowser: boolean;
     needsMCP: boolean;
@@ -356,6 +357,15 @@ async function executeAgentLoop(
   let githubUsername: string = owner;
   let vercelAccessToken: string | null = null;
   let vercelUsername: string = "Vercel User";
+  let canvaAccessToken: string | null = null;
+
+  try {
+    const cProfile = await (prisma as any).userProfile.findFirst({
+      where: { canvaConnected: true },
+      select: { canvaToken: true },
+    });
+    canvaAccessToken = cProfile?.canvaToken || null;
+  } catch {}
 
   try {
     const liProfile = await (prisma as any).userProfile.findFirst({
@@ -386,6 +396,7 @@ async function executeAgentLoop(
     if (vProfile?.vercelUsername) vercelUsername = vProfile.vercelUsername;
   } catch {}
 
+  let canvaText = "";
   let linkedinText = "";
   let githubText = "";
   let vercelText = "";

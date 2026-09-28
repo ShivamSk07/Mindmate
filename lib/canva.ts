@@ -3,9 +3,11 @@
  * Supports Canva Connect API (Design Creation, Autofill, and Direct Canva Workspace Launching)
  */
 
+export type CanvaDesignType = "instagram_post" | "instagram_story" | "banner" | "poster" | "presentation" | "flyer" | "youtube_thumbnail" | "custom";
+
 export interface CanvaDesignSpec {
   title: string;
-  designType: "instagram_post" | "instagram_story" | "banner" | "poster" | "presentation" | "flyer" | "youtube_thumbnail" | "custom";
+  designType: CanvaDesignType;
   width: number;
   height: number;
   category: string;
@@ -43,7 +45,7 @@ export interface CanvaApiResult {
   error?: string;
 }
 
-const DESIGN_PRESETS: Record<string, { width: number; height: number; category: string }> = {
+const DESIGN_PRESETS: Record<CanvaDesignType, { width: number; height: number; category: string }> = {
   instagram_post: { width: 1080, height: 1080, category: "Instagram Post (Square)" },
   instagram_story: { width: 1080, height: 1920, category: "Instagram Story / Reel" },
   banner: { width: 1200, height: 630, category: "Social Media Banner / Open Graph" },
@@ -57,7 +59,7 @@ const DESIGN_PRESETS: Record<string, { width: number; height: number; category: 
 /**
  * Determine best Canva design preset based on user prompt
  */
-export function detectCanvaPreset(prompt: string): keyof typeof DESIGN_PRESETS {
+export function detectCanvaPreset(prompt: string): CanvaDesignType {
   const p = prompt.toLowerCase();
   if (p.includes("story") || p.includes("reel") || p.includes("tiktok") || p.includes("vertical")) {
     return "instagram_story";
