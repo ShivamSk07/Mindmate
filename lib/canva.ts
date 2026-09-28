@@ -61,22 +61,22 @@ const DESIGN_PRESETS: Record<CanvaDesignType, { width: number; height: number; c
  */
 export function detectCanvaPreset(prompt: string): CanvaDesignType {
   const p = prompt.toLowerCase();
-  if (p.includes("story") || p.includes("reel") || p.includes("tiktok") || p.includes("vertical")) {
+  if (p.includes("story") || p.includes("reel") || p.includes("tiktok") || p.includes("vertical") || p.includes("shorts")) {
     return "instagram_story";
   }
-  if (p.includes("banner") || p.includes("header") || p.includes("cover") || p.includes("linkedin banner") || p.includes("twitter banner")) {
+  if (p.includes("banner") || p.includes("header") || p.includes("cover") || p.includes("linkedin banner") || p.includes("twitter banner") || p.includes("hero")) {
     return "banner";
   }
-  if (p.includes("slide") || p.includes("presentation") || p.includes("deck") || p.includes("pitch")) {
+  if (p.includes("slide") || p.includes("presentation") || p.includes("deck") || p.includes("pitch") || p.includes("powerpoint")) {
     return "presentation";
   }
-  if (p.includes("poster") || p.includes("wall")) {
+  if (p.includes("poster") || p.includes("wall") || p.includes("billboard")) {
     return "poster";
   }
-  if (p.includes("flyer") || p.includes("brochure") || p.includes("leaflet")) {
+  if (p.includes("flyer") || p.includes("brochure") || p.includes("leaflet") || p.includes("pamphlet")) {
     return "flyer";
   }
-  if (p.includes("thumbnail") || p.includes("youtube")) {
+  if (p.includes("thumbnail") || p.includes("youtube") || p.includes("yt")) {
     return "youtube_thumbnail";
   }
   return "instagram_post";
@@ -85,16 +85,88 @@ export function detectCanvaPreset(prompt: string): CanvaDesignType {
 /**
  * Generate a direct Canva Workspace Launch URL
  */
-export function generateCanvaLaunchUrl(title: string, preset: keyof typeof DESIGN_PRESETS): string {
+export function generateCanvaLaunchUrl(title: string, preset: CanvaDesignType): string {
   const encodedTitle = encodeURIComponent(title.trim());
   const presetConfig = DESIGN_PRESETS[preset] || DESIGN_PRESETS.instagram_post;
   
-  // Direct Canva design creator endpoint with category hint and dimension query
   return `https://www.canva.com/design/create?width=${presetConfig.width}&height=${presetConfig.height}&title=${encodedTitle}&auto_select=true`;
 }
 
 /**
- * Create or Generate a Canva Design Specification & Launcher
+ * Generate smart contextual color palettes and typography instantly
+ */
+function getSmartTheme(prompt: string) {
+  const p = prompt.toLowerCase();
+
+  if (p.includes("cyber") || p.includes("neon") || p.includes("ai") || p.includes("launch") || p.includes("future")) {
+    return {
+      palette: {
+        primary: "#00F0FF",
+        secondary: "#7000FF",
+        accent: "#FF007A",
+        background: "#08080C",
+        text: "#FFFFFF",
+      },
+      typography: {
+        headingFont: "Plus Jakarta Sans / Syne Bold",
+        bodyFont: "Inter / Space Grotesk",
+      },
+      visuals: ["Neon Cyber Glow", "Dynamic Typographic Grid", "Pill CTA with Glass Border", "Dark Abstract Backdrop"],
+    };
+  }
+
+  if (p.includes("luxury") || p.includes("premium") || p.includes("gold") || p.includes("real estate") || p.includes("brand")) {
+    return {
+      palette: {
+        primary: "#D4AF37",
+        secondary: "#1A1A1A",
+        accent: "#E5C158",
+        background: "#0D0D0D",
+        text: "#F5F5F7",
+      },
+      typography: {
+        headingFont: "Cinzel / Playfair Display Bold",
+        bodyFont: "Outfit / Montserrat",
+      },
+      visuals: ["Gold Accent Borders", "Clean Editorial Alignment", "Minimalist Monogram Mark", "Deep Obsidian Glass"],
+    };
+  }
+
+  if (p.includes("hiring") || p.includes("job") || p.includes("recruitment") || p.includes("career")) {
+    return {
+      palette: {
+        primary: "#3B82F6",
+        secondary: "#10B981",
+        accent: "#F59E0B",
+        background: "#0B0F17",
+        text: "#F8FAFC",
+      },
+      typography: {
+        headingFont: "Plus Jakarta Sans ExtraBold",
+        bodyFont: "Inter Regular",
+      },
+      visuals: ["High-Impact Role Title", "Benefit Badges & Tags", "Clear Apply CTA Button", "Subtle Grid Watermark"],
+    };
+  }
+
+  return {
+    palette: {
+      primary: "#00C4CC",
+      secondary: "#7D2AE8",
+      accent: "#FFB800",
+      background: "#09090B",
+      text: "#F4F4F5",
+    },
+    typography: {
+      headingFont: "Plus Jakarta Sans Bold",
+      bodyFont: "Inter Regular",
+    },
+    visuals: ["Bold Centered Headline", "Dual-Tone Gradient Mesh", "Interactive Action Tag", "Clean Modern Layout"],
+  };
+}
+
+/**
+ * Create or Generate a Canva Design Specification & Launcher (Ultra-Fast)
  */
 export async function canva_create_design(
   prompt: string,
@@ -102,10 +174,15 @@ export async function canva_create_design(
 ): Promise<CanvaApiResult> {
   const presetKey = detectCanvaPreset(prompt);
   const preset = DESIGN_PRESETS[presetKey];
+  const theme = getSmartTheme(prompt);
+  const cleanTitle = prompt.slice(0, 45).replace(/["\n\r]/g, "").trim();
 
-  // If Canva OAuth Connect API token is provided, attempt official Canva Connect API call
-  if (accessToken && accessToken.trim()) {
+  // Fast Canva Connect REST API attempt with strict 800ms timeout
+  if (accessToken && accessToken.trim() && accessToken !== "canva_direct_integration_active") {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 800);
+
       const res = await fetch("https://api.canva.com/rest/v1/designs", {
         method: "POST",
         headers: {
@@ -117,13 +194,16 @@ export async function canva_create_design(
             type: "preset",
             name: presetKey,
           },
-          title: prompt.slice(0, 50).trim(),
+          title: cleanTitle,
         }),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (res.ok) {
         const data = await res.json();
-        const editUrl = data.design?.urls?.edit_url || generateCanvaLaunchUrl(prompt.slice(0, 40), presetKey);
+        const editUrl = data.design?.urls?.edit_url || generateCanvaLaunchUrl(cleanTitle, presetKey);
         const designId = data.design?.id;
 
         return {
@@ -132,68 +212,45 @@ export async function canva_create_design(
           viewUrl: data.design?.urls?.view_url,
           designId,
           designSpec: {
-            title: data.design?.title || prompt.slice(0, 40),
+            title: data.design?.title || cleanTitle,
             designType: presetKey,
             width: preset.width,
             height: preset.height,
             category: preset.category,
-            palette: {
-              primary: "#00C4CC",
-              secondary: "#7D2AE8",
-              accent: "#FF4081",
-              background: "#0E1117",
-              text: "#FFFFFF",
-            },
-            typography: {
-              headingFont: "Plus Jakarta Sans / Montserrat",
-              bodyFont: "Inter / Roboto",
-            },
+            palette: theme.palette,
+            typography: theme.typography,
             content: {
-              headline: prompt.slice(0, 60),
+              headline: prompt.slice(0, 65).trim(),
+              callToAction: "Open Design in Canva Studio",
             },
-            visualElements: ["Brand Logo", "Hero Typography", "Glow Gradient Background"],
+            visualElements: theme.visuals,
             canvaLaunchUrl: editUrl,
             canvaDesignId: designId,
           },
         };
       }
-    } catch (err) {
-      console.warn("[Canva API] Connect API request fallback:", err);
-    }
+    } catch {}
   }
 
-  // Standalone Smart Design Engine (Generates direct Canva launcher + full structured visual spec)
-  const canvaLaunchUrl = generateCanvaLaunchUrl(prompt.slice(0, 40), presetKey);
+  // Instant Smart Studio Engine (< 10ms response)
+  const canvaLaunchUrl = generateCanvaLaunchUrl(cleanTitle, presetKey);
 
   return {
     success: true,
     editUrl: canvaLaunchUrl,
     designSpec: {
-      title: prompt.slice(0, 45).replace(/["\n\r]/g, "").trim(),
+      title: cleanTitle,
       designType: presetKey,
       width: preset.width,
       height: preset.height,
       category: preset.category,
-      palette: {
-        primary: "#00C4CC",
-        secondary: "#7D2AE8",
-        accent: "#FFB800",
-        background: "#09090B",
-        text: "#F4F4F5",
-      },
-      typography: {
-        headingFont: "Plus Jakarta Sans / Poppins Bold",
-        bodyFont: "Inter / Lato Regular",
-      },
+      palette: theme.palette,
+      typography: theme.typography,
       content: {
-        headline: prompt.slice(0, 60).trim(),
+        headline: prompt.slice(0, 65).trim(),
+        callToAction: "Open Design in Canva Studio",
       },
-      visualElements: [
-        "High-contrast headline with dynamic line-breaks",
-        "Layered gradient backdrop (Canva Teal #00C4CC + Indigo #7D2AE8)",
-        "Crisp call-to-action pill with accent border",
-        "Modern minimalist geometric watermark",
-      ],
+      visualElements: theme.visuals,
       canvaLaunchUrl,
     },
   };
