@@ -27,6 +27,7 @@ interface IntegrationsModalProps {
   onClose: () => void;
   integrations: IntegrationItem[];
   onStatusChange: () => void;
+  onOpenCanvaStudio?: () => void;
 }
 
 export default function IntegrationsModal({
@@ -34,10 +35,13 @@ export default function IntegrationsModal({
   onClose,
   integrations,
   onStatusChange,
+  onOpenCanvaStudio,
 }: IntegrationsModalProps) {
   const [selectedTab, setSelectedTab] = useState<string>("github");
   const [isProcessing, setIsProcessing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [canvaManualToken, setCanvaManualToken] = useState("");
+  const [isConnectingCanvaToken, setIsConnectingCanvaToken] = useState(false);
 
   if (!isOpen) return null;
 
@@ -220,7 +224,7 @@ export default function IntegrationsModal({
                       <h3 className="text-xs font-semibold text-zinc-200">Canva Design Studio</h3>
                     </div>
                     <p className="text-[11px] text-zinc-500 mt-1">
-                      Connect your Canva account to create designs, social posts, banners, and slides directly from CoWork.
+                      Connect your Canva account to create presentations, images, posters, and sync account projects.
                     </p>
                   </div>
 
@@ -256,16 +260,74 @@ export default function IntegrationsModal({
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] hover:opacity-90 text-white text-xs font-medium transition-opacity shadow-sm"
                         >
                           <Palette size={13} />
-                          <span>Connect Canva</span>
+                          <span>Connect Canva (OAuth)</span>
                         </a>
                       )}
                     </div>
 
+                    {canvaIntegration?.connected ? (
+                      onOpenCanvaStudio && (
+                        <button
+                          onClick={() => {
+                            onClose();
+                            onOpenCanvaStudio();
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-gradient-to-r from-[#00C4CC]/20 to-[#7D2AE8]/20 hover:from-[#00C4CC]/30 hover:to-[#7D2AE8]/30 border border-[#00C4CC]/40 text-xs font-semibold text-white transition-all shadow-sm"
+                        >
+                          <Palette size={13} className="text-[#00C4CC]" />
+                          <span>View Canva Account Projects in Studio</span>
+                        </button>
+                      )
+                    ) : (
+                      <div className="pt-2 border-t border-zinc-900/60 space-y-2">
+                        <p className="text-[11px] text-zinc-400 font-medium">Or connect via Personal Access Token:</p>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="password"
+                            value={canvaManualToken}
+                            onChange={(e) => setCanvaManualToken(e.target.value)}
+                            placeholder="Paste Canva Access Token..."
+                            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-[#00C4CC]"
+                          />
+                          <button
+                            onClick={async () => {
+                              if (!canvaManualToken.trim()) return;
+                              setIsConnectingCanvaToken(true);
+                              setMessage(null);
+                              try {
+                                const res = await fetch("/api/cowork/canva/connect", {
+                                  method: "POST",
+                                  headers: { "Content-Type": "application/json" },
+                                  body: JSON.stringify({ token: canvaManualToken.trim() }),
+                                });
+                                const data = await res.json();
+                                if (res.ok) {
+                                  setMessage({ type: "success", text: "Canva account connected successfully" });
+                                  setCanvaManualToken("");
+                                  onStatusChange();
+                                } else {
+                                  setMessage({ type: "error", text: data.error || "Failed to connect token" });
+                                }
+                              } catch (err: any) {
+                                setMessage({ type: "error", text: err.message || "Failed to connect token" });
+                              } finally {
+                                setIsConnectingCanvaToken(false);
+                              }
+                            }}
+                            disabled={isConnectingCanvaToken || !canvaManualToken.trim()}
+                            className="px-3 py-1.5 rounded-lg bg-[#00C4CC] text-zinc-950 font-semibold text-xs hover:opacity-90 disabled:opacity-40"
+                          >
+                            {isConnectingCanvaToken ? <Loader2 size={12} className="animate-spin" /> : "Save"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="pt-2 border-t border-zinc-900/60 text-[11px] text-zinc-500 space-y-1">
                       <p className="text-zinc-400 font-medium">Capabilities:</p>
-                      <p>• Automated Instagram Posts, Stories & TikTok Graphics</p>
-                      <p>• YouTube Thumbnails & Social Media Banners</p>
-                      <p>• Presentation Pitch Decks & Marketing Posters</p>
+                      <p>• Automated 16:9 Presentation Pitch Decks & Slide Generation</p>
+                      <p>• Instagram Posts, Stories & YouTube Thumbnails</p>
+                      <p>• Live Cloud Account Project Sync & Direct Workspace Launching</p>
                     </div>
                   </div>
                 </div>

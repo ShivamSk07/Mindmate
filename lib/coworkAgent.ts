@@ -164,7 +164,8 @@ export function detectToolRequirements(userQuery: string) {
 
   // Canva keywords & intents
   const isCanva =
-    /\b(canva|design|instagram post|poster|banner|thumbnail|flyer|social media post|graphic|infographic|presentation slide|carousel|ad creative|card design|template)\b/i.test(q) ||
+    /\b(canva|design|instagram post|poster|banner|thumbnail|flyer|social media post|graphic|infographic|presentation|ppt|pitch deck|slide deck|slides|powerpoint|carousel|ad creative|card design|template)\b/i.test(q) ||
+    (/\b(image|post|banner|deck|ppt|slides)\b/i.test(q) && /\b(create|make|generate|build|banao|design|draw)\b/i.test(q)) ||
     q.includes("@canva") ||
     q.includes("@design");
 
@@ -544,14 +545,26 @@ Rules:
         task.usedTools.push("canva_create_design");
         addLog(task, "success", `Canva Layout Created: ${designResult.designSpec.title}`, `${designResult.designSpec.category} (${designResult.designSpec.width}x${designResult.designSpec.height}px)`, "canva");
 
-        canvaText = `CANVA DESIGN SPECIFICATION & DIRECT WORKSPACE LAUNCHER:
+        let slideDeckOverview = "";
+        if (designResult.designSpec.slides && designResult.designSpec.slides.length > 0) {
+          slideDeckOverview = `\nSLIDE DECK BREAKDOWN (${designResult.designSpec.slides.length} SLIDES):\n` +
+            designResult.designSpec.slides.map((s) =>
+              `• Slide ${s.slideNumber}: **${s.title}**\n  - Subtitle: ${s.subtitle || "N/A"}\n  - Key Points: ${(s.bullets || []).join(" | ")}\n  - Speaker Notes: ${s.speakerNotes || "Key takeaway"}\n  - Visual Elements: ${s.visualDescription || "Modern vector layout"}`
+            ).join("\n\n");
+        }
+
+        canvaText = `CANVA DESIGN SPECIFICATION:
 Title: ${designResult.designSpec.title}
 Format: ${designResult.designSpec.category} (${designResult.designSpec.width}x${designResult.designSpec.height}px)
 Palette: Primary ${designResult.designSpec.palette.primary}, Secondary ${designResult.designSpec.palette.secondary}, Accent ${designResult.designSpec.palette.accent}, Background ${designResult.designSpec.palette.background}, Text ${designResult.designSpec.palette.text}
 Typography: Heading "${designResult.designSpec.typography.headingFont}", Body "${designResult.designSpec.typography.bodyFont}"
 Main Headline: "${designResult.designSpec.content.headline}"
 Visual Elements: ${designResult.designSpec.visualElements.join(", ")}
-Direct One-Click Canva Launcher: ${designResult.editUrl}`;
+${slideDeckOverview}
+
+CANVA DIRECT LINKS:
+- Canva Workspace Link: ${designResult.editUrl}
+- Matching Canva Templates Library: ${designResult.designSpec.canvaTemplateSearchUrl}`;
 
         // Add rich Canva Design Artifact
         task.artifacts.unshift({
@@ -876,7 +889,11 @@ async function finalizeReport(
   const sysPrompt = `You are Clarity, an autonomous AI workspace agent specializing in Canva visual design generation, GitHub codebase analysis, LinkedIn content & social growth automation, Vercel cloud hosting & deployments, and live web intelligence.
 Answer the user's request directly and clearly using the retrieved data below.
 Format the response with clean markdown: use headers, bullet lists, design color palette tags, typography recommendations, and prominent direct links.
-If a Canva design was generated, prominently feature the direct one-click Canva Workspace Launcher link and design breakdown.
+If a Canva design or presentation was generated:
+- Format the response as an executive presentation or creative design brief with a clear slide-by-slide or section breakdown.
+- Highlight the key themes, slide talking points, color palette, and fonts.
+- Prominently feature the verified Canva links provided in the Data section: e.g. [🎨 Open in Canva Workspace](URL) and [🔍 Browse Canva Templates](URL).
+- STRICT RULE: NEVER output random or broken links. Only use the verified Canva URLs given in the CANVA DIRECT LINKS section.
 Be specific, visual, engaging, and concise. Do not use filler phrases.
 If a live Vercel URL was generated, prominently feature it as a clickable markdown link.
 
@@ -913,10 +930,10 @@ Respond directly and clearly.`;
   }
 
   const nowStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const artifacts: Artifact[] = task.artifacts || [];
+  let artifacts: Artifact[] = task.artifacts || [];
 
   if (!artifacts.some((a) => a.type === "report" || a.type === "linkedin_post" || a.type === "vercel_deployment")) {
-    artifacts.unshift({
+    artifacts.push({
       id: `art_main_${Date.now()}`,
       title: task.userQuery.slice(0, 50),
       type: "report",
@@ -925,7 +942,13 @@ Respond directly and clearly.`;
     });
   }
 
-  task.artifacts = artifacts;
+  // Prioritize Canva Design artifact if available so user immediately sees interactive slides/canvas
+  const canvaArt = artifacts.find((a) => a.type === "canva_design");
+  if (canvaArt) {
+    task.artifacts = [canvaArt, ...artifacts.filter((a) => a.id !== canvaArt.id)];
+  } else {
+    task.artifacts = artifacts;
+  }
   task.report = reportText;
   task.status = "completed";
   task.plan.forEach((s) => { if (s.status !== "failed") s.status = "completed"; });

@@ -36,6 +36,9 @@ import remarkGfm from "remark-gfm";
 
 import IntegrationsModal from "@/components/IntegrationsModal";
 import MermaidViewer, { isDiagramCode } from "@/components/MermaidViewer";
+import CanvaDesignViewer from "@/components/CanvaDesignViewer";
+import CanvaStudioView from "@/components/CanvaStudioView";
+import { CanvaAccountProject } from "@/lib/canva";
 
 interface IntegrationItem {
   id: string;
@@ -172,6 +175,7 @@ export default function CoworkPage() {
   const [isFollowupSubmitting, setIsFollowupSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
+  const [viewMode, setViewMode] = useState<"workspace" | "canva">("workspace");
 
   // ── Visualize states
   const [repos, setRepos] = useState<any[]>([]);
@@ -203,7 +207,15 @@ export default function CoworkPage() {
       const connected = params.get("connected");
       const err = params.get("error");
 
-      if (connected === "linkedin") {
+      if (connected === "canva") {
+        setNotification({
+          type: "success",
+          message: "Canva account connected successfully! Welcome to Canva Studio.",
+        });
+        setViewMode("canva");
+        fetchStatus();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } else if (connected === "linkedin") {
         setNotification({
           type: "success",
           message: "LinkedIn account connected successfully!",
@@ -400,13 +412,130 @@ export default function CoworkPage() {
     } catch {}
   };
 
+  const handleSelectCanvaProject = (project: CanvaAccountProject) => {
+    const isPres = project.designType.toLowerCase().includes("presentation");
+    const syntheticSpec: any = {
+      title: project.title,
+      designType: isPres ? "presentation" : "custom",
+      width: isPres ? 1920 : 1080,
+      height: isPres ? 1080 : 1080,
+      category: isPres ? "16:9 Presentation Pitch Deck" : "Canva Design",
+      palette: {
+        primary: "#00C4CC",
+        secondary: "#7D2AE8",
+        accent: "#FFB800",
+        background: "#09090B",
+        cardBg: "#18181B",
+        text: "#FFFFFF",
+        mutedText: "#A1A1AA",
+      },
+      typography: {
+        headingFont: "Plus Jakarta Sans Bold",
+        bodyFont: "Inter Regular",
+      },
+      content: {
+        headline: project.title,
+        subheadline: "Synced directly from your connected Canva Account",
+        callToAction: "Open Design in Canva Workspace",
+        badge: "Canva Account Sync",
+      },
+      canvaLaunchUrl: project.editUrl,
+      canvaTemplateSearchUrl: `https://www.canva.com/search?q=${encodeURIComponent(project.title)}`,
+      isRealCanvaDesign: true,
+    };
+
+    if (isPres) {
+      syntheticSpec.slides = [
+        {
+          slideNumber: 1,
+          title: project.title,
+          subtitle: "Live Project from your Canva Account",
+          layout: "cover",
+          bullets: [
+            "Synchronized with Canva Cloud Storage",
+            "Full 16:9 widescreen presentation deck",
+            "One-click direct workspace launching & collaboration",
+          ],
+          speakerNotes: "Click 'Open in Canva' to edit this live in Canva Workspace.",
+          visualDescription: "Cloud design thumbnail from Canva.",
+        },
+      ];
+    }
+
+    const art: Artifact = {
+      id: `art_canva_proj_${project.id}`,
+      title: `Canva: ${project.title}`,
+      type: "canva_design",
+      content: JSON.stringify(syntheticSpec),
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
+
+    if (!currentTask) {
+      const newTask: CoworkTask = {
+        id: `task_canva_${Date.now()}`,
+        userQuery: `Canva Project: ${project.title}`,
+        repoOwner: "",
+        repoName: "",
+        branch: "main",
+        status: "completed",
+        usedTools: ["canva_fetch_projects"],
+        plan: [{ id: "p1", title: "Load Canva Account Project", status: "completed" }],
+        activityFeed: [
+          {
+            id: `act_${Date.now()}`,
+            timestamp: new Date().toLocaleTimeString(),
+            type: "success",
+            title: "Loaded Canva Project",
+            description: project.title,
+            category: "canva",
+          },
+        ],
+        pendingApproval: null,
+        report: `# ${project.title}\n\nSynced directly from your connected Canva account.\n\n[🎨 Open in Canva Editor](${project.editUrl})`,
+        codeDiff: null,
+        artifacts: [art],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setCurrentTask(newTask);
+    } else {
+      currentTask.artifacts = [art, ...(currentTask.artifacts || [])];
+    }
+
+    setActiveArtifact(art);
+    setViewMode("workspace");
+  };
+
+  const handleDisconnectCanva = async () => {
+    try {
+      const res = await fetch("/api/cowork/canva/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "disconnect" }),
+      });
+      if (res.ok) {
+        setNotification({
+          type: "success",
+          message: "Canva account disconnected.",
+        });
+        fetchStatus();
+      }
+    } catch {}
+  };
+
+  const handleStartCanvaPrompt = async (promptText: string) => {
+    setViewMode("workspace");
+    await handleStartTask(promptText);
+  };
+
   const PRESETS = [
+    "Design a 6-slide investor pitch deck in Canva",
+    "Create a product launch Instagram graphic in Canva",
     "Visualize the login flow",
-    "Show me the database relationships",
     "Deploy a modern landing page to Vercel",
-    "Summarize my GitHub repositories",
   ];
 
+  const canvaIntegration = integrations.find((i) => i.id === "canva");
   const connectedCount = integrations.filter((i) => i.connected).length;
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
@@ -444,6 +573,7 @@ export default function CoworkPage() {
         onClose={() => setShowIntegrationsModal(false)}
         integrations={integrations}
         onStatusChange={fetchStatus}
+        onOpenCanvaStudio={() => setViewMode("canva")}
       />
 
       {/* ── HEADER ── */}
@@ -455,7 +585,35 @@ export default function CoworkPage() {
           </Link>
           <span className="text-zinc-700">|</span>
           <span className="text-sm font-semibold text-zinc-200">CoWork</span>
-          <span className="text-[11px] text-zinc-500 bg-zinc-900 px-2 py-0.5 rounded-md border border-zinc-800">Agentic</span>
+
+          {/* Mode Switcher Tabs */}
+          <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-lg p-0.5 ml-2">
+            <button
+              onClick={() => setViewMode("workspace")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                viewMode === "workspace"
+                  ? "bg-zinc-850 text-white shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <Sparkles size={12} className={viewMode === "workspace" ? "text-violet-400" : ""} />
+              <span>Workspace</span>
+            </button>
+            <button
+              onClick={() => setViewMode("canva")}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                viewMode === "canva"
+                  ? "bg-gradient-to-r from-[#00C4CC]/30 to-[#7D2AE8]/30 border border-[#00C4CC]/50 text-white shadow-sm"
+                  : "text-zinc-500 hover:text-zinc-300"
+              }`}
+            >
+              <Palette size={12} className={canvaIntegration?.connected ? "text-[#00C4CC]" : ""} />
+              <span>Canva Studio</span>
+              {canvaIntegration?.connected && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-3">
@@ -497,6 +655,8 @@ export default function CoworkPage() {
                           ? "text-emerald-400"
                           : item.id === "vercel"
                           ? "text-zinc-100"
+                          : item.id === "canva"
+                          ? "text-[#00C4CC]"
                           : "text-zinc-200"
                         : "text-zinc-700"
                     }`}
@@ -513,8 +673,18 @@ export default function CoworkPage() {
         </div>
       </header>
 
-      {/* ── MAIN LAYOUT ── */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
+      {/* ── MAIN CONTENT (WORKSPACE OR CANVA STUDIO) ── */}
+      {viewMode === "canva" ? (
+        <CanvaStudioView
+          isConnected={!!canvaIntegration?.connected}
+          username={canvaIntegration?.username || null}
+          onOpenConnectModal={() => setShowIntegrationsModal(true)}
+          onSelectProject={handleSelectCanvaProject}
+          onStartDesignPrompt={handleStartCanvaPrompt}
+          onDisconnectCanva={handleDisconnectCanva}
+        />
+      ) : (
+        <div className="flex-1 flex min-h-0 overflow-hidden">
 
         {/* ── SIDEBAR ── */}
         <aside className="w-[220px] border-r border-zinc-900 flex flex-col h-full flex-shrink-0 bg-[#0a0a0a]">
@@ -648,7 +818,13 @@ export default function CoworkPage() {
                     return (
                       <button
                         key={item.id}
-                        onClick={() => setShowIntegrationsModal(true)}
+                        onClick={() => {
+                          if (item.id === "canva") {
+                            setViewMode("canva");
+                          } else {
+                            setShowIntegrationsModal(true);
+                          }
+                        }}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-all ${
                           item.connected
                             ? "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900"
@@ -971,187 +1147,7 @@ export default function CoworkPage() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function CanvaDesignViewer({ content }: { content: string }) {
-  let spec: any = null;
-  try {
-    spec = JSON.parse(content);
-  } catch (e) {
-    return (
-      <div className="p-8 text-zinc-400">
-        <p>Design Specification:</p>
-        <pre className="mt-2 font-mono text-xs">{content}</pre>
-      </div>
-    );
-  }
-
-  const [copiedColor, setCopiedColor] = useState<string | null>(null);
-  const [copiedCopy, setCopiedCopy] = useState(false);
-
-  const copyHex = (hex: string) => {
-    navigator.clipboard.writeText(hex);
-    setCopiedColor(hex);
-    setTimeout(() => setCopiedColor(null), 2000);
-  };
-
-  const copyAllCopy = () => {
-    const text = [
-      spec.content?.headline ? `Headline: ${spec.content.headline}` : "",
-      spec.content?.subheadline ? `Subheadline: ${spec.content.subheadline}` : "",
-      spec.content?.bodyText ? `Body: ${spec.content.bodyText}` : "",
-      spec.content?.callToAction ? `CTA: ${spec.content.callToAction}` : "",
-    ].filter(Boolean).join("\n");
-    navigator.clipboard.writeText(text);
-    setCopiedCopy(true);
-    setTimeout(() => setCopiedCopy(false), 2000);
-  };
-
-  return (
-    <div className="flex-1 overflow-y-auto w-full h-full p-6 md:p-8 space-y-6">
-      {/* Top Banner with Direct Canva Link */}
-      <div className="p-5 rounded-xl bg-gradient-to-r from-[#00C4CC]/15 via-[#7D2AE8]/15 to-transparent border border-[#00C4CC]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] text-white">
-              Canva Connected
-            </span>
-            <span className="text-xs text-zinc-400">
-              {spec.category || "Design"} • {spec.width}x{spec.height}px
-            </span>
-          </div>
-          <h2 className="text-base font-semibold text-white">{spec.title}</h2>
-        </div>
-
-        <a
-          href={spec.canvaLaunchUrl || "https://www.canva.com"}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] text-white text-xs font-medium hover:opacity-95 transition-all shadow-[0_4px_20px_rgba(0,196,204,0.3)] active:scale-95 flex-shrink-0"
-        >
-          <Palette size={14} />
-          <span>Open in Canva Workspace</span>
-          <ExternalLink size={13} />
-        </a>
-      </div>
-
-      {/* Visual Mock Canvas */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left: Design Layout Card */}
-        <div
-          className="lg:col-span-7 rounded-xl border border-zinc-800 p-6 md:p-8 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[380px]"
-          style={{ backgroundColor: spec.palette?.background || "#09090b" }}
-        >
-          <div
-            className="absolute top-0 right-0 w-64 h-64 opacity-25 pointer-events-none rounded-full blur-3xl"
-            style={{ backgroundColor: spec.palette?.primary || "#00C4CC" }}
-          />
-          
-          <div className="relative z-10 flex items-center justify-between border-b border-white/10 pb-4 mb-6">
-            <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400">
-              {spec.category}
-            </span>
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: spec.palette?.primary || "#00C4CC" }} />
-          </div>
-
-          <div className="relative z-10 space-y-3 my-auto py-4">
-            <h1
-              className="text-2xl md:text-3xl font-bold tracking-tight leading-tight"
-              style={{ color: spec.palette?.text || "#FFFFFF", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
-            >
-              {spec.content?.headline || spec.title}
-            </h1>
-            {spec.content?.subheadline && (
-              <p className="text-sm md:text-base text-zinc-300 font-normal leading-relaxed">
-                {spec.content.subheadline}
-              </p>
-            )}
-          </div>
-
-          <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between">
-            <span
-              className="px-4 py-1.5 rounded-full text-xs font-semibold shadow"
-              style={{
-                backgroundColor: spec.palette?.primary || "#00C4CC",
-                color: "#000000",
-              }}
-            >
-              {spec.content?.callToAction || "Get Started"}
-            </span>
-            <span className="text-[10px] font-mono text-zinc-500 uppercase">
-              {spec.width} × {spec.height} PX
-            </span>
-          </div>
-        </div>
-
-        {/* Right: Design Specs & Color Palette */}
-        <div className="lg:col-span-5 space-y-4">
-          {/* Color Palette */}
-          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-900 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-200">Color Palette</span>
-              <span className="text-[10px] text-zinc-500 font-mono">Click hex to copy</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              {spec.palette && Object.entries(spec.palette).map(([key, hex]: any) => (
-                <button
-                  key={key}
-                  onClick={() => copyHex(hex)}
-                  className="p-2 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 flex items-center gap-2.5 text-left transition-colors group"
-                >
-                  <div className="w-4 h-4 rounded-full border border-white/20 flex-shrink-0 shadow-sm" style={{ backgroundColor: hex }} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[10px] uppercase text-zinc-500 capitalize">{key}</p>
-                    <p className="text-xs font-mono text-zinc-200 truncate group-hover:text-white">
-                      {copiedColor === hex ? "✓ Copied" : hex}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Typography & Elements */}
-          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-900 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-200">Typography & Assets</span>
-              <button
-                onClick={copyAllCopy}
-                className="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
-              >
-                {copiedCopy ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                <span>{copiedCopy ? "Copied" : "Copy Copywriting"}</span>
-              </button>
-            </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="p-2 rounded bg-zinc-900 border border-zinc-850">
-                <span className="text-[10px] text-zinc-500 uppercase block">Heading Font</span>
-                <span className="text-zinc-200 font-medium">{spec.typography?.headingFont || "Plus Jakarta Sans"}</span>
-              </div>
-              <div className="p-2 rounded bg-zinc-900 border border-zinc-850">
-                <span className="text-[10px] text-zinc-500 uppercase block">Body Font</span>
-                <span className="text-zinc-200 font-medium">{spec.typography?.bodyFont || "Inter / Roboto"}</span>
-              </div>
-            </div>
-
-            {spec.visualElements && spec.visualElements.length > 0 && (
-              <div className="pt-2 border-t border-zinc-900 text-[11px] text-zinc-400 space-y-1">
-                <span className="text-zinc-500 font-medium block">Visual Elements:</span>
-                {spec.visualElements.map((el: string, idx: number) => (
-                  <p key={idx} className="flex items-center gap-1.5 text-zinc-300">
-                    <span className="w-1 h-1 rounded-full bg-violet-400" />
-                    <span>{el}</span>
-                  </p>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
