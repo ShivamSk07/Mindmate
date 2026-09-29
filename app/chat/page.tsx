@@ -40,7 +40,12 @@ export default function ChatPage() {
     setSessionId,
   } = useChat();
 
-  const [username, setUsername] = useState("User");
+  const [username, setUsername] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("clarity_username") || "User";
+    }
+    return "User";
+  });
   const [profile, setProfile] = useState<any>(null);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [activePersona, setActivePersona] = useState<Persona | null>(null);
@@ -100,16 +105,28 @@ export default function ChatPage() {
     }
   };
 
-  // 1. Initial Data Fetching
+  // 1. Initial Data Fetching in Parallel
   const fetchInitialData = useCallback(async () => {
     try {
-      const historyRes = await fetch("/api/history");
+      const [historyRes, personasRes] = await Promise.all([
+        fetch("/api/history"),
+        fetch("/api/personas"),
+      ]);
+
       if (historyRes.status === 401) {
         window.location.href = "/login";
         return;
       }
+
       const historyData = await historyRes.json();
-      if (historyData.username) setUsername(historyData.username);
+      const resolvedName = historyData.displayName || historyData.username;
+      if (resolvedName) {
+        setUsername(resolvedName);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("clarity_username", resolvedName);
+        }
+      }
+
       if (historyData.sessions) setSessionsList(historyData.sessions);
       if (historyData.profile) {
         setProfile(historyData.profile);
@@ -117,13 +134,14 @@ export default function ChatPage() {
         applyUserSettings(historyData.profile);
       }
 
-      const personasRes = await fetch("/api/personas");
-      const personasData = await personasRes.json();
-      const list = personasData.personas || [];
-      setPersonas(list);
-      if (list.length > 0) {
-        const clarityPersona = list.find((p: any) => p.name === "Clarity") || list[0];
-        setActivePersona(clarityPersona);
+      if (personasRes.ok) {
+        const personasData = await personasRes.json();
+        const list = personasData.personas || [];
+        setPersonas(list);
+        if (list.length > 0) {
+          const clarityPersona = list.find((p: any) => p.name === "Clarity") || list[0];
+          setActivePersona(clarityPersona);
+        }
       }
     } catch (e) {
       console.error("Error loading chat metadata", e);

@@ -468,7 +468,7 @@ export function ChatWindow({
                 </div>
 
                 <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-[#f2f2f7] mb-2">
-                  Hello, {firstName}
+                  {!firstName || firstName === "User" ? "Welcome to Clarity" : `Hello, ${firstName}`}
                 </h1>
 
                 <p className="text-sm md:text-base text-[#8e8e93] font-normal max-w-sm">

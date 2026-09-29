@@ -34,7 +34,14 @@ export async function POST(request: NextRequest) {
     // Set session cookie
     setSessionCookie(user);
 
-    return NextResponse.json({ success: true, user: { id: user.id, username: user.username } });
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        name: user.name || user.username
+      }
+    });
 
   } catch (error) {
     console.error("[Login Error]", error);

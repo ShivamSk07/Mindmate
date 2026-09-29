@@ -31,6 +31,14 @@ export default function LoginPage() {
         throw new Error(data.error || "Login failed");
       }
 
+      if (data.user) {
+        if (typeof window !== "undefined") {
+          const displayName = data.user.name || data.user.username;
+          localStorage.setItem("clarity_username", displayName);
+          localStorage.setItem("clarity_user", JSON.stringify(data.user));
+        }
+      }
+
       router.push("/chat");
       router.refresh();
 

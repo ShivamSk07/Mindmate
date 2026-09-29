@@ -80,6 +80,16 @@ export async function GET() {
         vercelUsername = anyVercel.vercelUsername;
       }
     }
+
+    if (!isCanvaConnected) {
+      const anyCanva = await prisma.userProfile.findFirst({
+        where: { canvaConnected: true },
+      });
+      if (anyCanva) {
+        isCanvaConnected = true;
+        canvaName = (anyCanva as any).canvaUserDisplayName || "Canva Account";
+      }
+    }
   } catch (e) {
     console.warn("Integrations status DB check notice:", e);
   }

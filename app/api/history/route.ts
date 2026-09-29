@@ -93,10 +93,22 @@ export async function GET(request: NextRequest) {
       _count: { messages: s.messages.length }
     }));
 
+    let displayName = user.username;
+    try {
+      const userRecord = await prisma.user.findUnique({
+        where: { id: user.userId },
+        select: { name: true, username: true }
+      });
+      if (userRecord?.name) {
+        displayName = userRecord.name;
+      }
+    } catch {}
+
     return NextResponse.json({
       conversations: data,
       sessions: data,
-      username: user.username,
+      username: displayName,
+      displayName,
       profile: profile
     });
     } catch (error) {

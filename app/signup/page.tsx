@@ -51,6 +51,11 @@ export default function SignupPage() {
         throw new Error(data.error || "Signup failed");
       }
 
+      if (typeof window !== "undefined") {
+        const displayName = data.user?.name || data.user?.username || username;
+        localStorage.setItem("clarity_username", displayName);
+      }
+
       router.push("/chat");
       router.refresh();
 

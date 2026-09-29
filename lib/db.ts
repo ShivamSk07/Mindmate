@@ -33,6 +33,3 @@ export async function ensureUserProfileColumns() {
     console.warn("ensureUserProfileColumns auto-migration notice:", e);
   }
 }
-
-// Ensure columns on server startup
-ensureUserProfileColumns().catch(() => {});

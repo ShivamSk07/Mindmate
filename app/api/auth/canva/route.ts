@@ -13,17 +13,19 @@ export async function GET(request: NextRequest) {
   const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 
   if (!user) {
-    let dbUser = await prisma.user.findFirst();
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          username: "user",
-          name: "User",
-          password: "demo_password_hash",
-        },
-      });
+    try {
+      const dbUser = await Promise.race([
+        prisma.user.findFirst(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
+      ]);
+      if (dbUser) {
+        user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
+      } else {
+        user = { userId: "user_session", username: "user", email: null };
+      }
+    } catch {
+      user = { userId: "user_session", username: "user", email: null };
     }
-    user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
   }
 
   const clientId = process.env.CANVA_CLIENT_ID || process.env.NEXT_PUBLIC_CANVA_CLIENT_ID || "OC-AaDoY4HR7fJE";

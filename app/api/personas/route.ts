@@ -32,26 +32,28 @@ const DEFAULT_PERSONAS = [
   }
 ];
 
+let defaultPersonasSeeded = false;
+
 async function seedDefaultPersonas() {
-  for (const def of DEFAULT_PERSONAS) {
-    await prisma.persona.upsert({
-      where: { id: def.id },
-      update: {
-        name: def.name,
-        tone: def.tone,
-        colorTheme: def.colorTheme,
-        systemPrompt: def.systemPrompt,
-        isCustom: false,
-      },
-      create: {
-        id: def.id,
-        name: def.name,
-        tone: def.tone,
-        colorTheme: def.colorTheme,
-        systemPrompt: def.systemPrompt,
-        isCustom: false,
-      }
-    });
+  if (defaultPersonasSeeded) return;
+  try {
+    for (const def of DEFAULT_PERSONAS) {
+      await prisma.persona.upsert({
+        where: { id: def.id },
+        update: {},
+        create: {
+          id: def.id,
+          name: def.name,
+          tone: def.tone,
+          colorTheme: def.colorTheme,
+          systemPrompt: def.systemPrompt,
+          isCustom: false,
+        }
+      });
+    }
+    defaultPersonasSeeded = true;
+  } catch (e) {
+    console.warn("[seedDefaultPersonas notice]", e);
   }
 }
 
@@ -62,11 +64,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Seed default personas first
-    await seedDefaultPersonas();
-
     // Fetch custom personas created by the user + default ones
-    const dbPersonas = await prisma.persona.findMany({
+    let dbPersonas = await prisma.persona.findMany({
       where: {
         OR: [
           { isCustom: false },
@@ -75,6 +74,20 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { name: "asc" }
     });
+
+    // Seed defaults only if database has no default personas
+    if (dbPersonas.length === 0 && !defaultPersonasSeeded) {
+      await seedDefaultPersonas();
+      dbPersonas = await prisma.persona.findMany({
+        where: {
+          OR: [
+            { isCustom: false },
+            { userId: user.userId }
+          ]
+        },
+        orderBy: { name: "asc" }
+      });
+    }
 
     // Put Clarity first
     dbPersonas.sort((a, b) => {
