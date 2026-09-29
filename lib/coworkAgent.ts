@@ -563,8 +563,9 @@ Visual Elements: ${designResult.designSpec.visualElements.join(", ")}
 ${slideDeckOverview}
 
 CANVA DIRECT LINKS:
-- Canva Workspace Link: ${designResult.editUrl}
-- Matching Canva Templates Library: ${designResult.designSpec.canvaTemplateSearchUrl}`;
+- Pre-Designed Canva Templates (Customizable Decks/Graphics): ${designResult.designSpec.canvaTemplateSearchUrl}
+- Canva Magic Design AI Generator: ${designResult.designSpec.canvaMagicDesignUrl}
+- Canva Workspace Blank Canvas: ${designResult.designSpec.canvaBlankCanvasUrl}`;
 
         // Add rich Canva Design Artifact
         task.artifacts.unshift({
@@ -892,7 +893,11 @@ Format the response with clean markdown: use headers, bullet lists, design color
 If a Canva design or presentation was generated:
 - Format the response as an executive presentation or creative design brief with a clear slide-by-slide or section breakdown.
 - Highlight the key themes, slide talking points, color palette, and fonts.
-- Prominently feature the verified Canva links provided in the Data section: e.g. [🎨 Open in Canva Workspace](URL) and [🔍 Browse Canva Templates](URL).
+- Prominently feature the verified Canva links:
+  • [🎨 Open Pre-Made Templates in Canva](URL from Pre-Designed Canva Templates)
+  • [🪄 Generate with Canva Magic Design AI](URL from Canva Magic Design AI Generator)
+  • [📄 Open Blank Project in Canva](URL from Canva Workspace Blank Canvas)
+- Explain that users can also copy the slide outline and paste it into Canva Docs to use the "Convert to Presentation" feature.
 - STRICT RULE: NEVER output random or broken links. Only use the verified Canva URLs given in the CANVA DIRECT LINKS section.
 Be specific, visual, engaging, and concise. Do not use filler phrases.
 If a live Vercel URL was generated, prominently feature it as a clickable markdown link.

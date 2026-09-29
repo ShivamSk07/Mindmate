@@ -11,10 +11,12 @@ import {
   Download,
   Sparkles,
   Presentation,
-  SlidersHorizontal,
   Layers,
   FileText,
   Search,
+  Maximize2,
+  FileCode,
+  Image as ImageIcon,
 } from "lucide-react";
 import { CanvaDesignSpec, CanvaSlide } from "@/lib/canva";
 
@@ -58,8 +60,9 @@ function PresentationDeckViewer({ spec }: { spec: CanvaDesignSpec }) {
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [copiedSlideDeck, setCopiedSlideDeck] = useState(false);
   const [copiedNotes, setCopiedNotes] = useState(false);
+  const [copiedDocToDeck, setCopiedDocToDeck] = useState(false);
 
-  const activeSlide: CanvaSlide | undefined = slides[activeSlideIndex] || {
+  const activeSlide: CanvaSlide = slides[activeSlideIndex] || {
     slideNumber: 1,
     title: spec.title,
     subtitle: spec.content?.headline,
@@ -85,8 +88,7 @@ function PresentationDeckViewer({ spec }: { spec: CanvaDesignSpec }) {
     const md = [
       `# ${spec.title}`,
       `**Theme**: ${spec.category} | **Palette**: ${spec.palette.primary}, ${spec.palette.secondary}`,
-      `**Canva Workspace Link**: ${spec.canvaLaunchUrl}`,
-      `**Canva Templates Link**: ${spec.canvaTemplateSearchUrl}`,
+      `**Matching Canva Templates**: ${spec.canvaTemplateSearchUrl}`,
       "",
       "---",
       "",
@@ -101,11 +103,33 @@ function PresentationDeckViewer({ spec }: { spec: CanvaDesignSpec }) {
     setTimeout(() => setCopiedSlideDeck(false), 2000);
   };
 
+  const copyDocToDeckOutline = () => {
+    const outline = [
+      `# ${spec.title}`,
+      `## Overview`,
+      spec.content?.subheadline || "Executive presentation outline ready for Canva Docs to Decks conversion.",
+      "",
+      ...slides.map((s) => [
+        `## Slide ${s.slideNumber}: ${s.title}`,
+        s.subtitle ? `### ${s.subtitle}` : "",
+        ...(s.bullets || []).map((b) => `- ${b}`),
+        s.metrics && s.metrics.length > 0
+          ? `\nKey Metrics:\n${s.metrics.map((m) => `* **${m.label}**: ${m.value}`).join("\n")}`
+          : "",
+        `\n> Presenter Notes: ${s.speakerNotes || ""}`,
+        "",
+      ].filter(Boolean).join("\n")),
+    ].join("\n");
+
+    navigator.clipboard.writeText(outline);
+    setCopiedDocToDeck(true);
+    setTimeout(() => setCopiedDocToDeck(false), 2500);
+  };
+
   const downloadDeckMarkdown = () => {
     const md = [
       `# ${spec.title}`,
-      `**Canva Workspace Link**: ${spec.canvaLaunchUrl}`,
-      `**Canva Templates**: ${spec.canvaTemplateSearchUrl}`,
+      `**Matching Canva Templates**: ${spec.canvaTemplateSearchUrl}`,
       "",
       ...slides.map(
         (s) =>
@@ -124,7 +148,7 @@ function PresentationDeckViewer({ spec }: { spec: CanvaDesignSpec }) {
 
   return (
     <div className="flex-1 overflow-y-auto w-full h-full p-5 md:p-7 space-y-5 bg-[#0a0a0b]">
-      {/* Top Banner with Direct Canva Link & Controls */}
+      {/* Top Banner with Multi-Option Canva Action Controls */}
       <div className="p-4 rounded-xl bg-gradient-to-r from-[#00C4CC]/20 via-[#7D2AE8]/20 to-zinc-950 border border-[#00C4CC]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-lg">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
@@ -132,52 +156,80 @@ function PresentationDeckViewer({ spec }: { spec: CanvaDesignSpec }) {
               <Presentation size={10} />
               <span>Canva Presentation Studio</span>
             </span>
-            {spec.isRealCanvaDesign && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Live Account Design
-              </span>
-            )}
             <span className="text-xs text-zinc-400 font-mono">
-              16:9 • {slides.length > 0 ? `${slides.length} Slides Deck` : "Full Presentation"}
+              16:9 • {slides.length} Slides Deck
             </span>
           </div>
           <h2 className="text-base font-bold text-white tracking-tight">{spec.title}</h2>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Copy Deck for Canva Docs to Decks */}
           <button
-            onClick={copyEntireDeckMarkdown}
+            onClick={copyDocToDeckOutline}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-medium transition-all"
-            title="Copy entire slide deck as markdown"
+            title="Copy formatted outline to paste into Canva Docs (Docs to Decks)"
           >
-            {copiedSlideDeck ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-            <span>{copiedSlideDeck ? "Copied Deck" : "Copy Deck"}</span>
+            {copiedDocToDeck ? <Check size={12} className="text-emerald-400" /> : <Sparkles size={12} className="text-[#00C4CC]" />}
+            <span>{copiedDocToDeck ? "Copied for Canva!" : "Canva Docs-to-Decks"}</span>
           </button>
 
           <button
             onClick={downloadDeckMarkdown}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-medium transition-all"
-            title="Download slide deck file"
+            title="Download slide deck markdown file"
           >
             <Download size={12} />
             <span>Export .md</span>
           </button>
 
+          {/* Canva Magic Design AI Button */}
+          {spec.canvaMagicDesignUrl && (
+            <a
+              href={spec.canvaMagicDesignUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-purple-300 hover:text-white text-xs font-medium transition-all"
+              title="Generate directly using Canva's Magic Design AI tool"
+            >
+              <Sparkles size={12} className="text-purple-400" />
+              <span>Magic Design AI</span>
+              <ExternalLink size={10} className="opacity-60" />
+            </a>
+          )}
+
+          {/* Primary CTA: Open matching ready-to-use Canva templates */}
           <a
-            href={spec.canvaLaunchUrl || "https://www.canva.com/create/presentations/"}
+            href={spec.canvaTemplateSearchUrl || spec.canvaLaunchUrl || "https://www.canva.com/create/presentations/"}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] text-white text-xs font-semibold hover:opacity-95 transition-all shadow-[0_4px_16px_rgba(0,196,204,0.35)] active:scale-95 flex-shrink-0"
+            title="Open ready-to-use on-topic presentation templates in Canva"
           >
             <Palette size={13} />
-            <span>Open in Canva</span>
+            <span>Open Templates in Canva</span>
             <ExternalLink size={12} />
           </a>
+
+          {/* Secondary: Blank Canvas if they want empty project */}
+          {spec.canvaBlankCanvasUrl && (
+            <a
+              href={spec.canvaBlankCanvasUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs transition-colors"
+              title="Open a blank canvas in Canva"
+            >
+              <span>Blank Canvas</span>
+              <ExternalLink size={10} className="opacity-50" />
+            </a>
+          )}
         </div>
       </div>
 
       {/* Main 16:9 Presentation Canvas Stage */}
-      <div className="relative rounded-2xl border border-zinc-800/80 shadow-2xl overflow-hidden aspect-[16/9] max-h-[460px] w-full flex flex-col justify-between p-6 md:p-8"
+      <div
+        className="relative rounded-2xl border border-zinc-800/80 shadow-2xl overflow-hidden aspect-[16/9] min-h-[380px] max-h-[500px] w-full flex flex-col justify-between p-6 md:p-8"
         style={{
           backgroundColor: spec.palette.background || "#08080C",
         }}
@@ -220,68 +272,91 @@ function PresentationDeckViewer({ spec }: { spec: CanvaDesignSpec }) {
           </div>
         </div>
 
-        {/* Slide Center Content */}
-        <div className="relative z-10 my-auto py-3 space-y-4">
-          <div className="space-y-1.5">
-            <h1
-              className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight"
-              style={{
-                color: spec.palette.text || "#FFFFFF",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-              }}
-            >
-              {activeSlide.title}
-            </h1>
-            {activeSlide.subtitle && (
-              <p
-                className="text-sm md:text-base font-normal leading-relaxed max-w-2xl"
-                style={{ color: spec.palette.mutedText || "#A1A1AA" }}
-              >
-                {activeSlide.subtitle}
-              </p>
+        {/* Slide Center Content with Layout-Aware Graphic Stage */}
+        <div className="relative z-10 my-auto py-3">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-center">
+            {/* Left/Main Column: Typography & Content */}
+            <div className={`space-y-3 ${activeSlide.imageUrl ? "md:col-span-7" : "md:col-span-12"}`}>
+              <div className="space-y-1.5">
+                <h1
+                  className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight"
+                  style={{
+                    color: spec.palette.text || "#FFFFFF",
+                    fontFamily: "'Plus Jakarta Sans', sans-serif",
+                  }}
+                >
+                  {activeSlide.title}
+                </h1>
+                {activeSlide.subtitle && (
+                  <p
+                    className="text-xs md:text-sm font-normal leading-relaxed text-zinc-300"
+                    style={{ color: spec.palette.mutedText || "#A1A1AA" }}
+                  >
+                    {activeSlide.subtitle}
+                  </p>
+                )}
+              </div>
+
+              {/* Layout Specific Data Details */}
+              {activeSlide.metrics && activeSlide.metrics.length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+                  {activeSlide.metrics.map((m, idx) => (
+                    <div
+                      key={idx}
+                      className="p-3 rounded-xl border border-white/10 shadow-inner flex flex-col justify-center"
+                      style={{ backgroundColor: spec.palette.cardBg || "#12121A" }}
+                    >
+                      <span
+                        className="text-lg md:text-xl font-black tracking-tight"
+                        style={{ color: spec.palette.primary || "#00C4CC" }}
+                      >
+                        {m.value}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 font-medium uppercase tracking-wider">
+                        {m.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : activeSlide.bullets && activeSlide.bullets.length > 0 ? (
+                <div className="space-y-1.5 pt-1">
+                  {activeSlide.bullets.slice(0, 4).map((b, idx) => (
+                    <div
+                      key={idx}
+                      className="p-2.5 rounded-xl border border-white/10 flex items-start gap-2.5 shadow-sm"
+                      style={{ backgroundColor: spec.palette.cardBg || "#12121A" }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5 shadow-sm"
+                        style={{ backgroundColor: spec.palette.primary || "#00C4CC" }}
+                      />
+                      <span className="text-xs md:text-sm text-zinc-200 font-medium leading-relaxed">
+                        {b}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            {/* Right Column: Slide Visual Illustration / Diagram */}
+            {activeSlide.imageUrl && (
+              <div className="md:col-span-5 flex items-center justify-center">
+                <div className="relative rounded-xl overflow-hidden border border-white/15 shadow-xl max-h-[220px] w-full bg-zinc-950/80 group">
+                  <img
+                    src={activeSlide.imageUrl}
+                    alt={activeSlide.title}
+                    className="w-full h-full object-cover rounded-xl transition-transform duration-500 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                  <span className="absolute bottom-2 left-2 text-[10px] font-mono px-2 py-0.5 rounded bg-black/75 text-zinc-300 backdrop-blur-sm border border-white/10">
+                    Slide Graphic
+                  </span>
+                </div>
+              </div>
             )}
           </div>
-
-          {/* Dynamic Layout Details */}
-          {activeSlide.metrics && activeSlide.metrics.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
-              {activeSlide.metrics.map((m, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-xl border border-white/10 shadow-inner flex flex-col justify-center"
-                  style={{ backgroundColor: spec.palette.cardBg || "#12121A" }}
-                >
-                  <span
-                    className="text-xl md:text-2xl font-black tracking-tight"
-                    style={{ color: spec.palette.primary || "#00C4CC" }}
-                  >
-                    {m.value}
-                  </span>
-                  <span className="text-[11px] text-zinc-400 font-medium uppercase tracking-wider">
-                    {m.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : activeSlide.bullets && activeSlide.bullets.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
-              {activeSlide.bullets.slice(0, 4).map((b, idx) => (
-                <div
-                  key={idx}
-                  className="p-3 rounded-xl border border-white/10 flex items-start gap-2.5 shadow-sm"
-                  style={{ backgroundColor: spec.palette.cardBg || "#12121A" }}
-                >
-                  <span
-                    className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
-                    style={{ backgroundColor: spec.palette.primary || "#00C4CC" }}
-                  />
-                  <span className="text-xs md:text-sm text-zinc-200 font-medium leading-relaxed">
-                    {b}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : null}
         </div>
 
         {/* Slide Footer */}
@@ -316,6 +391,28 @@ function PresentationDeckViewer({ spec }: { spec: CanvaDesignSpec }) {
         </div>
       </div>
 
+      {/* Canva Docs-to-Decks Quick Guide Tip */}
+      <div className="p-3.5 rounded-xl bg-zinc-950/90 border border-zinc-850 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#00C4CC]/20 to-[#7D2AE8]/20 border border-[#00C4CC]/30 flex items-center justify-center flex-shrink-0">
+            <Sparkles size={14} className="text-[#00C4CC]" />
+          </div>
+          <div>
+            <span className="font-semibold text-zinc-200">Convert to Presentation in Canva:</span>
+            <span className="text-zinc-400 ml-1.5">Click <strong>Canva Docs-to-Decks</strong> above, paste into a Canva Doc, and click <strong>Convert to Presentation</strong> to instantly generate all slides in Canva!</span>
+          </div>
+        </div>
+        <a
+          href={spec.canvaDocToDeckUrl || "https://www.canva.com/create/documents/"}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white font-medium flex items-center gap-1.5 whitespace-nowrap transition-colors"
+        >
+          <span>Open Canva Docs</span>
+          <ExternalLink size={11} />
+        </a>
+      </div>
+
       {/* Slide Thumbnails Carousel Switcher */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -331,10 +428,10 @@ function PresentationDeckViewer({ spec }: { spec: CanvaDesignSpec }) {
             <button
               key={idx}
               onClick={() => setActiveSlideIndex(idx)}
-              className={`p-2.5 rounded-xl border text-left transition-all relative overflow-hidden group flex flex-col justify-between min-h-[75px] ${
+              className={`p-3 rounded-xl border text-left transition-all group relative overflow-hidden flex flex-col justify-between ${
                 activeSlideIndex === idx
-                  ? "bg-zinc-900 border-[#00C4CC] shadow-[0_0_15px_rgba(0,196,204,0.25)] ring-1 ring-[#00C4CC]"
-                  : "bg-zinc-950 border-zinc-850 hover:border-zinc-700 hover:bg-zinc-900/50"
+                  ? "bg-zinc-900 border-[#00C4CC] shadow-[0_0_15px_rgba(0,196,204,0.25)]"
+                  : "bg-zinc-950 hover:bg-zinc-900 border-zinc-900 hover:border-zinc-800"
               }`}
             >
               <div className="flex items-center justify-between w-full mb-1">
@@ -437,18 +534,13 @@ function GraphicDesignViewer({ spec }: { spec: CanvaDesignSpec }) {
 
   return (
     <div className="flex-1 overflow-y-auto w-full h-full p-6 md:p-8 space-y-6 bg-[#0a0a0b]">
-      {/* Top Banner with Direct Canva Link */}
+      {/* Top Banner with Direct Canva Link & Actions */}
       <div className="p-5 rounded-xl bg-gradient-to-r from-[#00C4CC]/15 via-[#7D2AE8]/15 to-transparent border border-[#00C4CC]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] text-white">
               Canva Studio
             </span>
-            {spec.isRealCanvaDesign && (
-              <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                Connected Design
-              </span>
-            )}
             <span className="text-xs text-zinc-400">
               {spec.category} • {spec.width}x{spec.height}px
             </span>
@@ -456,82 +548,149 @@ function GraphicDesignViewer({ spec }: { spec: CanvaDesignSpec }) {
           <h2 className="text-base font-semibold text-white">{spec.title}</h2>
         </div>
 
-        <div className="flex items-center gap-2">
-          <a
-            href={spec.canvaTemplateSearchUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-medium transition-colors"
-          >
-            <Search size={13} />
-            <span>Matching Templates</span>
-          </a>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Download Image if generated */}
+          {spec.previewImageUrl && (
+            <a
+              href={spec.previewImageUrl}
+              target="_blank"
+              download={`${spec.title.replace(/[^a-zA-Z0-9_-]/g, "_")}.jpg`}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-medium transition-colors"
+            >
+              <Download size={13} />
+              <span>Download Image</span>
+            </a>
+          )}
 
+          {/* Canva Magic Design AI */}
+          {spec.canvaMagicDesignUrl && (
+            <a
+              href={spec.canvaMagicDesignUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-purple-300 hover:text-white text-xs font-medium transition-all"
+            >
+              <Sparkles size={12} className="text-purple-400" />
+              <span>Magic Design AI</span>
+              <ExternalLink size={10} className="opacity-60" />
+            </a>
+          )}
+
+          {/* Primary CTA: Open matching pre-designed templates in Canva */}
           <a
-            href={spec.canvaLaunchUrl || "https://www.canva.com"}
+            href={spec.canvaTemplateSearchUrl || spec.canvaLaunchUrl || "https://www.canva.com"}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-[#00C4CC] to-[#7D2AE8] text-white text-xs font-semibold hover:opacity-95 transition-all shadow-[0_4px_20px_rgba(0,196,204,0.3)] active:scale-95 flex-shrink-0"
           >
             <Palette size={14} />
-            <span>Open in Canva</span>
+            <span>Open Templates in Canva</span>
             <ExternalLink size={13} />
           </a>
+
+          {/* Blank Canvas option */}
+          {spec.canvaBlankCanvasUrl && (
+            <a
+              href={spec.canvaBlankCanvasUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-zinc-400 hover:text-zinc-200 text-xs transition-colors"
+            >
+              <span>Blank Canvas</span>
+              <ExternalLink size={10} className="opacity-50" />
+            </a>
+          )}
         </div>
       </div>
 
-      {/* Visual Mock Canvas */}
+      {/* Visual Canvas Stage */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left: Design Layout Card */}
-        <div
-          className="lg:col-span-7 rounded-2xl border border-zinc-800 p-6 md:p-8 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[380px]"
-          style={{ backgroundColor: spec.palette?.background || "#09090b" }}
-        >
-          <div
-            className="absolute top-0 right-0 w-64 h-64 opacity-25 pointer-events-none rounded-full blur-3xl"
-            style={{ backgroundColor: spec.palette?.primary || "#00C4CC" }}
-          />
+        {/* Left: Real AI Visual Design Canvas (NO MORE BLANK PAGE!) */}
+        <div className="lg:col-span-7 space-y-4">
+          <div className="relative rounded-2xl border border-zinc-800/90 overflow-hidden shadow-2xl bg-zinc-950 group">
+            {spec.previewImageUrl ? (
+              <div className="relative w-full overflow-hidden bg-black flex items-center justify-center min-h-[360px]">
+                <img
+                  src={spec.previewImageUrl}
+                  alt={spec.title}
+                  className="w-full h-auto max-h-[520px] object-contain rounded-2xl transition-transform duration-500 group-hover:scale-[1.02]"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent pointer-events-none" />
 
-          <div className="relative z-10 flex items-center justify-between border-b border-white/10 pb-4 mb-6">
-            <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400">
-              {spec.category}
-            </span>
-            <div
-              className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: spec.palette?.primary || "#00C4CC" }}
-            />
-          </div>
+                <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/75 text-white backdrop-blur-md border border-white/10 shadow-sm flex items-center gap-1.5">
+                    <Sparkles size={11} className="text-[#00C4CC]" />
+                    <span>{spec.category}</span>
+                  </span>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-mono bg-black/75 text-zinc-300 backdrop-blur-md border border-white/10">
+                    {spec.width} × {spec.height} PX
+                  </span>
+                </div>
 
-          <div className="relative z-10 space-y-3 my-auto py-4">
-            <h1
-              className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight"
-              style={{
-                color: spec.palette?.text || "#FFFFFF",
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
-              }}
-            >
-              {spec.content?.headline || spec.title}
-            </h1>
-            {spec.content?.subheadline && (
-              <p className="text-sm md:text-base text-zinc-300 font-normal leading-relaxed">
-                {spec.content.subheadline}
-              </p>
+                <div className="absolute bottom-4 left-4 right-4 z-10 space-y-1.5">
+                  <h1 className="text-xl md:text-2xl font-black text-white tracking-tight leading-tight drop-shadow-md">
+                    {spec.content?.headline || spec.title}
+                  </h1>
+                  {spec.content?.subheadline && (
+                    <p className="text-xs md:text-sm text-zinc-200 line-clamp-2 drop-shadow">
+                      {spec.content.subheadline}
+                    </p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div
+                className="p-6 md:p-8 relative overflow-hidden flex flex-col justify-between min-h-[380px]"
+                style={{ backgroundColor: spec.palette?.background || "#09090b" }}
+              >
+                <div
+                  className="absolute top-0 right-0 w-64 h-64 opacity-25 pointer-events-none rounded-full blur-3xl"
+                  style={{ backgroundColor: spec.palette?.primary || "#00C4CC" }}
+                />
+
+                <div className="relative z-10 flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+                  <span className="text-[11px] font-mono uppercase tracking-widest text-zinc-400">
+                    {spec.category}
+                  </span>
+                  <div
+                    className="w-2.5 h-2.5 rounded-full"
+                    style={{ backgroundColor: spec.palette?.primary || "#00C4CC" }}
+                  />
+                </div>
+
+                <div className="relative z-10 space-y-3 my-auto py-4">
+                  <h1
+                    className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight"
+                    style={{
+                      color: spec.palette?.text || "#FFFFFF",
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                    }}
+                  >
+                    {spec.content?.headline || spec.title}
+                  </h1>
+                  {spec.content?.subheadline && (
+                    <p className="text-sm md:text-base text-zinc-300 font-normal leading-relaxed">
+                      {spec.content.subheadline}
+                    </p>
+                  )}
+                </div>
+
+                <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between">
+                  <span
+                    className="px-4 py-1.5 rounded-full text-xs font-bold shadow"
+                    style={{
+                      backgroundColor: spec.palette?.primary || "#00C4CC",
+                      color: "#000000",
+                    }}
+                  >
+                    {spec.content?.callToAction || "Explore Design"}
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase">
+                    {spec.width} × {spec.height} PX
+                  </span>
+                </div>
+              </div>
             )}
-          </div>
-
-          <div className="relative z-10 pt-6 border-t border-white/10 flex items-center justify-between">
-            <span
-              className="px-4 py-1.5 rounded-full text-xs font-bold shadow"
-              style={{
-                backgroundColor: spec.palette?.primary || "#00C4CC",
-                color: "#000000",
-              }}
-            >
-              {spec.content?.callToAction || "Explore Design"}
-            </span>
-            <span className="text-[10px] font-mono text-zinc-500 uppercase">
-              {spec.width} × {spec.height} PX
-            </span>
           </div>
         </div>
 
@@ -569,45 +728,60 @@ function GraphicDesignViewer({ spec }: { spec: CanvaDesignSpec }) {
             </div>
           </div>
 
-          {/* Typography & Assets */}
-          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-900 space-y-3">
+          {/* Typography */}
+          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-900 space-y-2">
+            <span className="text-xs font-semibold text-zinc-200">Typography Setup</span>
+            <div className="space-y-1.5 text-xs">
+              <div className="flex items-center justify-between py-1 border-b border-zinc-900 text-zinc-400">
+                <span>Heading Font</span>
+                <span className="font-semibold text-zinc-200">
+                  {spec.typography?.headingFont || "Plus Jakarta Sans Bold"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between py-1 text-zinc-400">
+                <span>Body Font</span>
+                <span className="text-zinc-200">{spec.typography?.bodyFont || "Inter Regular"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Copyable Content Drawer */}
+          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-900 space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-zinc-200">Typography & Assets</span>
+              <span className="text-xs font-semibold text-zinc-200">Design Copy & Text</span>
               <button
                 onClick={copyAllCopy}
-                className="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
+                className="text-[11px] text-zinc-500 hover:text-zinc-300 flex items-center gap-1"
               >
                 {copiedCopy ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                <span>{copiedCopy ? "Copied" : "Copy Copywriting"}</span>
+                <span>{copiedCopy ? "Copied" : "Copy All"}</span>
               </button>
             </div>
-
-            <div className="space-y-2 text-xs">
-              <div className="p-2 rounded bg-zinc-900 border border-zinc-850">
-                <span className="text-[10px] text-zinc-500 uppercase block">Heading Font</span>
-                <span className="text-zinc-200 font-medium">
-                  {spec.typography?.headingFont || "Plus Jakarta Sans"}
-                </span>
-              </div>
-              <div className="p-2 rounded bg-zinc-900 border border-zinc-850">
-                <span className="text-[10px] text-zinc-500 uppercase block">Body Font</span>
-                <span className="text-zinc-200 font-medium">
-                  {spec.typography?.bodyFont || "Inter / Roboto"}
-                </span>
-              </div>
+            <div className="space-y-1.5 text-xs text-zinc-400 bg-zinc-900/60 p-3 rounded-lg border border-zinc-850">
+              <p>
+                <strong className="text-zinc-300">Headline:</strong> {spec.content?.headline}
+              </p>
+              {spec.content?.subheadline && (
+                <p>
+                  <strong className="text-zinc-300">Subheadline:</strong> {spec.content.subheadline}
+                </p>
+              )}
+              {spec.content?.bodyText && (
+                <p>
+                  <strong className="text-zinc-300">Body:</strong> {spec.content.bodyText}
+                </p>
+              )}
+              {spec.content?.callToAction && (
+                <p>
+                  <strong className="text-zinc-300">CTA:</strong> {spec.content.callToAction}
+                </p>
+              )}
+              {spec.content?.hashtags && spec.content.hashtags.length > 0 && (
+                <p className="text-[#00C4CC] font-mono text-[11px] pt-1">
+                  {spec.content.hashtags.join(" ")}
+                </p>
+              )}
             </div>
-
-            {spec.visualElements && spec.visualElements.length > 0 && (
-              <div className="pt-2 border-t border-zinc-900 text-[11px] text-zinc-400 space-y-1">
-                <span className="text-zinc-500 font-medium block">Visual Composition Elements:</span>
-                {spec.visualElements.map((el: string, idx: number) => (
-                  <p key={idx} className="flex items-center gap-1.5 text-zinc-300">
-                    <span className="w-1 h-1 rounded-full bg-violet-400" />
-                    <span>{el}</span>
-                  </p>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>

@@ -4,6 +4,7 @@
  */
 
 import { generateResponse } from "./groq";
+import { generateFluxImage } from "./imageGen";
 
 export type CanvaDesignType =
   | "presentation"
@@ -26,6 +27,7 @@ export interface CanvaSlide {
   speakerNotes?: string;
   visualDescription?: string;
   suggestedElements?: string[];
+  imageUrl?: string;
 }
 
 export interface CanvaDesignSpec {
@@ -59,8 +61,12 @@ export interface CanvaDesignSpec {
   };
   slides?: CanvaSlide[];
   visualElements: string[];
+  previewImageUrl?: string;
   canvaLaunchUrl: string;
   canvaTemplateSearchUrl: string;
+  canvaMagicDesignUrl: string;
+  canvaBlankCanvasUrl: string;
+  canvaDocToDeckUrl: string;
   canvaDesignId?: string;
   isRealCanvaDesign?: boolean;
 }
@@ -376,6 +382,7 @@ Slide 6 must be Roadmap & Next Steps / Call to Action.`;
         speakerNotes: s.speakerNotes || "Emphasize key value proposition and strategic differentiators.",
         visualDescription: s.visualDescription || "Modern minimalist vector illustration with clean geometric accents.",
         suggestedElements: Array.isArray(s.suggestedElements) ? s.suggestedElements : ["infographic", "charts", "3d gradient"],
+        imageUrl: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${title} slide ${idx + 1} ${s.title || ""}, modern minimalist 16:9 presentation graphic, clean vector, dark mode`)}?width=700&height=390&nologo=true`,
       }));
     }
   } catch (err) {
@@ -397,6 +404,7 @@ Slide 6 must be Roadmap & Next Steps / Call to Action.`;
       speakerNotes: "Welcome the audience and introduce the overarching mission and strategic scope.",
       visualDescription: "Hero slide with bold typography, dark obsidian backdrop, and radiant gradient flare.",
       suggestedElements: ["modern gradient background", "minimalist geometric shape", "venture badge"],
+      imageUrl: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${title} executive cover slide, modern minimalist presentation hero, radiant gradient`)}?width=700&height=390&nologo=true`,
     },
     {
       slideNumber: 2,
@@ -415,6 +423,7 @@ Slide 6 must be Roadmap & Next Steps / Call to Action.`;
       speakerNotes: "Highlight the acute pain points felt by current teams and the cost of doing nothing.",
       visualDescription: "Split layout with red/amber warning badges and modern contrast callout cards.",
       suggestedElements: ["alert icon", "friction chart", "split comparison container"],
+      imageUrl: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${title} market challenge problem graphic, modern clean vector contrast`)}?width=700&height=390&nologo=true`,
     },
     {
       slideNumber: 3,
@@ -434,6 +443,7 @@ Slide 6 must be Roadmap & Next Steps / Call to Action.`;
       speakerNotes: "Walk through the architectural breakthrough and how simplicity drives adoption.",
       visualDescription: "Central system architecture graphic with connecting glowing data nodes.",
       suggestedElements: ["network node graphic", "lightning bolt badge", "metric counters"],
+      imageUrl: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${title} technology architecture diagram, sleek glowing nodes, dark tech aesthetic`)}?width=700&height=390&nologo=true`,
     },
     {
       slideNumber: 4,
@@ -448,6 +458,7 @@ Slide 6 must be Roadmap & Next Steps / Call to Action.`;
       speakerNotes: "Demonstrate practical daily use cases and tangible ROI for users.",
       visualDescription: "Three glassmorphic feature cards with vibrant icon headers.",
       suggestedElements: ["3D feature cards", "check badge icons", "glass container"],
+      imageUrl: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${title} high leverage feature highlights, glass cards, modern UI graphic`)}?width=700&height=390&nologo=true`,
     },
     {
       slideNumber: 5,
@@ -466,6 +477,7 @@ Slide 6 must be Roadmap & Next Steps / Call to Action.`;
       speakerNotes: "Address scalability, unit economics, and our competitive moat.",
       visualDescription: "Upward growth trendline graph alongside key demographic pie distribution.",
       suggestedElements: ["growth arrow", "bar chart", "world map watermark"],
+      imageUrl: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${title} market growth trajectory, upward arrow, clean financial chart`)}?width=700&height=390&nologo=true`,
     },
     {
       slideNumber: 6,
@@ -480,6 +492,7 @@ Slide 6 must be Roadmap & Next Steps / Call to Action.`;
       speakerNotes: "Close with a confident call to action and open the floor for discussion.",
       visualDescription: "Clean milestone timeline with glowing checkmarks and bold primary CTA button.",
       suggestedElements: ["timeline connector", "celebration confetti", "cta pill button"],
+      imageUrl: `https://image.pollinations.ai/prompt/${encodeURIComponent(`${title} roadmap milestone blueprint, future vision concept, modern dark aesthetic`)}?width=700&height=390&nologo=true`,
     },
   ];
 }
@@ -700,10 +713,39 @@ export async function canva_create_design(
     }
   }
 
-  // Official Canva launch URL
-  const verifiedLaunchUrl =
-    realCanvaEditUrl || preset.creatorUrl;
-  const templateSearchUrl = generateCanvaTemplateSearchUrl(cleanTitle, presetKey);
+  // Generate real AI visual preview image for graphic designs and slide imagery
+  let previewImageUrl: string | undefined;
+  if (presetKey !== "presentation") {
+    try {
+      const imgRes = await Promise.race([
+        generateFluxImage(`${cleanTitle}, ${preset.searchKeyword}, clean visual graphic, professional typography and layout, masterpiece, 8k`),
+        new Promise<null>((r) => setTimeout(() => r(null), 3500)),
+      ]);
+      if (imgRes && imgRes.success && imgRes.imageUrl) {
+        previewImageUrl = imgRes.imageUrl;
+      } else {
+        previewImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(`${cleanTitle} ${preset.searchKeyword}, professional high quality visual design, 8k resolution, modern minimalist`)}?width=${preset.width > 1200 ? 1200 : preset.width}&height=${preset.height > 1200 ? 1200 : preset.height}&nologo=true`;
+      }
+    } catch {
+      previewImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(`${cleanTitle} ${preset.searchKeyword}, professional high quality visual design, 8k resolution, modern minimalist`)}?width=${preset.width > 1200 ? 1200 : preset.width}&height=${preset.height > 1200 ? 1200 : preset.height}&nologo=true`;
+    }
+  } else {
+    // For presentations, generate a cover slide hero visual
+    previewImageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(`${cleanTitle} presentation hero cover, modern minimalist geometric 16:9 banner, obsidian dark aesthetic, radiant gradient mesh`)}?width=1280&height=720&nologo=true`;
+  }
+
+  // Pre-Designed Canva Templates URL (Guarantees user NEVER lands on an empty blank canvas!)
+  const templateSearchUrl =
+    presetKey === "presentation"
+      ? `https://www.canva.com/search/templates?q=${encodeURIComponent(cleanTitle)}&category=tACFahIXr8Q`
+      : `https://www.canva.com/templates/?query=${encodeURIComponent(cleanTitle + " " + preset.searchKeyword)}`;
+
+  const magicDesignUrl = `https://www.canva.com/magic-design/?query=${encodeURIComponent(cleanTitle)}`;
+  const blankCanvasUrl = realCanvaEditUrl || preset.creatorUrl;
+  const docToDeckUrl = "https://www.canva.com/create/documents/";
+
+  // Primary URL opens pre-styled templates directly matching the prompt
+  const verifiedLaunchUrl = templateSearchUrl;
 
   // If Presentation, generate multi-slide deck
   let slides: CanvaSlide[] | undefined;
@@ -742,8 +784,12 @@ export async function canva_create_design(
     },
     slides,
     visualElements: theme.visuals,
+    previewImageUrl,
     canvaLaunchUrl: verifiedLaunchUrl,
     canvaTemplateSearchUrl: templateSearchUrl,
+    canvaMagicDesignUrl: magicDesignUrl,
+    canvaBlankCanvasUrl: blankCanvasUrl,
+    canvaDocToDeckUrl: docToDeckUrl,
     canvaDesignId: realCanvaDesignId || undefined,
     isRealCanvaDesign,
   };
@@ -751,7 +797,7 @@ export async function canva_create_design(
   return {
     success: true,
     editUrl: verifiedLaunchUrl,
-    viewUrl: realCanvaEditUrl || verifiedLaunchUrl,
+    viewUrl: templateSearchUrl,
     designId: realCanvaDesignId || undefined,
     isRealCanvaDesign,
     designSpec,
