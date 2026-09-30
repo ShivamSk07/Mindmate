@@ -5,10 +5,7 @@ import { prisma } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const user = await getSessionUser().catch(() => null);
 
     const body = await request.json();
     const { prompt } = body;
@@ -18,12 +15,14 @@ export async function POST(request: NextRequest) {
     }
 
     let token = null;
-    try {
-      const profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
-      token = (profile as any)?.canvaToken;
-    } catch (e) {}
+    if (user?.userId) {
+      try {
+        const profile = await prisma.userProfile.findUnique({
+          where: { userId: user.userId },
+        });
+        token = (profile as any)?.canvaToken;
+      } catch (e) {}
+    }
 
     const result = await canva_create_design(prompt.trim(), token);
 

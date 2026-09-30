@@ -300,13 +300,18 @@ export default function CoworkPage() {
             const data = await res.json();
             if (data.task) {
               setCurrentTask(data.task);
-              if (data.task.artifacts?.length > 0 && !activeArtifact) {
+              const canvaArt = data.task.artifacts?.find((a: any) => a.type === "canva_design");
+              if (canvaArt && activeArtifact?.type !== "canva_design") {
+                setActiveArtifact(canvaArt);
+              } else if (data.task.artifacts?.length > 0 && !activeArtifact) {
                 setActiveArtifact(data.task.artifacts[0]);
               }
               if (["completed", "failed", "cancelled"].includes(data.task.status)) {
                 if (pollRef.current) clearInterval(pollRef.current);
                 fetchHistory();
-                if (data.task.artifacts?.length > 0) {
+                if (canvaArt) {
+                  setActiveArtifact(canvaArt);
+                } else if (data.task.artifacts?.length > 0) {
                   setActiveArtifact(data.task.artifacts[0]);
                 }
               }
