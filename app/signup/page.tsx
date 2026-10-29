@@ -56,7 +56,9 @@ export default function SignupPage() {
         localStorage.setItem("clarity_username", displayName);
       }
 
-      router.push("/chat");
+      const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const redirectTarget = searchParams?.get("redirect") || "/chat";
+      router.push(redirectTarget);
       router.refresh();
 
     } catch (err: any) {
@@ -169,7 +171,10 @@ export default function SignupPage() {
 
         <div className="text-center text-xs text-[#8e8e93]">
           Have an account?{" "}
-          <Link href="/login" className="text-white font-semibold hover:underline">
+          <Link
+            href={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("redirect") ? `/login?redirect=${encodeURIComponent(new URLSearchParams(window.location.search).get("redirect")!)}` : "/login"}
+            className="text-white font-semibold hover:underline"
+          >
             Log in
           </Link>
         </div>

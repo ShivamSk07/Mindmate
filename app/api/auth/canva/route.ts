@@ -6,26 +6,13 @@ import crypto from "crypto";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  let user = await getSessionUser();
-
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
   const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 
-  if (!user) {
-    try {
-      const dbUser = await Promise.race([
-        prisma.user.findFirst(),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 2000)),
-      ]);
-      if (dbUser) {
-        user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
-      } else {
-        user = { userId: "user_session", username: "user", email: null };
-      }
-    } catch {
-      user = { userId: "user_session", username: "user", email: null };
-    }
+  const user = await getSessionUser();
+  if (!user?.userId) {
+    return NextResponse.redirect(new URL("/login?redirect=/cowork", appUrl));
   }
 
   const clientId = process.env.CANVA_CLIENT_ID || process.env.NEXT_PUBLIC_CANVA_CLIENT_ID || "OC-AaDoY4HR7fJE";

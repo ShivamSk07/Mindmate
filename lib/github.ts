@@ -94,7 +94,10 @@ async function githubFetch(endpoint: string, options: RequestInit = {}, userToke
 // READ TOOLS
 // -------------------------------------------------------------
 
-export async function github_list_repositories(username = "ShivamSk07", accessToken?: string | null): Promise<GitHubRepo[]> {
+export async function github_list_repositories(username?: string, accessToken?: string | null): Promise<GitHubRepo[]> {
+  if (!accessToken && !username) {
+    return [];
+  }
   // Use authenticated endpoint if user token is available (gets private repos too)
   const endpoint = accessToken
     ? `/user/repos?sort=updated&per_page=50`
@@ -230,7 +233,7 @@ export async function github_create_issue(owner: string, repo: string, title: st
     number: data.number,
     title: data.title,
     state: data.state,
-    user: { login: data.user?.login || "ShivamSk07" },
+    user: { login: data.user?.login || "user" },
     body: data.body,
     html_url: data.html_url,
     created_at: data.created_at,
@@ -269,7 +272,7 @@ export async function github_create_pull_request(owner: string, repo: string, ti
     number: data.number,
     title: data.title,
     state: data.state,
-    user: { login: data.user?.login || "ShivamSk07" },
+    user: { login: data.user?.login || "user" },
     body: data.body,
     html_url: data.html_url,
     created_at: data.created_at,

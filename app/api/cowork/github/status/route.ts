@@ -7,25 +7,19 @@ import { prisma } from "@/lib/db";
 export async function GET() {
   try {
     const user = await getSessionUser();
-    let profile = null;
-
-    if (user) {
-      profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
+    if (!user) {
+      return NextResponse.json({ connected: false });
     }
 
-    if (!profile || !profile.githubConnected) {
-      profile = await prisma.userProfile.findFirst({
-        where: { githubConnected: true },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
     if (!profile || !profile.githubConnected) {
       return NextResponse.json({ connected: false });
     }
 
-    const ghUsername = profile.githubUsername || user?.username || "GitHub User";
+    const ghUsername = profile.githubUsername || user.username || "GitHub User";
     const avatarUrl = profile.githubAvatarUrl || `https://github.com/${ghUsername}.png`;
 
     return NextResponse.json({

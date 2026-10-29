@@ -10,6 +10,6 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const tasks = getAllTasks();
+  const tasks = getAllTasks(user.userId);
   return NextResponse.json({ tasks });
 }

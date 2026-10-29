@@ -5,24 +5,13 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  let user = await getSessionUser();
-
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
   const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 
-  if (!user) {
-    let dbUser = await prisma.user.findFirst();
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          username: "user",
-          name: "User",
-          password: "demo_password_hash",
-        },
-      });
-    }
-    user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
+  const user = await getSessionUser();
+  if (!user?.userId) {
+    return NextResponse.redirect(new URL("/login?redirect=/cowork", appUrl));
   }
 
   const clientId = process.env.LINKEDIN_CLIENT_ID || "77uyoymp53nn7y";

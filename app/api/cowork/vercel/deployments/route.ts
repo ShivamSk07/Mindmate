@@ -8,19 +8,13 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const user = await getSessionUser();
-    let profile = null;
-
-    if (user) {
-      profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
+    if (!user) {
+      return NextResponse.json({ connected: false, deployments: [] });
     }
 
-    if (!profile || !profile.vercelToken) {
-      profile = await prisma.userProfile.findFirst({
-        where: { vercelConnected: true, vercelToken: { not: null } },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
     if (!profile || !profile.vercelToken) {
       return NextResponse.json({ connected: false, deployments: [] });

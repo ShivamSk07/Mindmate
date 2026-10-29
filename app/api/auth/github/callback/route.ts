@@ -33,17 +33,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!user) {
-    let dbUser = await prisma.user.findFirst();
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          username: "ShivamSk07",
-          name: "Shivam Kumar",
-          password: "demo_password_hash",
-        },
-      });
-    }
-    user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
+    return NextResponse.redirect(new URL("/login?error=Session expired. Please log in first.", appUrl));
   }
 
   const sendRedirect = (path: string) => {
@@ -70,7 +60,7 @@ export async function GET(request: NextRequest) {
     return sendRedirect("/cowork?error=no_code_provided");
   }
 
-  let ghUsername = user.username || "ShivamSk07";
+  let ghUsername = user.username || "GitHub User";
   let avatarUrl = `https://github.com/${ghUsername}.png`;
   let accessToken: string | null = null;
   let exchangeError = "";

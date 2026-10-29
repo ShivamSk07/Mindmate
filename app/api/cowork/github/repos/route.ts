@@ -8,21 +8,15 @@ import { github_list_repositories } from "@/lib/github";
 export async function GET() {
   try {
     const user = await getSessionUser();
-    let profile = null;
-
-    if (user) {
-      profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
+    if (!user) {
+      return NextResponse.json({ connected: false, repos: [], message: "Unauthorized" }, { status: 401 });
     }
 
-    if (!profile || !profile.githubConnected) {
-      profile = await prisma.userProfile.findFirst({
-        where: { githubConnected: true },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
-    if (!profile || !profile.githubConnected) {
+    if (!profile || !profile.githubConnected || !profile.githubToken) {
       return NextResponse.json({
         connected: false,
         repos: [],
@@ -30,10 +24,10 @@ export async function GET() {
       });
     }
 
-    const username = profile.githubUsername || user?.username || "ShivamSk07";
-    const accessToken = profile.githubToken || null;
-    const repos = await github_list_repositories(username || undefined, accessToken);
-    return NextResponse.json({ connected: true, username, repos });
+    const username = profile.githubUsername || undefined;
+    const accessToken = profile.githubToken;
+    const repos = await github_list_repositories(username, accessToken);
+    return NextResponse.json({ connected: true, username: profile.githubUsername, repos });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to fetch repositories" }, { status: 500 });
   }

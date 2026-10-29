@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -12,6 +12,16 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const urlErr = params.get("error");
+      if (urlErr) {
+        setError(decodeURIComponent(urlErr));
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +49,9 @@ export default function LoginPage() {
         }
       }
 
-      router.push("/chat");
+      const searchParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+      const redirectTarget = searchParams?.get("redirect") || "/chat";
+      router.push(redirectTarget);
       router.refresh();
 
     } catch (err: any) {
@@ -143,7 +155,10 @@ export default function LoginPage() {
 
         <div className="text-center text-xs text-[#8e8e93]">
           Don't have an account?{" "}
-          <Link href="/signup" className="text-white font-semibold hover:underline">
+          <Link
+            href={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("redirect") ? `/signup?redirect=${encodeURIComponent(new URLSearchParams(window.location.search).get("redirect")!)}` : "/signup"}
+            className="text-white font-semibold hover:underline"
+          >
             Sign up
           </Link>
         </div>

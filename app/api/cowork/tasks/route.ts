@@ -6,12 +6,18 @@ import { createAndRunTask, getAllTasks } from "@/lib/coworkAgent";
 
 export async function GET() {
   const user = await getSessionUser();
-  const tasks = getAllTasks();
+  if (!user) {
+    return NextResponse.json({ tasks: [] });
+  }
+  const tasks = getAllTasks(user.userId);
   return NextResponse.json({ tasks });
 }
 
 export async function POST(request: NextRequest) {
   const user = await getSessionUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const body = await request.json();
@@ -21,7 +27,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Task prompt is required" }, { status: 400 });
     }
 
-    const task = await createAndRunTask(prompt.trim(), repoName, branch || "main", Boolean(isVisualization));
+    const task = await createAndRunTask(
+      prompt.trim(),
+      repoName,
+      branch || "main",
+      Boolean(isVisualization),
+      user.userId
+    );
     return NextResponse.json({ task });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to create task" }, { status: 500 });

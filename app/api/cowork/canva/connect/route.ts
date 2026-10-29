@@ -6,29 +6,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    let user = await getSessionUser();
-    let profile = null;
-
-    if (user) {
-      profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
+    const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({ connected: false, displayName: "Canva Account" });
     }
 
-    if (!profile) {
-      const dbUser = await prisma.user.findFirst();
-      if (dbUser) {
-        profile = await prisma.userProfile.findUnique({
-          where: { userId: dbUser.id },
-        });
-      }
-    }
-
-    if (!profile) {
-      profile = await prisma.userProfile.findFirst({
-        where: { canvaConnected: true },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
     const connected = Boolean((profile as any)?.canvaConnected);
     const displayName = (profile as any)?.canvaUserDisplayName || "Canva Account";
@@ -44,19 +29,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    let user = await getSessionUser();
-    if (!user) {
-      let dbUser = await prisma.user.findFirst();
-      if (!dbUser) {
-        dbUser = await prisma.user.create({
-          data: {
-            username: "user",
-            name: "User",
-            password: "demo_password_hash",
-          },
-        });
-      }
-      user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
+    const user = await getSessionUser();
+    if (!user?.userId) {
+      return NextResponse.json({ error: "Unauthorized - please log in" }, { status: 401 });
     }
 
     const body = await request.json();

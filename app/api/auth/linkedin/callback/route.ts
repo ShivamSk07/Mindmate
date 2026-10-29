@@ -34,17 +34,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!user) {
-    let dbUser = await prisma.user.findFirst();
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          username: "user",
-          name: "User",
-          password: "demo_password_hash",
-        },
-      });
-    }
-    user = { userId: dbUser.id, username: dbUser.username, email: dbUser.email };
+    return NextResponse.redirect(new URL("/login?error=Session expired. Please log in first.", appUrl));
   }
 
   const sendRedirect = (path: string) => {

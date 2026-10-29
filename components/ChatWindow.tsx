@@ -43,7 +43,7 @@ interface ChatWindowProps {
 }
 
 /**
- * Context-aware dynamic follow-up suggestion generator that adapts to the assistant's exact response
+ * Context-aware dynamic follow-up suggestion generator from the USER's perspective
  */
 function getAdaptiveFollowUps(lastAssistantMsg: string, lastUserMsg: string): string[] {
   if (!lastAssistantMsg || lastAssistantMsg.length < 5) return [];
@@ -54,24 +54,7 @@ function getAdaptiveFollowUps(lastAssistantMsg: string, lastUserMsg: string): st
 
   const suggestions: string[] = [];
 
-  // 1. Check if assistant asked closing follow-up questions (e.g. "Would you like me to...", "Do you want...")
-  const questionMatches = lastAssistantMsg.match(/([A-Z][^.?!]*\?)/g);
-  if (questionMatches && questionMatches.length > 0) {
-    for (const q of questionMatches) {
-      const cleanQ = q.trim().replace(/^[-*•\d.]+\s*/, "");
-      if (
-        cleanQ.length > 10 &&
-        cleanQ.length < 65 &&
-        !cleanQ.toLowerCase().includes("how can i assist") &&
-        !cleanQ.toLowerCase().includes("anything else")
-      ) {
-        suggestions.push(cleanQ);
-        if (suggestions.length >= 2) break;
-      }
-    }
-  }
-
-  // 2. Extract key topics / bold concepts from assistant message
+  // 1. Extract key topics / bold concepts from assistant message
   const boldMatches = lastAssistantMsg.match(/\*\*([^*]{3,35})\*\*/g);
   const boldTopics = boldMatches
     ? boldMatches
@@ -81,7 +64,7 @@ function getAdaptiveFollowUps(lastAssistantMsg: string, lastUserMsg: string): st
 
   const topTopic = boldTopics[0] || "";
 
-  // 3. Detect code content
+  // 2. Detect code content
   const hasCode =
     lastAssistantMsg.includes("```") ||
     /\b(function|const|import|class|interface|def |SELECT |return )\b/.test(lastAssistantMsg);
@@ -90,42 +73,42 @@ function getAdaptiveFollowUps(lastAssistantMsg: string, lastUserMsg: string): st
     if (isHindi) {
       if (topTopic) suggestions.push(`${topTopic} ka working code example dikhao`);
       suggestions.push("Isme error handling aur edge cases kaise handle karein?");
-      suggestions.push("Is code ko production ke liye optimize kaise karein?");
+      suggestions.push("Is code ko optimize kaise karein?");
     } else {
-      if (topTopic) suggestions.push(`Show complete working code for ${topTopic}`);
-      suggestions.push("How should we handle errors and edge cases here?");
-      suggestions.push("How can we optimize this for production?");
+      if (topTopic) suggestions.push(`Show complete code example for ${topTopic}`);
+      suggestions.push("How do I handle errors and edge cases here?");
+      suggestions.push("How can I optimize this code?");
     }
   } else if (/\b(step \d|roadmap|phase|guide|first|second)\b/i.test(lastAssistantMsg)) {
     if (isHindi) {
-      if (topTopic) suggestions.push(`${topTopic} ko detail me explain karo`);
+      if (topTopic) suggestions.push(`${topTopic} ko aur detail me samjhao`);
       suggestions.push("Is process ka step-by-step implementation guide do");
-      suggestions.push("Isme common mistakes kya hoti hain jisse bachna chahiye?");
+      suggestions.push("Isme common mistakes kya hoti hain?");
     } else {
-      if (topTopic) suggestions.push(`Deep dive into ${topTopic}`);
+      if (topTopic) suggestions.push(`Explain ${topTopic} in more detail`);
       suggestions.push("Show step-by-step implementation for this");
-      suggestions.push("What are the most common pitfalls to avoid?");
+      suggestions.push("What common mistakes should I avoid?");
     }
   } else if (/\b(vs|difference|compare|pros|cons|advantage)\b/i.test(lastAssistantMsg)) {
     if (isHindi) {
-      suggestions.push("Dono me se production ke liye sabse best option kaunsa hai?");
-      suggestions.push("Inka clear comparison summary table bana do");
-      suggestions.push("Real-world project me iska practical example do");
+      suggestions.push("Dono me se mere use-case ke liye sabse best option kaunsa hai?");
+      suggestions.push("Inka ek clear comparison summary table bana do");
+      suggestions.push("Iska ek practical real-world example do");
     } else {
-      suggestions.push("Which option is best for production use?");
+      suggestions.push("Which option is best suited for my use case?");
       suggestions.push("Provide a structured comparison summary table");
-      suggestions.push("Give a real-world case study or example");
+      suggestions.push("Give me a real-world practical example");
     }
   } else {
     // General conversational / factual responses
     if (isHindi) {
-      if (topTopic) suggestions.push(`${topTopic} ke baare me detail me batao`);
+      if (topTopic) suggestions.push(`${topTopic} ke baare me thoda aur detail me batao`);
       suggestions.push("Iska ek practical real-world example do");
       suggestions.push("Isko implement karne me kya challenges aayenge?");
     } else {
       if (topTopic) suggestions.push(`Can you explain ${topTopic} in more depth?`);
-      suggestions.push("Can you give a practical real-world example?");
-      suggestions.push("What are the key trade-offs to consider?");
+      suggestions.push("Give me a practical real-world example");
+      suggestions.push("What are the key trade-offs I should consider?");
     }
   }
 

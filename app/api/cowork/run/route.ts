@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionUser } from "@/lib/auth";
 import { getCerebrasClient, MODEL } from "@/lib/cerebras";
+import { prisma } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,17 +23,27 @@ export async function POST(request: NextRequest) {
 
     let extraContext = "";
 
-    // 1. If GitHub integration selected, fetch public repo details via GitHub REST API
+    const userProfile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
+    const ghToken = userProfile?.githubConnected ? userProfile.githubToken : null;
+
+    // 1. If GitHub integration selected, fetch repo details via GitHub REST API
     if (integrationType === "github" && targetRepo?.trim()) {
       const repoClean = targetRepo.trim().replace(/^https?:\/\/github\.com\//, "").replace(/\/$/, "");
       logs.push(`[${new Date().toLocaleTimeString()}] 🐙 Connecting to GitHub Repository (${repoClean})...`);
 
+      const ghHeaders: Record<string, string> = {
+        "User-Agent": "Clarity-CoWork-Agent",
+        "Accept": "application/vnd.github.v3+json",
+      };
+      if (ghToken) {
+        ghHeaders["Authorization"] = `Bearer ${ghToken}`;
+      }
+
       try {
         const repoRes = await fetch(`https://api.github.com/repos/${repoClean}`, {
-          headers: {
-            "User-Agent": "Clarity-CoWork-Agent",
-            "Accept": "application/vnd.github.v3+json",
-          },
+          headers: ghHeaders,
         });
 
         if (repoRes.ok) {
@@ -41,7 +52,7 @@ export async function POST(request: NextRequest) {
 
           // Fetch repo tree (top-level files)
           const treeRes = await fetch(`https://api.github.com/repos/${repoClean}/git/trees/${repoData.default_branch || "main"}`, {
-            headers: { "User-Agent": "Clarity-CoWork-Agent" },
+            headers: ghHeaders,
           });
 
           if (treeRes.ok) {

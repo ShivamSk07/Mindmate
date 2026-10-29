@@ -40,9 +40,9 @@ export function CoworkModal({ isOpen, onClose }: CoworkModalProps) {
   const [activeTab, setActiveTab] = useState<"workspace" | "integrations" | "logs">("workspace");
   
   // Integration States
-  const [githubRepo, setGithubRepo] = useState("ShivamSk07/Mindmate");
+  const [githubRepo, setGithubRepo] = useState("");
   const [githubBranch, setGithubBranch] = useState("main");
-  const [githubConnected, setGithubConnected] = useState(true);
+  const [githubConnected, setGithubConnected] = useState(false);
 
   const [postgresUri, setPostgresUri] = useState("postgresql://neondb_owner:***@ep-silent-math...neondb");
   const [postgresConnected, setPostgresConnected] = useState(true);
@@ -61,6 +61,30 @@ export function CoworkModal({ isOpen, onClose }: CoworkModalProps) {
   const [agentReport, setAgentReport] = useState<string | null>(null);
   const [copiedReport, setCopiedReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const fetchStatusAndRepos = async () => {
+      try {
+        const [statusRes, reposRes] = await Promise.all([
+          fetch("/api/cowork/status"),
+          fetch("/api/cowork/github/repos"),
+        ]);
+        if (statusRes.ok) {
+          const statusData = await statusRes.json();
+          const gh = (statusData.integrations || []).find((i: any) => i.id === "github");
+          setGithubConnected(Boolean(gh?.connected));
+        }
+        if (reposRes.ok) {
+          const reposData = await reposRes.json();
+          if (reposData.connected && reposData.repos?.length > 0) {
+            setGithubRepo(reposData.repos[0].full_name);
+          }
+        }
+      } catch {}
+    };
+    fetchStatusAndRepos();
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -119,7 +143,7 @@ export function CoworkModal({ isOpen, onClose }: CoworkModalProps) {
       label: "Audit GitHub Codebase for Bugs & Vulnerabilities",
       integration: "github" as const,
       icon: Github,
-      prompt: "Analyze our connected GitHub repository (ShivamSk07/Mindmate), audit all source files for security vulnerabilities, API key leaks, and code optimization recommendations.",
+      prompt: "Analyze our connected GitHub repository, audit all source files for security vulnerabilities, API key leaks, and code optimization recommendations.",
     },
     {
       id: "db-schema",

@@ -11,19 +11,11 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  let user = await getSessionUser();
-  let userId = user?.userId;
-
-  if (!userId) {
-    const firstUser = await prisma.user.findFirst();
-    if (firstUser) {
-      userId = firstUser.id;
-    }
-  }
-
-  if (!userId) {
+  const user = await getSessionUser();
+  if (!user?.userId) {
     return NextResponse.json({ error: "Unauthorized - please log in" }, { status: 401 });
   }
+  const userId = user.userId;
 
   const body = await request.json().catch(() => ({}));
   const { action, token, username } = body;
@@ -53,7 +45,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    let ghUsername = username || user?.username || "ShivamSk07";
+    let ghUsername = username || user.username || "GitHub User";
     let avatarUrl = `https://github.com/${ghUsername}.png`;
 
     if (token && token.trim()) {

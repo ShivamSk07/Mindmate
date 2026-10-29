@@ -264,10 +264,21 @@ export default function CoworkPage() {
           setRepos(data.repos);
           if (data.repos.length > 0) {
             setSelectedRepo(data.repos[0].full_name);
+          } else {
+            setSelectedRepo("");
           }
+        } else {
+          setRepos([]);
+          setSelectedRepo("");
         }
+      } else {
+        setRepos([]);
+        setSelectedRepo("");
       }
-    } catch {}
+    } catch {
+      setRepos([]);
+      setSelectedRepo("");
+    }
   };
 
   // Resolve Kroki SVG/PNG rendering URLs when visualization artifact is selected
@@ -333,6 +344,10 @@ export default function CoworkPage() {
   const fetchStatus = async () => {
     try {
       const res = await fetch("/api/cowork/status");
+      if (res.status === 401) {
+        window.location.href = "/login?redirect=/cowork";
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         setIntegrations(data.integrations || []);

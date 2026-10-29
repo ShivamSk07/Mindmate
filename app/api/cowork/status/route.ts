@@ -19,24 +19,28 @@ export async function GET() {
   let isCanvaConnected = false;
   let canvaName: string | null = null;
 
+  if (!user) {
+    return NextResponse.json(
+      {
+        authenticated: false,
+        activeToolsCount: 1,
+        integrations: [
+          { id: "canva", name: "Canva", icon: "Palette", connected: false, username: null, details: "Design Generator & Autofill" },
+          { id: "github", name: "GitHub", icon: "Github", connected: false, username: null },
+          { id: "linkedin", name: "LinkedIn", icon: "Linkedin", connected: false, username: null },
+          { id: "vercel", name: "Vercel", icon: "Triangle", connected: false, username: null },
+          { id: "mcp", name: "MCP Servers", icon: "Plug", connected: false, details: "No MCP servers configured" },
+          { id: "browser", name: "Web Search", icon: "Globe", connected: true, details: "Active" },
+        ],
+      },
+      { status: 401 }
+    );
+  }
+
   try {
-    let profile = null;
-    if (user) {
-      profile = await prisma.userProfile.findUnique({ where: { userId: user.userId } });
-    }
-
-    if (!profile) {
-      const dbUser = await prisma.user.findFirst();
-      if (dbUser) {
-        profile = await prisma.userProfile.findUnique({ where: { userId: dbUser.id } });
-      }
-    }
-
-    if (!profile) {
-      profile = await prisma.userProfile.findFirst({
-        where: { OR: [{ githubConnected: true }, { linkedinConnected: true }, { vercelConnected: true }, { canvaConnected: true }] },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
     if (profile) {
       isGitHubConnected = Boolean(profile.githubConnected);
@@ -48,47 +52,6 @@ export async function GET() {
       liName = profile.linkedinName;
       vercelUsername = profile.vercelUsername;
       canvaName = (profile as any).canvaUserDisplayName || "Canva Account";
-    }
-
-    // Check if any other profile in single-user dev environment has active integrations
-    if (!isGitHubConnected) {
-      const anyGh = await prisma.userProfile.findFirst({
-        where: { githubConnected: true },
-      });
-      if (anyGh) {
-        isGitHubConnected = true;
-        ghUsername = anyGh.githubUsername;
-      }
-    }
-
-    if (!isLinkedInConnected) {
-      const anyLi = await prisma.userProfile.findFirst({
-        where: { linkedinConnected: true },
-      });
-      if (anyLi) {
-        isLinkedInConnected = true;
-        liName = anyLi.linkedinName;
-      }
-    }
-
-    if (!isVercelConnected) {
-      const anyVercel = await prisma.userProfile.findFirst({
-        where: { vercelConnected: true },
-      });
-      if (anyVercel) {
-        isVercelConnected = true;
-        vercelUsername = anyVercel.vercelUsername;
-      }
-    }
-
-    if (!isCanvaConnected) {
-      const anyCanva = await prisma.userProfile.findFirst({
-        where: { canvaConnected: true },
-      });
-      if (anyCanva) {
-        isCanvaConnected = true;
-        canvaName = (anyCanva as any).canvaUserDisplayName || "Canva Account";
-      }
     }
   } catch (e) {
     console.warn("Integrations status DB check notice:", e);

@@ -8,19 +8,13 @@ export const dynamic = "force-dynamic";
 export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser();
-    let profile = null;
-
-    if (user) {
-      profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!profile || !profile.vercelToken) {
-      profile = await prisma.userProfile.findFirst({
-        where: { vercelConnected: true, vercelToken: { not: null } },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
     if (!profile || !profile.vercelToken) {
       return NextResponse.json(
@@ -58,19 +52,13 @@ export async function POST(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const user = await getSessionUser();
-    let profile = null;
-
-    if (user) {
-      profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!profile || !profile.vercelToken) {
-      profile = await prisma.userProfile.findFirst({
-        where: { vercelConnected: true, vercelToken: { not: null } },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
     if (!profile || !profile.vercelToken) {
       return NextResponse.json({ error: "Vercel is not connected." }, { status: 400 });

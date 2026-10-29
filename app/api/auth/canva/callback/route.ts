@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  if (!user) {
-    user = { userId: "default_user", username: "user", email: null };
+  if (!user || !user.userId) {
+    return NextResponse.redirect(new URL("/login?error=Session expired. Please log in first.", origin));
   }
 
   const clientId = process.env.CANVA_CLIENT_ID || process.env.NEXT_PUBLIC_CANVA_CLIENT_ID || "OC-AaDoY4HR7fJE";

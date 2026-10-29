@@ -7,19 +7,13 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const user = await getSessionUser();
-    let profile = null;
-
-    if (user) {
-      profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
+    if (!user) {
+      return NextResponse.json({ connected: false });
     }
 
-    if (!profile || !profile.linkedinConnected) {
-      profile = await prisma.userProfile.findFirst({
-        where: { linkedinConnected: true },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
     if (!profile || !profile.linkedinConnected) {
       return NextResponse.json({ connected: false });

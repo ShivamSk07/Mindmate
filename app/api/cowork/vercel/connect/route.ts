@@ -15,19 +15,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    let user = await getSessionUser();
-    let userId = user?.userId;
-
-    if (!userId) {
-      const firstUser = await prisma.user.findFirst();
-      if (firstUser) {
-        userId = firstUser.id;
-      }
+    const user = await getSessionUser();
+    if (!user?.userId) {
+      return NextResponse.json({ error: "Unauthorized - please log in" }, { status: 401 });
     }
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const userId = user.userId;
 
     const body = await request.json().catch(() => ({}));
     const { action, token } = body;

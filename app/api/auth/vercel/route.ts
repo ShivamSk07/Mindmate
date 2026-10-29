@@ -9,13 +9,11 @@ export async function GET(request: NextRequest) {
   const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
   const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 
-  let userId = "guest_user";
-  try {
-    const user = await getSessionUser();
-    if (user?.userId) userId = user.userId;
-  } catch (e) {
-    console.warn("Session lookup notice:", e);
+  const user = await getSessionUser();
+  if (!user?.userId) {
+    return NextResponse.redirect(new URL("/login?redirect=/cowork", appUrl));
   }
+  const userId = user.userId;
 
   const slug = process.env.VERCEL_INTEGRATION_SLUG?.trim() || "clarity";
   const stateData = {

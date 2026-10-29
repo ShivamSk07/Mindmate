@@ -4,16 +4,11 @@ import { prisma } from "@/lib/db";
 
 export async function POST(request: NextRequest) {
   try {
-    let user = await getSessionUser();
-    let userId = user?.userId;
-    if (!userId) {
-      const first = await prisma.user.findFirst();
-      userId = first?.id;
-    }
-
-    if (!userId) {
+    const user = await getSessionUser();
+    if (!user?.userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const userId = user.userId;
 
     const body = await request.json().catch(() => ({}));
     const { action } = body;

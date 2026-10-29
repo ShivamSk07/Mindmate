@@ -77,6 +77,7 @@ export interface MessageItem {
 
 export interface CoworkTask {
   id: string;
+  userId?: string;
   userQuery: string;
   messages: MessageItem[];
   repoOwner: string;
@@ -100,12 +101,17 @@ export interface CoworkTask {
 
 const taskStore = new Map<string, CoworkTask>();
 
-export function getTask(id: string): CoworkTask | null {
-  return taskStore.get(id) || null;
+export function getTask(id: string, userId?: string): CoworkTask | null {
+  const task = taskStore.get(id);
+  if (!task) return null;
+  if (userId && task.userId && task.userId !== userId) return null;
+  return task;
 }
 
-export function getAllTasks(): CoworkTask[] {
-  return Array.from(taskStore.values()).sort(
+export function getAllTasks(userId?: string): CoworkTask[] {
+  const tasks = Array.from(taskStore.values());
+  const filtered = userId ? tasks.filter((t) => t.userId === userId) : tasks;
+  return filtered.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 }
@@ -220,7 +226,8 @@ export async function createAndRunTask(
   userQuery: string,
   preferredRepo?: string,
   preferredBranch = "main",
-  isVisualization = false
+  isVisualization = false,
+  userId?: string
 ): Promise<CoworkTask> {
   const isVis = isVisualization || isVisualizationQuery(userQuery);
   const taskId = `task_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -274,6 +281,7 @@ export async function createAndRunTask(
 
   const initialTask: CoworkTask = {
     id: taskId,
+    userId,
     userQuery,
     messages: [
       {
@@ -354,7 +362,7 @@ async function executeAgentLoop(
   const branch = task.branch;
   let repo = task.repoName;
 
-  // Fetch tokens from DB
+  // Fetch tokens from DB strictly for this task's user
   let linkedinAccessToken: string | null = null;
   let linkedinPersonUrn: string | null = null;
   let linkedinName: string = "LinkedIn User";
@@ -364,42 +372,34 @@ async function executeAgentLoop(
   let vercelUsername: string = "Vercel User";
   let canvaAccessToken: string | null = null;
 
-  try {
-    const cProfile = await (prisma as any).userProfile.findFirst({
-      where: { canvaConnected: true },
-      select: { canvaToken: true },
-    });
-    canvaAccessToken = cProfile?.canvaToken || null;
-  } catch {}
-
-  try {
-    const liProfile = await (prisma as any).userProfile.findFirst({
-      where: { linkedinConnected: true },
-      select: { linkedinToken: true, linkedinPersonUrn: true, linkedinName: true },
-    });
-    linkedinAccessToken = liProfile?.linkedinToken || null;
-    linkedinPersonUrn = liProfile?.linkedinPersonUrn || null;
-    if (liProfile?.linkedinName) linkedinName = liProfile.linkedinName;
-  } catch {}
-
-  try {
-    const ghProfile = await (prisma as any).userProfile.findFirst({
-      where: { githubConnected: true },
-      select: { githubToken: true, githubUsername: true },
-    });
-    githubAccessToken = ghProfile?.githubToken || null;
-    if (ghProfile?.githubUsername) githubUsername = ghProfile.githubUsername;
-    if (!owner) owner = githubUsername;
-  } catch {}
-
-  try {
-    const vProfile = await (prisma as any).userProfile.findFirst({
-      where: { vercelConnected: true },
-      select: { vercelToken: true, vercelUsername: true },
-    });
-    vercelAccessToken = vProfile?.vercelToken || null;
-    if (vProfile?.vercelUsername) vercelUsername = vProfile.vercelUsername;
-  } catch {}
+  if (task.userId) {
+    try {
+      const uProfile = await prisma.userProfile.findUnique({
+        where: { userId: task.userId },
+      });
+      if (uProfile) {
+        if ((uProfile as any).canvaConnected && (uProfile as any).canvaToken) {
+          canvaAccessToken = (uProfile as any).canvaToken;
+        }
+        if (uProfile.linkedinConnected && uProfile.linkedinToken) {
+          linkedinAccessToken = uProfile.linkedinToken;
+          linkedinPersonUrn = uProfile.linkedinPersonUrn || null;
+          if (uProfile.linkedinName) linkedinName = uProfile.linkedinName;
+        }
+        if (uProfile.githubConnected && uProfile.githubToken) {
+          githubAccessToken = uProfile.githubToken;
+          if (uProfile.githubUsername) githubUsername = uProfile.githubUsername;
+          if (!owner) owner = githubUsername;
+        }
+        if (uProfile.vercelConnected && uProfile.vercelToken) {
+          vercelAccessToken = uProfile.vercelToken;
+          if (uProfile.vercelUsername) vercelUsername = uProfile.vercelUsername;
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to retrieve user profile for task execution:", e);
+    }
+  }
 
   let canvaText = "";
   let linkedinText = "";
@@ -588,7 +588,7 @@ CANVA DIRECT LINKS:
   // ── GITHUB ──────────────────────────────────────────────────
   if (flags.needsGitHub) {
     setStep(task, "step_github", "running");
-    const effectiveOwner = githubUsername || owner || "ShivamSk07";
+    const effectiveOwner = githubUsername || owner || "";
 
     try {
       addLog(task, "tool_call", "Listing repositories", `@${effectiveOwner}`, "github", { toolName: "github_list_repositories" });
@@ -750,7 +750,12 @@ ${deployments.map((d: any) => `• [${d.name}](${d.url}) (${d.state || "READY"})
           const isRepoDeploy = (queryLower.includes("repo") || queryLower.includes("repository")) && Boolean(repo || owner);
 
           if (isRepoDeploy) {
-            const targetRepo = repo ? (owner ? `${owner}/${repo}` : repo) : "ShivamSk07/Mindmate";
+            const targetRepo = repo ? (owner ? `${owner}/${repo}` : repo) : "";
+            if (!targetRepo) {
+              addLog(task, "error", "Repository not specified", "Please specify a repository to deploy", "vercel");
+              setStep(task, "step_vercel", "failed");
+              return;
+            }
             const projName = (repo || "clarity-app").toLowerCase().replace(/[^a-z0-9-_]/g, "-");
             addLog(task, "tool_call", "Deploying GitHub Repository", `${targetRepo} (${branch}) to Vercel`, "vercel", { toolName: "vercel_deploy_repo" });
 
@@ -982,14 +987,18 @@ export async function approvePendingTask(taskId: string): Promise<CoworkTask> {
       let liToken: string | null = null;
       let liUrn: string | null = params.authorUrn;
 
-      try {
-        const liProfile = await (prisma as any).userProfile.findFirst({
-          where: { linkedinConnected: true },
-          select: { linkedinToken: true, linkedinPersonUrn: true },
-        });
-        liToken = liProfile?.linkedinToken || null;
-        if (liProfile?.linkedinPersonUrn) liUrn = liProfile.linkedinPersonUrn;
-      } catch {}
+      if (task.userId) {
+        try {
+          const liProfile = await prisma.userProfile.findUnique({
+            where: { userId: task.userId },
+            select: { linkedinToken: true, linkedinPersonUrn: true, linkedinConnected: true },
+          });
+          if (liProfile?.linkedinConnected) {
+            liToken = liProfile.linkedinToken || null;
+            if (liProfile.linkedinPersonUrn) liUrn = liProfile.linkedinPersonUrn;
+          }
+        } catch {}
+      }
 
       if (liToken) {
         const postRes = await linkedin_create_post(liToken, liUrn || "me", params.postText);
@@ -1003,25 +1012,33 @@ export async function approvePendingTask(taskId: string): Promise<CoworkTask> {
       }
     } else if (toolName === "github_create_issue") {
       let ghToken: string | null = null;
-      try {
-        const ghProfile = await (prisma as any).userProfile.findFirst({
-          where: { githubConnected: true },
-          select: { githubToken: true },
-        });
-        ghToken = ghProfile?.githubToken || null;
-      } catch {}
+      if (task.userId) {
+        try {
+          const ghProfile = await prisma.userProfile.findUnique({
+            where: { userId: task.userId },
+            select: { githubToken: true, githubConnected: true },
+          });
+          if (ghProfile?.githubConnected) {
+            ghToken = ghProfile.githubToken || null;
+          }
+        } catch {}
+      }
 
       const res = await github_create_issue(params.owner, params.repo, params.title, params.body, ghToken);
       resultInfo = `Issue #${res.number} created on ${params.owner}/${params.repo}`;
     } else if (toolName === "vercel_deploy") {
       let vercelToken: string | null = null;
-      try {
-        const vProfile = await (prisma as any).userProfile.findFirst({
-          where: { vercelConnected: true },
-          select: { vercelToken: true },
-        });
-        vercelToken = vProfile?.vercelToken || null;
-      } catch {}
+      if (task.userId) {
+        try {
+          const vProfile = await prisma.userProfile.findUnique({
+            where: { userId: task.userId },
+            select: { vercelToken: true, vercelConnected: true },
+          });
+          if (vProfile?.vercelConnected) {
+            vercelToken = vProfile.vercelToken || null;
+          }
+        } catch {}
+      }
 
       if (vercelToken) {
         let deployRes;
@@ -1361,15 +1378,19 @@ async function executeVisualizationLoop(
   let githubAccessToken: string | null = null;
   let githubUsername: string = owner;
 
-  try {
-    const ghProfile = await (prisma as any).userProfile.findFirst({
-      where: { githubConnected: true },
-      select: { githubToken: true, githubUsername: true },
-    });
-    githubAccessToken = ghProfile?.githubToken || null;
-    if (ghProfile?.githubUsername) githubUsername = ghProfile.githubUsername;
-    if (!owner) owner = githubUsername;
-  } catch {}
+  if (task.userId) {
+    try {
+      const ghProfile = await prisma.userProfile.findUnique({
+        where: { userId: task.userId },
+        select: { githubToken: true, githubUsername: true, githubConnected: true },
+      });
+      if (ghProfile?.githubConnected) {
+        githubAccessToken = ghProfile.githubToken || null;
+        if (ghProfile.githubUsername) githubUsername = ghProfile.githubUsername;
+        if (!owner) owner = githubUsername;
+      }
+    } catch {}
+  }
 
   if (!githubAccessToken) {
     setStep(task, "step_tree", "failed");

@@ -8,30 +8,21 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     const user = await getSessionUser();
+    if (!user) {
+      return NextResponse.json({
+        success: true,
+        connected: false,
+        displayName: "Canva Workspace",
+        projects: [],
+      });
+    }
+
     const { searchParams } = new URL(request.url);
     const query = searchParams.get("query") || undefined;
 
-    let profile = null;
-    if (user) {
-      profile = await prisma.userProfile.findUnique({
-        where: { userId: user.userId },
-      });
-    }
-
-    if (!profile) {
-      const dbUser = await prisma.user.findFirst();
-      if (dbUser) {
-        profile = await prisma.userProfile.findUnique({
-          where: { userId: dbUser.id },
-        });
-      }
-    }
-
-    if (!profile) {
-      profile = await prisma.userProfile.findFirst({
-        where: { canvaConnected: true },
-      });
-    }
+    const profile = await prisma.userProfile.findUnique({
+      where: { userId: user.userId },
+    });
 
     const isConnected = Boolean((profile as any)?.canvaConnected);
     const token = (profile as any)?.canvaToken;
