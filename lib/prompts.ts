@@ -67,7 +67,7 @@ export function buildSystemPromptWithSearch(
     `Rules for Web Search:\n` +
     `1. ALWAYS use the provided web search summaries as your primary, authoritative source. Never say you don't have access to current data when search data is provided.\n` +
     `2. For weather: Extract temperature, conditions, and forecast from search snippets and present them clearly. If city not specified in query, politely ask the user which city they want weather for.\n` +
-    `3. For sports/cricket & TV shows/movies: Use ONLY the search results to determine current captains, release dates, scores, and team info. Ignore pre-trained knowledge that contradicts search data.\n` +
+    `3. For sports/cricket & TV shows/movies: Use the search results to determine match scores, schedules, dates, and winners. Note: Headlines often use terms like "3rd T20" or series dates—summarize the latest available match result or upcoming schedule clearly for the user. NEVER say "I don't have real-time data" or "mujhe nahi pata" if search results are provided.\n` +
     `4. For prices (gold, stocks, crypto): State the exact price values found in the search results.\n` +
     `5. If the search results do not contain the specific answer, use your pre-trained knowledge and clearly note it.\n` +
     `6. Be concise, friendly, and natural - summarize and adapt to the query language (Hinglish/English).\n` +

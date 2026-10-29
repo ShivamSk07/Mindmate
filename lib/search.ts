@@ -52,7 +52,12 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 2
 // -------------------------------------------------------------
 async function searchGoogleNewsRSS(query: string, maxResults = 5): Promise<SearchResult[]> {
   const encodedQuery = encodeURIComponent(query);
-  const url = `https://news.google.com/rss/search?q=${encodedQuery}&hl=en-US&gl=US&ceid=US:en`;
+  // Support both IN (India) and US edition based on query context
+  const isIndiaContext = /\b(ind|india|nz|pak|ipl|wpl|bcci|delhi|mumbai|cricket|kal|aaj|mausam|rupee|inr)\b/i.test(query);
+  const gl = isIndiaContext ? "IN" : "US";
+  const hl = isIndiaContext ? "en-IN" : "en-US";
+  const ceid = isIndiaContext ? "IN:en" : "US:en";
+  const url = `https://news.google.com/rss/search?q=${encodedQuery}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
 
   const response = await fetchWithTimeout(url, {
     headers: {
@@ -259,11 +264,11 @@ export async function searchWeb(query: string, maxResults = 5): Promise<SearchRe
   }
 
   console.log(`[Multi-Engine Search] Query: "${query}"`);
-  const isLiveQuery = /today|price|gold|captain|score|news|release|hustle|weather|show|match|winner/i.test(query);
+  const isLiveQuery = /today|price|gold|captain|score|news|release|hustle|weather|show|match|winner|t20|odi|cricket/i.test(query);
 
   let results: SearchResult[] = [];
 
-  // For live/time-sensitive queries, try Google News & Bing FIRST!
+  // For live/time-sensitive queries, try Google News & DuckDuckGo first (DuckDuckGo handles conversational & regional queries best)
   if (isLiveQuery) {
     try {
       results = await searchGoogleNewsRSS(query, maxResults);
@@ -271,6 +276,15 @@ export async function searchWeb(query: string, maxResults = 5): Promise<SearchRe
         console.log(`[Multi-Engine Search] Priority Engine: Google News (${results.length} results)`);
       }
     } catch (e) {}
+
+    if (results.length === 0) {
+      try {
+        results = await searchDDGPOST(query, maxResults);
+        if (results.length > 0) {
+          console.log(`[Multi-Engine Search] Priority Engine: DuckDuckGo (${results.length} results)`);
+        }
+      } catch (e) {}
+    }
 
     if (results.length === 0) {
       try {

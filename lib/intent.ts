@@ -78,6 +78,28 @@ export function extractSearchQuery(userQuery: string): string {
 
   cleaned = cleaned.replace(/\s+/g, " ").trim();
 
+  // Normalize sports & temporal words from Hinglish for optimal search results
+  if (/\b(match|score|t20|odi|test|cup|trophy|cricket|game)\b/i.test(cleaned)) {
+    let sportsQuery = cleaned;
+    // Map common cricket abbreviations
+    sportsQuery = sportsQuery
+      .replace(/\bind\b/gi, "India")
+      .replace(/\bnz\b/gi, "New Zealand")
+      .replace(/\bpak\b/gi, "Pakistan")
+      .replace(/\baus\b/gi, "Australia")
+      .replace(/\bsa\b/gi, "South Africa")
+      .replace(/\beng\b/gi, "England");
+
+    // Map temporal words (kal -> yesterday/recent, aaj -> today)
+    if (/\bkal\b/i.test(sportsQuery)) {
+      sportsQuery = sportsQuery.replace(/\bkal\b/gi, "yesterday recent");
+    } else if (/\baaj\b/i.test(sportsQuery)) {
+      sportsQuery = sportsQuery.replace(/\baaj\b/gi, "today");
+    }
+
+    return sportsQuery.replace(/\s+/g, " ").trim();
+  }
+
   // Smart query enhancement for common terms
   if (cleaned.includes("weather") || cleaned.includes("mausam")) {
     // Extract city name from query if present
