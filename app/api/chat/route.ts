@@ -372,7 +372,7 @@ export async function POST(request: NextRequest) {
     let maxTokens = 1024;
 
     if (mode === "fast") {
-      targetModel = "qwen/qwen3.6-27b";
+      targetModel = "qwen/qwen3.8-27b";
       maxTokens = 350;
       queryMessages.push({
         role: "system",
@@ -429,7 +429,8 @@ export async function POST(request: NextRequest) {
         let fullResponse = "";
         try {
           for await (const chunk of stream as any) {
-            const content = chunk.choices[0]?.delta?.content || "";
+            const delta = chunk.choices[0]?.delta;
+            const content = delta?.content || "";
             if (content) {
               fullResponse += content;
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content })}\n\n`));
@@ -455,28 +456,7 @@ export async function POST(request: NextRequest) {
             }
           }
 
-          // Save assistant message to database with clean response (skip if Ghost Mode)
-          if (!is_ghost) {
-            await prisma.message.create({
-              data: {
-                role: "assistant",
-                content: cleanResponse,
-                searched,
-                sources: sources.length > 0 ? sources : undefined,
-                sessionId: conv.id
-              }
-            });
-
-            // Memory extraction in background (non-blocking)
-            extractAndUpdateMemory(userId, message, cleanResponse);
-
-            // Update Session modified timestamp
-            await prisma.session.update({
-              where: { id: conv.id },
-              data: { updatedAt: new Date() }
-            });
-          }
-
+          // Send final completion event immediately so UI unlocks without waiting for database operations
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({
             done: true,
             conversation_id: conv.id,
@@ -484,6 +464,28 @@ export async function POST(request: NextRequest) {
             suggestions: suggestions.length > 0 ? suggestions : undefined
           })}\n\n`));
           controller.close();
+
+          // Save assistant message to database with clean response in background (skip if Ghost Mode)
+          if (!is_ghost) {
+            Promise.all([
+              prisma.message.create({
+                data: {
+                  role: "assistant",
+                  content: cleanResponse,
+                  searched,
+                  sources: sources.length > 0 ? sources : undefined,
+                  sessionId: conv.id
+                }
+              }),
+              prisma.session.update({
+                where: { id: conv.id },
+                data: { updatedAt: new Date() }
+              })
+            ]).catch((e) => console.error("[Background message save error]", e));
+
+            // Memory extraction in background (non-blocking)
+            extractAndUpdateMemory(userId, message, cleanResponse);
+          }
 
         } catch (err: any) {
           console.error("SSE stream error", err);

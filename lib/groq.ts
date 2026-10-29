@@ -4,7 +4,7 @@ export const MODEL = "openai/gpt-oss-120b";
 export const FALLBACK_MODELS = [
   "openai/gpt-oss-120b",
   "openai/gpt-oss-20b",
-  "qwen/qwen3.6-27b",
+  "qwen/qwen3.8-27b",
 ];
 
 export const MAINTENANCE_MESSAGE =
@@ -143,7 +143,12 @@ export async function generateResponse(messages: Message[], modelName = MODEL): 
 /**
  * Execute streaming response with Multi-Key Failover.
  */
-export async function generateStreamResponse(messages: Message[], modelName = MODEL, maxTokens = 1024) {
+export async function generateStreamResponse(
+  messages: Message[],
+  modelName = MODEL,
+  maxTokens = 1024,
+  reasoningEffort: "low" | "medium" | "high" = "low"
+) {
   const clients = getGroqClients();
   const modelsToTry = [modelName, ...FALLBACK_MODELS.filter((m) => m !== modelName)];
 
@@ -154,13 +159,20 @@ export async function generateStreamResponse(messages: Message[], modelName = MO
 
     for (const targetModel of modelsToTry) {
       try {
-        const stream = await client.chat.completions.create({
+        const streamParams: any = {
           model: targetModel,
           messages: messages as any,
           temperature: 0.7,
           max_tokens: maxTokens,
           stream: true,
-        });
+        };
+
+        // For OpenAI OSS reasoning models, optimize TTFT by setting reasoning_effort to 'low'
+        if (targetModel.includes("openai/gpt-oss")) {
+          streamParams.reasoning_effort = reasoningEffort;
+        }
+
+        const stream = await client.chat.completions.create(streamParams);
 
         return stream;
       } catch (error: any) {
