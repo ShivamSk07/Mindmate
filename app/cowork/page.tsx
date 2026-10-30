@@ -38,6 +38,7 @@ import IntegrationsModal from "@/components/IntegrationsModal";
 import MermaidViewer, { isDiagramCode } from "@/components/MermaidViewer";
 import CanvaDesignViewer from "@/components/CanvaDesignViewer";
 import CanvaStudioView from "@/components/CanvaStudioView";
+import ComponentSandbox, { extractCodeBlock } from "@/components/ComponentSandbox";
 import { CanvaAccountProject } from "@/lib/canva";
 
 interface IntegrationItem {
@@ -1034,6 +1035,14 @@ export default function CoworkPage() {
                       code={activeArtifact.content}
                       title={activeArtifact.title || "Visual Diagram"}
                       className="flex-1 h-full rounded-none border-0 my-0"
+                    />
+                  </div>
+                ) : activeArtifact && extractCodeBlock(activeArtifact.content).isPreviewable ? (
+                  <div className="flex-1 flex flex-col min-h-0 overflow-hidden bg-[#070709] p-3">
+                    <ComponentSandbox
+                      code={activeArtifact.content}
+                      title={activeArtifact.title || "Interactive Component Sandbox"}
+                      className="flex-1 h-full"
                     />
                   </div>
                 ) : (

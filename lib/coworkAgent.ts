@@ -308,35 +308,41 @@ export async function createAndRunTask(
 
   taskStore.set(taskId, initialTask);
 
-  // Run agent loop to completion (guarantees execution on serverless Vercel lambdas)
-  if (isVis) {
-    try {
-      await executeVisualizationLoop(taskId, owner, repo, preferredBranch);
-    } catch (err: any) {
-      console.error(`Visualization task ${taskId} failed:`, err);
-      const t = taskStore.get(taskId);
-      if (t) {
-        t.status = "failed";
-        addLog(t, "error", "Visualization failed", err.message || "Unexpected error");
-        taskStore.set(taskId, t);
+  // Trigger execution in the background asynchronously so the client immediately receives initialTask with status: "running"
+  const runBackground = async () => {
+    if (isVis) {
+      try {
+        await executeVisualizationLoop(taskId, owner, repo, preferredBranch);
+      } catch (err: any) {
+        console.error(`Visualization task ${taskId} failed:`, err);
+        const t = taskStore.get(taskId);
+        if (t) {
+          t.status = "failed";
+          addLog(t, "error", "Visualization failed", err.message || "Unexpected error");
+          taskStore.set(taskId, t);
+        }
+      }
+    } else {
+      const flags = detectToolRequirements(userQuery);
+      try {
+        await executeAgentLoop(taskId, flags);
+      } catch (err: any) {
+        console.error(`Task ${taskId} failed:`, err);
+        const t = taskStore.get(taskId);
+        if (t) {
+          t.status = "failed";
+          addLog(t, "error", "Execution failed", err.message || "Unexpected error");
+          taskStore.set(taskId, t);
+        }
       }
     }
-  } else {
-    const flags = detectToolRequirements(userQuery);
-    try {
-      await executeAgentLoop(taskId, flags);
-    } catch (err: any) {
-      console.error(`Task ${taskId} failed:`, err);
-      const t = taskStore.get(taskId);
-      if (t) {
-        t.status = "failed";
-        addLog(t, "error", "Execution failed", err.message || "Unexpected error");
-        taskStore.set(taskId, t);
-      }
-    }
-  }
+  };
 
-  return taskStore.get(taskId) || initialTask;
+  runBackground().catch((err) => {
+    console.error(`Unhandled error in background task ${taskId}:`, err);
+  });
+
+  return initialTask;
 }
 
 // ─────────────────────────────────────────────────────────────
