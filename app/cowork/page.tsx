@@ -30,6 +30,14 @@ import {
   Download,
   Palette,
   ExternalLink,
+  Code2,
+  Terminal,
+  Cpu,
+  Zap,
+  Activity,
+  Layers,
+  LayoutDashboard,
+  Radio,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -769,18 +777,34 @@ export default function CoworkPage() {
 
         {/* ── LANDING: No task selected ── */}
         {!currentTask && (
-          <main className="flex-1 flex flex-col items-center justify-center p-8 bg-[#0a0a0a] overflow-y-auto">
-            <div className="w-full max-w-xl space-y-8 py-6">
+          <main className="flex-1 flex flex-col items-center justify-center p-6 md:p-10 bg-[#07070a] overflow-y-auto">
+            <div className="w-full max-w-3xl space-y-7 py-4">
 
-              <div className="space-y-2">
-                <h1 className="text-2xl font-semibold text-zinc-100 tracking-tight">What do you want to accomplish?</h1>
-                <p className="text-sm text-zinc-500">
-                  CoWork runs tasks across your connected tools — GitHub, MCP servers, and live web search. Ask to visualize your code, database, or API flows to generate diagrams.
+              {/* Dev OS Studio Banner */}
+              <div className="text-center space-y-2.5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-300 text-xs font-mono mb-1">
+                  <Activity size={12} className="text-violet-400 animate-pulse" />
+                  <span>COWORK AUTONOMOUS ENGINE • READY</span>
+                </div>
+                <h1 className="text-3xl sm:text-4xl font-bold text-white tracking-tight" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                  Autonomous Developer Studio
+                </h1>
+                <p className="text-sm text-zinc-400 max-w-lg mx-auto leading-relaxed">
+                  Execute tasks across GitHub repos, live web search, and MCP tools with real-time streaming, interactive UI sandboxes, and diagram rendering.
                 </p>
               </div>
 
-              {/* Input */}
-              <div className="relative">
+              {/* Main Command Input Box */}
+              <div className="relative rounded-2xl bg-[#0c0d14] border border-white/15 p-2 shadow-2xl focus-within:border-violet-500/50 focus-within:ring-2 focus-within:ring-violet-500/20 transition-all">
+                <div className="flex items-center gap-2 px-3 py-1.5 border-b border-white/5 text-[11px] font-mono text-zinc-500">
+                  <Terminal size={12} className="text-violet-400" />
+                  <span>Agent Prompt Console</span>
+                  {selectedRepo && (
+                    <span className="ml-auto text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-white/5">
+                      repo: {selectedRepo}
+                    </span>
+                  )}
+                </div>
                 <textarea
                   value={promptInput}
                   onChange={(e) => setPromptInput(e.target.value)}
@@ -790,50 +814,86 @@ export default function CoworkPage() {
                       handleStartTask();
                     }
                   }}
-                  placeholder="Describe a task or ask to visualize something (e.g. 'Visualize the login flow')"
+                  placeholder="Ask to build a component, debug an issue, create a Canva design, or visualize architecture..."
                   rows={3}
-                  className="w-full bg-zinc-950 border border-zinc-800 focus:border-zinc-600 rounded-xl px-4 py-3.5 text-sm text-zinc-100 placeholder-zinc-600 outline-none resize-none transition-colors"
+                  className="w-full bg-transparent border-0 px-3.5 py-3 text-sm text-zinc-100 placeholder-zinc-600 outline-none resize-none font-sans"
                 />
-                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                <div className="flex items-center justify-between px-3 py-1.5 pt-2 border-t border-white/5">
+                  <div className="flex items-center gap-2 text-[11px] text-zinc-500 font-mono">
+                    <span className="hidden sm:inline">Press Enter ↵ to run</span>
+                  </div>
                   <button
                     onClick={() => handleStartTask()}
                     disabled={!promptInput.trim() || isSubmitting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-md"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white font-semibold text-xs transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-violet-600/30 active:scale-95"
                   >
-                    {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Play size={12} fill="currentColor" />}
-                    Run
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 size={13} className="animate-spin" />
+                        <span>Starting Task...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Zap size={13} className="fill-current" />
+                        <span>Run Task</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
 
-              {/* Presets */}
-              <div className="space-y-2">
-                <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Try</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {PRESETS.map((p, i) => (
-                    <button
-                      key={i}
-                      onClick={() => handleStartTask(p)}
-                      className="text-left px-3 py-2.5 rounded-lg bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-400 hover:text-zinc-200 transition-all flex items-center justify-between group"
-                    >
-                      <span>{p}</span>
-                      <span className="text-[10px] text-zinc-700 group-hover:text-zinc-400 transition-colors">→</span>
-                    </button>
-                  ))}
+              {/* Quick Presets Grid */}
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-zinc-500">
+                  <span>Quick Capabilities</span>
+                  <span>Select to launch</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {[
+                    { title: "Design a 6-slide investor pitch deck in Canva", tag: "Canva Studio", icon: Palette, color: "text-[#00C4CC]" },
+                    { title: "Visualize repository architecture & auth flow", tag: "Mermaid Canvas", icon: Layers, color: "text-violet-400" },
+                    { title: "Generate an interactive Tailwind dashboard component", tag: "UI Sandbox", icon: Code2, color: "text-emerald-400" },
+                    { title: "Deploy modern landing page to Vercel", tag: "Deployment", icon: Triangle, color: "text-zinc-200" },
+                  ].map((p, i) => {
+                    const Icon = p.icon;
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => handleStartTask(p.title)}
+                        className="text-left p-3.5 rounded-xl bg-[#0b0c12] border border-white/10 hover:border-violet-500/40 hover:bg-[#10111a] text-xs text-zinc-300 hover:text-white transition-all flex items-start justify-between group shadow-sm"
+                      >
+                        <div className="space-y-1 pr-2">
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-zinc-500">
+                            <Icon size={11} className={p.color} />
+                            <span>{p.tag}</span>
+                          </div>
+                          <p className="font-medium text-zinc-200 leading-snug group-hover:text-white">{p.title}</p>
+                        </div>
+                        <span className="text-zinc-600 group-hover:text-violet-400 group-hover:translate-x-0.5 transition-all text-sm font-mono mt-1">→</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
-              {/* Integration status */}
-              <div className="space-y-2">
+
+              {/* Integrations Bar */}
+              <div className="rounded-xl bg-[#09090e] border border-white/10 p-4 space-y-3">
                 <div className="flex items-center justify-between">
-                  <p className="text-[11px] text-zinc-600 font-medium uppercase tracking-wider">Integrations</p>
+                  <div className="flex items-center gap-2">
+                    <Radio size={13} className="text-emerald-400 animate-pulse" />
+                    <span className="text-xs font-semibold text-zinc-200">Connected Tool Ecosystem</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 text-zinc-400 border border-white/5">
+                      {connectedCount} Active
+                    </span>
+                  </div>
                   <button
                     onClick={() => setShowIntegrationsModal(true)}
-                    className="text-[11px] text-violet-400 hover:text-violet-300 transition-colors font-medium"
+                    className="text-xs text-violet-400 hover:text-violet-300 transition-colors font-medium hover:underline"
                   >
-                    Manage / Disconnect
+                    Manage Integrations
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 pt-1">
                   {integrations.map((item) => {
                     const Icon = INTEGRATION_ICON[item.id] || Globe;
                     return (
@@ -846,24 +906,25 @@ export default function CoworkPage() {
                             setShowIntegrationsModal(true);
                           }
                         }}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs transition-all ${
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium transition-all ${
                           item.connected
-                            ? "border-zinc-800 bg-zinc-950 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-900"
-                            : "border-zinc-900 text-zinc-600 hover:border-zinc-800 hover:text-zinc-400"
+                            ? "border-emerald-500/20 bg-emerald-500/5 text-zinc-200 hover:border-emerald-500/40"
+                            : "border-white/5 bg-zinc-950/60 text-zinc-500 hover:border-white/10 hover:text-zinc-300"
                         }`}
                       >
-                        <Icon size={13} />
+                        <Icon size={12} className={item.connected ? "text-emerald-400" : "text-zinc-600"} />
                         <span>{item.name}</span>
                         {item.connected ? (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
                         ) : (
-                          <span className="text-[10px] text-zinc-600">Connect</span>
+                          <span className="text-[10px] text-zinc-600 font-mono">Connect</span>
                         )}
                       </button>
                     );
                   })}
                 </div>
               </div>
+
             </div>
           </main>
         )}

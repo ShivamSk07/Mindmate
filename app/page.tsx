@@ -23,6 +23,12 @@ import {
   Zap,
   BookOpen,
   Users,
+  Layers,
+  Palette,
+  ExternalLink,
+  Cpu,
+  Monitor,
+  Eye,
 } from "lucide-react";
 
 export default function ClarityLandingPage() {
@@ -189,12 +195,6 @@ export default function ClarityLandingPage() {
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[700px] h-[300px] bg-[radial-gradient(ellipse_at_center,rgba(56,189,248,0.06)_0%,transparent_70%)] pointer-events-none" />
 
         <div className="max-w-[1240px] mx-auto px-6 w-full relative z-10 flex flex-col items-center text-center pt-24 pb-16">
-
-          {/* Eyebrow Pill */}
-          <div className="reveal-on-scroll inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#111116] border border-white/10 text-zinc-300 text-[12px] font-medium mb-7 shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-            <span>Autonomous AI Workspace for Developers</span>
-          </div>
 
           {/* Main Headline */}
           <h1 className="reveal-on-scroll text-[clamp(52px,8vw,96px)] font-bold tracking-[-0.04em] text-white leading-[1.01] mb-5" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -626,6 +626,156 @@ export default function ClarityLandingPage() {
                 BUILT FOR<br />WHAT&apos;S NEXT
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════ NEW: ARTIFACT STUDIO & CANVAS ═══════════════════════ */}
+      <section
+        id="artifact-studio"
+        className="relative min-h-screen flex items-center border-b border-white/[0.06] bg-[#07070b] overflow-hidden"
+      >
+        <div className="absolute left-1/3 top-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-[radial-gradient(ellipse,rgba(147,51,234,0.06)_0%,transparent_70%)] pointer-events-none" />
+
+        <div className="max-w-[1240px] mx-auto px-6 w-full py-24 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            
+            {/* Left: Artifact Studio Interactive Mockup */}
+            <div className="lg:col-span-7 order-2 lg:order-1 reveal-on-scroll">
+              <div className="rounded-2xl border border-white/15 bg-[#0a0a0f] shadow-[0_20px_80px_rgba(0,0,0,0.85)] overflow-hidden">
+                {/* Window Chrome */}
+                <div className="h-10 px-4 bg-[#0d0e15] border-b border-white/10 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-500/70" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-500/70" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/70" />
+                    <span className="text-zinc-500 font-mono text-[11px] ml-2">Canvas Studio • Live Component Preview</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Sandbox Active
+                    </span>
+                  </div>
+                </div>
+
+                {/* Studio Split Layout */}
+                <div className="grid grid-cols-1 md:grid-cols-12 min-h-[380px]">
+                  {/* Left Code Editor Preview */}
+                  <div className="md:col-span-6 p-4 border-r border-white/10 bg-[#07070a] font-mono text-[11px] text-zinc-300 flex flex-col justify-between">
+                    <div className="space-y-1 text-zinc-400">
+                      <div className="text-zinc-600 pb-1">// Live Generated UI Artifact</div>
+                      <p><span className="text-purple-400">export default function</span> <span className="text-cyan-300">MetricCard</span>() &#123;</p>
+                      <p className="pl-3"><span className="text-purple-400">return</span> (</p>
+                      <p className="pl-6 text-zinc-300">&lt;<span className="text-pink-400">div</span> <span className="text-indigo-300">className</span>=<span className="text-emerald-300">&quot;p-5 rounded-xl bg-zinc-900 border border-zinc-800&quot;</span>&gt;</p>
+                      <p className="pl-9 text-zinc-300">&lt;<span className="text-pink-400">h3</span> <span className="text-indigo-300">className</span>=<span className="text-emerald-300">&quot;text-xs text-zinc-400 font-medium&quot;</span>&gt;Active Repos&lt;/<span className="text-pink-400">h3</span>&gt;</p>
+                      <p className="pl-9 text-zinc-300">&lt;<span className="text-pink-400">p</span> <span className="text-indigo-300">className</span>=<span className="text-emerald-300">&quot;text-2xl font-bold text-white mt-1&quot;</span>&gt;32 Tasks&lt;/<span className="text-pink-400">p</span>&gt;</p>
+                      <p className="pl-6 text-zinc-300">&lt;/<span className="text-pink-400">div</span>&gt;</p>
+                      <p className="pl-3">);</p>
+                      <p>&#125;</p>
+                    </div>
+
+                    <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between text-[10px] text-zinc-500">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-violet-400" />
+                        TypeScript JSX
+                      </span>
+                      <span>1.2 KB</span>
+                    </div>
+                  </div>
+
+                  {/* Right Live Visual Sandbox */}
+                  <div className="md:col-span-6 p-5 bg-[#09090e] flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Rendered UI</span>
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="text-[10px] text-zinc-400">Interactive</span>
+                        </div>
+                      </div>
+
+                      {/* Rendered Live Component */}
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-zinc-900/90 to-zinc-950 border border-white/10 shadow-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-zinc-400 font-medium">Active Repositories</span>
+                          <span className="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full font-medium">+18% sync</span>
+                        </div>
+                        <div className="text-2xl font-bold text-white tracking-tight">32 Tasks</div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <div className="h-1.5 flex-1 rounded-full bg-zinc-800 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-violet-500 to-cyan-400 w-3/4 rounded-full" />
+                          </div>
+                          <span className="text-[10px] text-zinc-400 font-mono">75%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex items-center gap-2">
+                      <div className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] text-zinc-300 flex items-center gap-1">
+                        <Monitor size={11} />
+                        <span>Desktop</span>
+                      </div>
+                      <div className="px-2.5 py-1 rounded-lg bg-white/5 border border-white/10 text-[10px] text-zinc-300 flex items-center gap-1">
+                        <Eye size={11} />
+                        <span>100% Zoom</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Pitch & Details */}
+            <div className="lg:col-span-5 order-1 lg:order-2 text-left reveal-on-scroll">
+              <span className="text-[11px] font-medium tracking-[0.3em] text-violet-400 uppercase block mb-5">
+                NATIVE ARTIFACT STUDIO
+              </span>
+              <h2 className="text-[clamp(36px,4.5vw,58px)] font-bold tracking-tight text-white leading-[1.07] mb-6" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+                Code, inspect,<br />
+                <span className="bg-gradient-to-r from-violet-400 via-fuchsia-300 to-cyan-300 bg-clip-text text-transparent">
+                  preview live.
+                </span>
+              </h2>
+              <p className="text-zinc-400 text-base leading-relaxed mb-8 max-w-md">
+                Don&apos;t just read generated code or architecture diagrams. Interact with them immediately inside CoWork&apos;s isolated split-screen canvas with instant Tailwind &amp; React rendering.
+              </p>
+
+              <div className="space-y-4 mb-10">
+                {[
+                  {
+                    title: "Live Component Sandbox",
+                    desc: "Test UI components with responsive viewport toggles directly in your browser.",
+                  },
+                  {
+                    title: "Architecture Visualizer",
+                    desc: "Render system schemas, Mermaid diagrams, and database structures interactively.",
+                  },
+                  {
+                    title: "Zero-Latency Workflows",
+                    desc: "Background task streaming provides instant visibility into every tool call and file modification.",
+                  },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-3.5">
+                    <div className="w-7 h-7 rounded-lg bg-violet-500/10 border border-violet-500/20 text-violet-300 flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-semibold">
+                      0{idx + 1}
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-semibold text-white">{item.title}</h4>
+                      <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <Link
+                href="/cowork"
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-violet-500 hover:bg-violet-400 text-white text-[13px] font-medium transition-all shadow-[0_2px_20px_rgba(139,92,246,0.3)] active:scale-95"
+              >
+                <span>Launch Artifact Studio</span>
+                <ArrowRight size={14} strokeWidth={2.2} />
+              </Link>
+            </div>
+
           </div>
         </div>
       </section>
