@@ -2,11 +2,13 @@
 
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Volume2, VolumeX, Github, ArrowRight, Download, Sparkles, Maximize2, Paperclip } from "lucide-react";
+import { ExternalLink, Globe, Copy, ThumbsUp, ThumbsDown, Flag, ChevronDown, Volume2, VolumeX, Github, ArrowRight, Download, Sparkles, Maximize2, Paperclip, Play, Rocket, Palette } from "lucide-react";
 import Link from "next/link";
 import type { Message } from "@/types";
 import { useState, useEffect } from "react";
 import MermaidViewer, { isDiagramCode } from "./MermaidViewer";
+import ComponentSandbox, { extractCodeBlock } from "./ComponentSandbox";
+import InteractiveChecklist from "./InteractiveChecklist";
 
 interface ChatMessageProps {
   message: Message;
@@ -231,6 +233,24 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                                 if (isDiagramCode(childClass, childCode)) {
                                   return <>{children}</>;
                                 }
+
+                                const isHtmlOrJsx =
+                                  childClass.includes("html") ||
+                                  childClass.includes("jsx") ||
+                                  childClass.includes("tsx") ||
+                                  childClass.includes("react") ||
+                                  /<!DOCTYPE|<html|<div|<section|<button/i.test(childCode);
+
+                                if (isHtmlOrJsx && childCode.length > 50) {
+                                  return (
+                                    <ComponentSandbox
+                                      code={childCode}
+                                      title="Live Interactive Component"
+                                      className="my-3.5"
+                                    />
+                                  );
+                                }
+
                                 return (
                                   <pre className="bg-[#050508]/85 border border-[rgba(255,255,255,0.04)] rounded-xl p-4 overflow-x-auto text-xs my-3 font-mono shadow-inner">
                                     {children}
@@ -311,6 +331,12 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                               />
                             </div>
                           )}
+                          {part.widgetType === "checklist" && (
+                            <InteractiveChecklist
+                              title={part.props.title || "Action Plan"}
+                              items={part.props.items ? part.props.items.split("||").map((s: string) => s.trim()).filter(Boolean) : []}
+                            />
+                          )}
                         </div>
                       );
                     }
@@ -345,22 +371,60 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
               </div>
             )}
 
-            {/* Chat -> CoWork Integration Banner */}
-            {(cleanContent.toLowerCase().includes("github") || cleanContent.toLowerCase().includes("repository") || cleanContent.toLowerCase().includes("codebase")) && (
-              <div className="mt-3 p-3 rounded-xl bg-[#1c1c1e] border border-[#2c2c2e] flex items-center justify-between gap-3 text-xs text-[#8e8e93]">
-                <div className="flex items-center gap-2">
-                  <Github size={15} className="text-white flex-shrink-0" />
-                  <span>I can perform a deeper repository analysis in CoWork.</span>
+            {/* Intelligent Chat -> CoWork 1-Click Action Hub */}
+            {(() => {
+              const lower = cleanContent.toLowerCase();
+              const hasCodeOrRepo = lower.includes("github") || lower.includes("repository") || lower.includes("codebase") || lower.includes("```");
+              const hasDesignOrDeck = lower.includes("canva") || lower.includes("presentation") || lower.includes("pitch deck") || lower.includes("slide deck") || lower.includes("poster") || lower.includes("banner");
+              const hasDeployOrSite = lower.includes("deploy") || lower.includes("vercel") || lower.includes("landing page") || lower.includes("website") || lower.includes("web app");
+
+              if (!hasCodeOrRepo && !hasDesignOrDeck && !hasDeployOrSite) return null;
+
+              return (
+                <div className="mt-3.5 p-3 rounded-2xl bg-[#09090d] border border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-md">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-400 flex-shrink-0">
+                      <Sparkles size={14} />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-zinc-200 text-xs">Execute this directly in CoWork</p>
+                      <p className="text-[11px] text-zinc-500">Autonomous multi-skill workspace agent is ready</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {hasCodeOrRepo && (
+                      <Link
+                        href={`/cowork?prompt=${encodeURIComponent(cleanContent.slice(0, 160))}`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-200 text-xs font-medium transition-all"
+                      >
+                        <Github size={12} />
+                        <span>Inspect in Repo</span>
+                      </Link>
+                    )}
+                    {hasDesignOrDeck && (
+                      <Link
+                        href={`/cowork?prompt=${encodeURIComponent(cleanContent.slice(0, 160))}`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#00C4CC]/10 hover:bg-[#00C4CC]/20 border border-[#00C4CC]/30 text-[#00C4CC] text-xs font-medium transition-all"
+                      >
+                        <Palette size={12} />
+                        <span>Build in Canva</span>
+                      </Link>
+                    )}
+                    {hasDeployOrSite && (
+                      <Link
+                        href={`/cowork?prompt=${encodeURIComponent(cleanContent.slice(0, 160))}`}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-semibold shadow transition-all"
+                      >
+                        <Rocket size={12} />
+                        <span>1-Click CoWork</span>
+                        <ArrowRight size={12} />
+                      </Link>
+                    )}
+                  </div>
                 </div>
-                <Link
-                  href="/cowork"
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white text-black hover:bg-[#e5e5ea] font-semibold text-xs transition-all flex-shrink-0"
-                >
-                  <span>Open in CoWork</span>
-                  <ArrowRight size={13} />
-                </Link>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Action buttons — visible on hover */}
             <div className="flex items-center gap-3 mt-0.5 text-[#64748b] opacity-0 group-hover:opacity-100 transition-opacity">

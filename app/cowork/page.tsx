@@ -206,6 +206,11 @@ export default function CoworkPage() {
       const params = new URLSearchParams(window.location.search);
       const connected = params.get("connected");
       const err = params.get("error");
+      const initialPrompt = params.get("prompt");
+
+      if (initialPrompt && initialPrompt.trim()) {
+        setPromptInput(decodeURIComponent(initialPrompt.trim()));
+      }
 
       if (connected === "canva") {
         setNotification({
