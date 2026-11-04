@@ -43,7 +43,7 @@ export interface ActivityItem {
   id: string;
   timestamp: string;
   type: "connect" | "tool_call" | "reasoning" | "approval_request" | "success" | "error";
-  category?: "github" | "linkedin" | "vercel" | "canva" | "mcp" | "browser" | "system";
+  category?: "github" | "linkedin" | "vercel" | "canva" | "mcp" | "browser" | "system" | "builder";
   title: string;
   description: string;
   toolName?: string;
@@ -53,7 +53,7 @@ export interface ActivityItem {
 
 export interface PendingApproval {
   toolName: string;
-  category: "github" | "linkedin" | "vercel" | "canva" | "mcp" | "browser";
+  category: "github" | "linkedin" | "vercel" | "canva" | "mcp" | "browser" | "builder";
   params: any;
   title: string;
   description: string;
@@ -63,7 +63,7 @@ export interface PendingApproval {
 export interface Artifact {
   id: string;
   title: string;
-  type: "report" | "plan" | "linkedin_post" | "code_diff" | "review" | "visualization" | "vercel_deployment" | "canva_design";
+  type: "report" | "plan" | "linkedin_post" | "code_diff" | "review" | "visualization" | "vercel_deployment" | "canva_design" | "website_preview";
   content: string;
   createdAt: string;
 }
@@ -175,6 +175,11 @@ export function detectToolRequirements(userQuery: string) {
     q.includes("@canva") ||
     q.includes("@design");
 
+  // Website & Web App building intents (independent from vercel hosting)
+  const isWebsiteBuilder =
+    /\b(website|web app|webapp|landing page|landingpage|portfolio|frontend|ui component|dashboard|html page|html site|banao site|banao website|make a site|build a site|build website|create website|create site|code site|web page)\b/i.test(q) ||
+    (/\b(build|create|make|code|design|generate|banao)\b/i.test(q) && /\b(app|site|page|dashboard|portfolio|store|saas|portal)\b/i.test(q));
+
   // Vercel keywords & intents
   const isVercel =
     /\b(vercel|deploy|host|hosting|live url|publish online|deploy on vercel|deploy to vercel|host my site|host my app)\b/i.test(q) ||
@@ -186,16 +191,18 @@ export function detectToolRequirements(userQuery: string) {
     q.includes("@mcp") ||
     mentionedMCPServers.length > 0;
 
-  // Explicit Web Search keywords
-  const isExplicitWeb =
+  // Web Search keywords & Information Gathering Intent
+  // Allows searching web whenever user asks for info, research, news, docs, comparison, or current trends
+  const isWebResearch =
+    /\b(search|find|research|info|information|gather|news|latest|current|trends|docs|documentation|who is|what is|how to|explore|check online|google)\b/i.test(q) ||
     /\b(search web|search the web|search google|search online|live search|latest news|news today|current news|web search|browse the web|look up on web|google search)\b/i.test(q) ||
     q.includes("@browser") ||
     q.includes("@web");
 
-  const anyWorkspaceTool = isGitHub || isLinkedIn || isVercel || isCanva || isMCP;
+  const anyOtherTool = isGitHub || isLinkedIn || isVercel || isCanva || isMCP || isWebsiteBuilder;
 
-  // Run web search ONLY IF explicitly requested OR if no workspace tools are matched
-  const isWeb = isExplicitWeb || !anyWorkspaceTool;
+  // Run web search if explicitly requested, or if info-gathering intent is detected, or as default if no other tool matched
+  const isWeb = isWebResearch || !anyOtherTool;
 
   return {
     needsGitHub: isGitHub,
@@ -204,6 +211,7 @@ export function detectToolRequirements(userQuery: string) {
     needsCanva: isCanva,
     needsMCP: isMCP,
     needsBrowser: isWeb,
+    needsWebsiteBuilder: isWebsiteBuilder,
   };
 }
 
@@ -270,11 +278,12 @@ export async function createAndRunTask(
     const flags = detectToolRequirements(userQuery);
 
     initialPlan.push({ id: "step_init", title: "Analyzing request", status: "completed" });
+    if (flags.needsBrowser) initialPlan.push({ id: "step_browser", title: "Information Gathering & Web Intelligence", status: "waiting" });
     if (flags.needsGitHub) initialPlan.push({ id: "step_github", title: "GitHub Repositories", status: "waiting" });
     if (flags.needsLinkedIn) initialPlan.push({ id: "step_linkedin", title: "LinkedIn Network", status: "waiting" });
     if (flags.needsCanva) initialPlan.push({ id: "step_canva", title: "Canva Design Studio", status: "waiting" });
+    if (flags.needsWebsiteBuilder) initialPlan.push({ id: "step_builder", title: "Autonomous Web & UI Synthesis", status: "waiting" });
     if (flags.needsVercel) initialPlan.push({ id: "step_vercel", title: "Vercel Deployment", status: "waiting" });
-    if (flags.needsBrowser) initialPlan.push({ id: "step_browser", title: "Live Web Search", status: "waiting" });
     if (flags.needsMCP) initialPlan.push({ id: "step_mcp", title: "MCP Servers", status: "waiting" });
     initialPlan.push({ id: "step_final", title: "Writing response", status: "waiting" });
   }
@@ -358,6 +367,7 @@ async function executeAgentLoop(
     needsVercel: boolean;
     needsBrowser: boolean;
     needsMCP: boolean;
+    needsWebsiteBuilder?: boolean;
   }
 ) {
   const task = taskStore.get(taskId);
@@ -412,11 +422,12 @@ async function executeAgentLoop(
   let githubText = "";
   let vercelText = "";
   let webText = "";
+  let builderText = "";
 
-  // ── WEB SEARCH (Only when requested) ─────────────────────────
+  // ── WEB SEARCH & INTELLIGENCE GATHERING ──────────────────────
   if (flags.needsBrowser) {
     setStep(task, "step_browser", "running");
-    addLog(task, "tool_call", "Searching the web", `"${task.userQuery.slice(0, 60)}"`, "browser", { toolName: "searchWeb" });
+    addLog(task, "tool_call", "Gathering intelligence & searching web", `"${task.userQuery.slice(0, 60)}"`, "browser", { toolName: "searchWeb" });
     await delay(30);
 
     try {
@@ -426,7 +437,7 @@ async function executeAgentLoop(
           results
             .map((r: SearchResult, i: number) => `[${i + 1}] ${r.title}\n${r.url}\n${r.snippet}`)
             .join("\n\n");
-        addLog(task, "success", `Found ${results.length} sources`, results.slice(0, 2).map((r: SearchResult) => r.title).join(", "), "browser");
+        addLog(task, "success", `Gathered ${results.length} live sources`, results.slice(0, 2).map((r: SearchResult) => r.title).join(", "), "browser");
         task.usedTools.push("searchWeb");
       }
     } catch (e: any) {
@@ -831,6 +842,61 @@ Return ONLY the raw HTML code with inline CSS styling in <style> and JavaScript 
     }
   }
 
+  // ── AUTONOMOUS WEBSITE & UI SYNTHESIS ─────────────────────────
+  if (flags.needsWebsiteBuilder && !flags.needsVercel) {
+    setStep(task, "step_builder", "running");
+    addLog(task, "tool_call", "Synthesizing full website & UI code", "Drafting modern responsive HTML/CSS/JS with Tailwind", "system", { toolName: "build_website_artifact" });
+    await delay(40);
+
+    try {
+      const client = getCerebrasClient();
+      const promptContext = webText ? `\n\nReference Gathered Research & Intelligence:\n${webText.slice(0, 1000)}` : "";
+      const builderPrompt = `You are a world-class principal frontend engineer and UI/UX designer.
+Create a production-ready, beautifully styled, interactive, responsive web page for the following request:
+"${task.userQuery}"${promptContext}
+
+Requirements:
+- Include Tailwind CSS CDN (<script src="https://cdn.tailwindcss.com"></script>) and Lucide icons or FontAwesome if needed.
+- Modern dark/light sleek developer aesthetic with elegant typography, soft glow gradients, micro-interactions, responsive flex/grid layouts.
+- Include all necessary HTML structure, inline CSS animations, and functional JavaScript interactions (e.g. tabs, modals, buttons, smooth scrolling).
+- Return ONLY the complete, valid raw HTML file starting with <!DOCTYPE html> and ending with </html>.
+- Do NOT wrap in markdown code blocks like \`\`\`html or \`\`\`. Output ONLY the raw executable HTML code.`;
+
+      const comp = (await client.chat.completions.create({
+        model: MODEL,
+        messages: [{ role: "user", content: builderPrompt }],
+        temperature: 0.25,
+        max_tokens: 3500,
+      })) as any;
+
+      let generatedHtml = comp.choices[0]?.message?.content?.trim() || "";
+      generatedHtml = generatedHtml.replace(/^```html\s*/i, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+
+      if (generatedHtml) {
+        task.usedTools.push("build_website_artifact");
+        addLog(task, "success", "Interactive Website Artifact Created", `${generatedHtml.length} bytes compiled`, "system");
+
+        task.artifacts.unshift({
+          id: `art_web_${Date.now()}`,
+          title: "Interactive Website / App Preview",
+          type: "website_preview",
+          content: generatedHtml,
+          createdAt: ts(),
+        });
+
+        builderText = `Website & UI Application Built Successfully!
+- Code Size: ${generatedHtml.length} characters
+- Artifact Generated: "Interactive Website / App Preview" (Live preview available in Canvas)`;
+      }
+    } catch (err: any) {
+      addLog(task, "error", "Website synthesis failed", err.message || "Synthesis error", "system");
+      builderText = `⚠️ Website synthesis note: ${err.message}`;
+    }
+
+    setStep(task, "step_builder", "completed");
+    await delay(30);
+  }
+
   // ── HUMAN APPROVAL CHECK FOR GITHUB ACTIONS ──────────────────
   const isCreateIssue = queryLower.includes("create issue") || queryLower.includes("open issue");
 
@@ -866,6 +932,7 @@ Return ONLY the raw HTML code with inline CSS styling in <style> and JavaScript 
     githubText,
     vercelText,
     webText,
+    builderText,
   });
 }
 
@@ -883,6 +950,7 @@ async function finalizeReport(
     githubText: string;
     vercelText?: string;
     webText: string;
+    builderText?: string;
     writeActionResult?: string;
   }
 ) {
@@ -891,16 +959,20 @@ async function finalizeReport(
   await delay(200);
 
   const contextParts: string[] = [];
-  if (ctx.webText) contextParts.push(`WEB:\n${ctx.webText}`);
+  if (ctx.webText) contextParts.push(`WEB & INTELLIGENCE:\n${ctx.webText}`);
+  if (ctx.builderText) contextParts.push(`WEBSITE SYNTHESIS:\n${ctx.builderText}`);
   if (ctx.canvaText) contextParts.push(`CANVA DESIGN:\n${ctx.canvaText}`);
   if (ctx.linkedinText) contextParts.push(`LINKEDIN:\n${ctx.linkedinText}`);
   if (ctx.githubText) contextParts.push(`GITHUB:\n${ctx.githubText}`);
   if (ctx.vercelText) contextParts.push(`VERCEL DEPLOYMENT:\n${ctx.vercelText}`);
   if (ctx.writeActionResult) contextParts.push(`ACTION RESULT:\n${ctx.writeActionResult}`);
 
-  const sysPrompt = `You are Clarity, an autonomous AI workspace agent specializing in Canva visual design generation, GitHub codebase analysis, LinkedIn content & social growth automation, Vercel cloud hosting & deployments, and live web intelligence.
+  const sysPrompt = `You are Clarity, an autonomous AI workspace agent specializing in Canva visual design generation, interactive full-stack website & UI synthesis, GitHub codebase analysis, LinkedIn content & social growth automation, Vercel cloud hosting & deployments, and live web intelligence.
 Answer the user's request directly and clearly using the retrieved data below.
 Format the response with clean markdown: use headers, bullet lists, design color palette tags, typography recommendations, and prominent direct links.
+If an interactive website or UI preview was generated:
+- Highlight its core architectural features, responsive structure, styling decisions, and preview details.
+- Mention that the live interactive preview can be inspected and interacted with directly in the Canvas tab.
 If a Canva design or presentation was generated:
 - Format the response as an executive presentation or creative design brief with a clear slide-by-slide or section breakdown.
 - Highlight the key themes, slide talking points, color palette, and fonts.

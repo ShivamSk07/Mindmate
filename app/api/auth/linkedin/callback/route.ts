@@ -33,10 +33,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  if (!user) {
-    return NextResponse.redirect(new URL("/login?error=Session expired. Please log in first.", appUrl));
-  }
-
   const sendRedirect = (path: string) => {
     const response = NextResponse.redirect(new URL(path, appUrl));
     if (user) {
@@ -51,6 +47,10 @@ export async function GET(request: NextRequest) {
     }
     return response;
   };
+
+  if (!user) {
+    return NextResponse.redirect(new URL("/login?error=Session expired. Please log in first.", appUrl));
+  }
 
   if (error) {
     console.error("[LinkedIn OAuth Callback Error]", error, errorDescription);

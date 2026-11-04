@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
     const userId = user.userId;
 
     const body = await request.json().catch(() => ({}));
-    const { action } = body;
+    const { action, token, displayName, personUrn } = body;
 
     if (action === "disconnect") {
       await prisma.userProfile.updateMany({
@@ -30,6 +30,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "LinkedIn account disconnected successfully.",
+      });
+    }
+
+    // Manual Access Token save fallback
+    if (token && typeof token === "string" && token.trim()) {
+      const cleanToken = token.trim();
+      let profileName = displayName?.trim() || "LinkedIn User";
+      let resolvedUrn = personUrn?.trim() || null;
+      let profileEmail: string | null = null;
+      let avatarUrl: string | null = null;
+
+      try {
+        const { linkedin_get_profile } = await import("@/lib/linkedin");
+        const prof = await linkedin_get_profile(cleanToken);
+        if (prof) {
+          profileName = prof.name || profileName;
+          resolvedUrn = prof.personUrn || resolvedUrn;
+          profileEmail = prof.email || null;
+          avatarUrl = prof.picture || null;
+        }
+      } catch (e) {
+        console.warn("[LinkedIn Manual Token verification notice]", e);
+      }
+
+      await prisma.userProfile.upsert({
+        where: { userId },
+        update: {
+          linkedinConnected: true,
+          linkedinToken: cleanToken,
+          linkedinPersonUrn: resolvedUrn,
+          linkedinName: profileName,
+          linkedinEmail: profileEmail,
+          linkedinAvatarUrl: avatarUrl,
+        },
+        create: {
+          userId,
+          linkedinConnected: true,
+          linkedinToken: cleanToken,
+          linkedinPersonUrn: resolvedUrn,
+          linkedinName: profileName,
+          linkedinEmail: profileEmail,
+          linkedinAvatarUrl: avatarUrl,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        connected: true,
+        message: `LinkedIn connected successfully as @${profileName}`,
+        name: profileName,
       });
     }
 

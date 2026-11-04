@@ -1036,6 +1036,32 @@ export default function CoworkPage() {
                       className="flex-1 h-full rounded-none border-0 my-0"
                     />
                   </div>
+                ) : activeArtifact?.type === "website_preview" ? (
+                  <div className="flex-1 flex flex-col h-full w-full bg-[#0a0a0b] overflow-hidden">
+                    <div className="h-9 px-4 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+                      <span className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        Live Interactive Web & UI Preview
+                      </span>
+                      <button
+                        onClick={() => {
+                          const blob = new Blob([activeArtifact.content], { type: "text/html" });
+                          const url = URL.createObjectURL(blob);
+                          window.open(url, "_blank");
+                        }}
+                        className="text-zinc-400 hover:text-zinc-100 flex items-center gap-1.5 transition-colors"
+                      >
+                        <ExternalLink size={12} />
+                        Open Preview in New Tab
+                      </button>
+                    </div>
+                    <iframe
+                      srcDoc={activeArtifact.content}
+                      title="Website Preview"
+                      sandbox="allow-scripts allow-modals allow-same-origin allow-forms"
+                      className="w-full flex-1 border-0 bg-white"
+                    />
+                  </div>
                 ) : (
                   <div className="flex-1 overflow-y-auto w-full h-full">
                     {(activeArtifact || currentTask.report) ? (
