@@ -43,15 +43,15 @@ export async function GET() {
     });
 
     if (profile) {
-      isGitHubConnected = Boolean(profile.githubConnected && profile.githubToken);
-      isLinkedInConnected = Boolean(profile.linkedinConnected && profile.linkedinToken);
-      isVercelConnected = Boolean(profile.vercelConnected && profile.vercelToken);
+      isGitHubConnected = Boolean(profile.githubConnected);
+      isLinkedInConnected = Boolean(profile.linkedinConnected);
+      isVercelConnected = Boolean(profile.vercelConnected);
       isMcpConnected = Boolean(profile.mcpConnected);
-      isCanvaConnected = Boolean((profile as any).canvaConnected && (profile as any).canvaToken);
-      ghUsername = isGitHubConnected ? profile.githubUsername : null;
-      liName = isLinkedInConnected ? profile.linkedinName : null;
-      vercelUsername = isVercelConnected ? profile.vercelUsername : null;
-      canvaName = isCanvaConnected ? ((profile as any).canvaUserDisplayName || "Canva Account") : null;
+      isCanvaConnected = Boolean((profile as any).canvaConnected);
+      ghUsername = profile.githubUsername;
+      liName = profile.linkedinName;
+      vercelUsername = profile.vercelUsername;
+      canvaName = (profile as any).canvaUserDisplayName || "Canva Account";
     }
   } catch (e) {
     console.warn("Integrations status DB check notice:", e);

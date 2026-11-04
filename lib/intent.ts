@@ -1,33 +1,27 @@
 // Specific live patterns where real-time web search is actually required
 const LIVE_SEARCH_PATTERNS = [
   // Weather queries
-  /\b(weather|mausam|temperature|forecast|rain|rainfall|climate)\b/i,
+  /\b(weather|mausam|temperature|forecast)\b/i,
 
   // Financial / Market live prices
-  /\b(price|rate|bhav|daam|cost|worth|valuation)\b.*\b(gold|silver|bitcoin|btc|eth|crypto|stock|share|sensex|nifty|today|aaj|current)\b/i,
-  /\b(gold|silver|bitcoin|btc|eth|crypto|stock|share|sensex|nifty|market)\b.*\b(price|rate|bhav|daam|today|aaj|current|live)\b/i,
+  /\b(price|rate|bhav|daam|cost)\b.*\b(gold|silver|bitcoin|btc|eth|crypto|stock|share|sensex|nifty|today|aaj)\b/i,
+  /\b(gold|silver|bitcoin|btc|eth|crypto|stock|share|sensex|nifty)\b.*\b(price|rate|bhav|daam|today|aaj)\b/i,
 
-  // Sports live updates & scores (cricket, football, tennis, tournaments)
-  /\b(score|scores|live score|match score|cricket score|points table|ipl|wpl|t20|odi|test|world cup|champions trophy|isl|epl|fifa|champions league|ind vs|india vs|pak vs|aus vs|nz vs)\b/i,
-  /\b(who won|winner of|result of|match result|series result|series score|score of).*(match|cup|tournament|today|yesterday|kal|series)\b/i,
-  /\b(match|series|tournament|cup)\b.*\b(who won|winner|result|score|status|update)\b/i,
+  // Sports live updates & scores
+  /\b(live score|match score|cricket score|points table|ipl|wpl|t20|world cup|champions trophy)\b/i,
+  /\b(who won|winner of|score of).*(match|cup|tournament|today|yesterday|kal)\b/i,
 
   // News & Current Events
-  /\b(breaking news|latest news|today'?s? news|aaj ki (taza )?khabar|current news|headlines|current affairs|top stories)\b/i,
+  /\b(breaking news|latest news|today'?s? news|aaj ki (taza )?khabar|current news|headlines)\b/i,
 
   // Current political or corporate leaders (time-sensitive)
-  /\b(current|present)\s+(ceo|president|prime minister|governor|captain|coach|minister|leader|cm|pm)\b/i,
-  /\b(who is (the )?current|abhi kaun hai)\s+(ceo|president|prime minister|governor|captain|coach|minister|leader|cm|pm)\b/i,
+  /\b(current|present)\s+(ceo|president|prime minister|governor|captain|coach)\b/i,
+  /\b(who is (the )?current|abhi kaun hai)\s+(ceo|president|prime minister|governor|captain|coach)\b/i,
 
-  // Recent 2025/2026/2027 releases or upcoming dates
-  /\b(release date|kab release|launch date)\b.*\b(movie|show|series|season|episode|album|game|iphone|phone|laptop|car)\b/i,
-  /\b(movie|show|series|season|episode|album|game|iphone|phone|laptop|car)\b.*\b(release date|kab release|launch date)\b/i,
-  /\b(latest|newest)\s+(update|news|version|release|result|standings)\b/i,
-  /\b(in|of|for)\s+202[4-9]\b/i,
-
-  // Live queries with 'today', 'now', 'currently', 'aaj', 'abhi'
-  /\b(today|aaj|right now|currently|abhi|live|recent|latest)\b.*\b(score|match|news|weather|price|event|happening|update)\b/i,
-  /\b(score|match|news|weather|price|event|happening|update)\b.*\b(today|aaj|right now|currently|abhi|live|recent|latest)\b/i
+  // Recent 2025/2026 releases or upcoming dates
+  /\b(release date|kab release|launch date)\b.*\b(movie|show|series|season|episode|album|game|iphone)\b/i,
+  /\b(movie|show|series|season|episode|album|game|iphone)\b.*\b(release date|kab release|launch date)\b/i,
+  /\b(latest|newest)\s+(update|news|version|release)\s+(in|of|for)\s+202[5-9]\b/i
 ];
 
 // Patterns that MUST NOT trigger web search (coding, math, general concepts, conversation)

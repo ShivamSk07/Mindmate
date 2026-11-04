@@ -9,10 +9,7 @@ export async function GET(request: NextRequest) {
   let user = await getSessionUser();
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-  let appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://clarity.indevs.in");
-  if (host?.includes("clarity.indevs.in")) {
-    appUrl = "https://clarity.indevs.in";
-  }
+  const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");

@@ -369,21 +369,21 @@ export async function POST(request: NextRequest) {
 
     // Determine model and limits based on mode
     let targetModel = MODEL;
-    let maxTokens = 2048;
+    let maxTokens = 1024;
 
     if (mode === "fast") {
-      targetModel = MODEL;
-      maxTokens = 1024;
+      targetModel = "qwen/qwen3.8-27b";
+      maxTokens = 350;
       queryMessages.push({
         role: "system",
-        content: "REASONING MODE: Fast execution. Deliver direct, high-precision answers without lengthy preamble or redundant thinking steps."
+        content: "STRICT RULE: Be extremely brief, direct, and answer in 1-2 sentences maximum."
       });
     } else if (mode === "deep") {
       targetModel = MODEL;
       maxTokens = 4096;
       queryMessages.push({
         role: "system",
-        content: "REASONING MODE: Deep Think & Audit. Detail your comprehensive step-by-step reasoning, architectural considerations, edge-case evaluations, and logic verification inside <thinking>...</thinking> tags. Then write the clean, verified final output after the </thinking> tag."
+        content: "STRICT RULE: Start your response by detailing your step-by-step thinking process inside <thinking>...</thinking> tags. Once you finish thinking, write your final response after the </thinking> tag."
       });
     }
 
