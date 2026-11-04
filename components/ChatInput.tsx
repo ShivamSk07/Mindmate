@@ -1,5 +1,5 @@
 import { useState, useRef, KeyboardEvent, useEffect } from "react";
-import { Send, Square, Globe, Wand2, Paperclip, Radio, FileText, Ghost, Terminal, Plus } from "lucide-react";
+import { Send, Square, Globe, Wand2, Paperclip, Radio, FileText, Ghost, Terminal, Plus, Zap, Brain } from "lucide-react";
 import { CustomPromptsModal, type CustomPrompt } from "./CustomPromptsModal";
 
 interface ChatInputProps {
@@ -37,6 +37,7 @@ export function ChatInput({
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const [isGhost, setIsGhost] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState<"fast" | "deep">("fast");
 
   // Sync ghost mode with external prop if provided
   const activeGhost = externalGhostMode !== undefined ? externalGhostMode : isGhost;
@@ -123,7 +124,7 @@ export function ChatInput({
     onSend(
       messageToSend,
       forceSearch,
-      undefined,
+      thinkingMode,
       undefined,
       undefined,
       attachedFile?.content,
@@ -402,6 +403,25 @@ export function ChatInput({
 
             {/* Actions */}
             <div className="flex items-center gap-1.5 flex-shrink-0 mb-0.5">
+              {/* Reasoning Depth Slider / Toggle (Fast vs Deep Think) */}
+              <button
+                type="button"
+                onClick={() => setThinkingMode((prev) => (prev === "fast" ? "deep" : "fast"))}
+                title={thinkingMode === "deep" ? "Deep Reasoning ON (Step-by-step thinking)" : "Instant Fast ON"}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  thinkingMode === "deep"
+                    ? "bg-violet-950/80 text-violet-300 border border-violet-500/40 shadow-sm shadow-violet-500/10"
+                    : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60"
+                }`}
+              >
+                {thinkingMode === "deep" ? (
+                  <Brain size={13} className="text-violet-400 animate-pulse" />
+                ) : (
+                  <Zap size={13} className="text-amber-400" />
+                )}
+                <span className="text-[11px] font-semibold">{thinkingMode === "deep" ? "Deep Think" : "Fast"}</span>
+              </button>
+
               {/* Ghost Mode Toggle */}
               <button
                 type="button"

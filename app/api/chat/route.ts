@@ -322,20 +322,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Autonomous Real-Time Web Search Trigger (Instant Fast Heuristic + Fallback AI Intent)
+    // 7. Autonomous Real-Time Web Search Trigger (Instant Fast Heuristic)
     let searchDecision = { needsSearch: false, searchQuery: userQuery };
     if (finalForceSearch) {
       searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
-    } else if (detectedUrls.length === 0 && !attachedDocument) {
-      if (needsWebSearch(userQuery)) {
-        searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
-      } else {
-        // Fallback to AI intent check for nuanced queries (e.g. sports matches, recent happenings)
-        const aiIntent = await detectSearchIntentWithAI(userQuery);
-        if (aiIntent.needsSearch) {
-          searchDecision = aiIntent;
-        }
-      }
+    } else if (detectedUrls.length === 0 && !attachedDocument && needsWebSearch(userQuery)) {
+      searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
     }
 
     let searchResults: any[] = [];
@@ -377,21 +369,21 @@ export async function POST(request: NextRequest) {
 
     // Determine model and limits based on mode
     let targetModel = MODEL;
-    let maxTokens = 1024;
+    let maxTokens = 2048;
 
     if (mode === "fast") {
-      targetModel = "qwen/qwen3.8-27b";
-      maxTokens = 350;
+      targetModel = MODEL;
+      maxTokens = 1024;
       queryMessages.push({
         role: "system",
-        content: "STRICT RULE: Be extremely brief, direct, and answer in 1-2 sentences maximum."
+        content: "REASONING MODE: Fast execution. Deliver direct, high-precision answers without lengthy preamble or redundant thinking steps."
       });
     } else if (mode === "deep") {
       targetModel = MODEL;
       maxTokens = 4096;
       queryMessages.push({
         role: "system",
-        content: "STRICT RULE: Start your response by detailing your step-by-step thinking process inside <thinking>...</thinking> tags. Once you finish thinking, write your final response after the </thinking> tag."
+        content: "REASONING MODE: Deep Think & Audit. Detail your comprehensive step-by-step reasoning, architectural considerations, edge-case evaluations, and logic verification inside <thinking>...</thinking> tags. Then write the clean, verified final output after the </thinking> tag."
       });
     }
 

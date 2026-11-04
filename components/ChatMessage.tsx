@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import MermaidViewer, { isDiagramCode } from "./MermaidViewer";
 import ComponentSandbox, { extractCodeBlock } from "./ComponentSandbox";
 import InteractiveChecklist from "./InteractiveChecklist";
+import MultiFileWorkspace, { parseMultiFiles } from "./MultiFileWorkspace";
 
 interface ChatMessageProps {
   message: Message;
@@ -46,6 +47,9 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
       cleanContent = "";
     }
   }
+
+  // Parse multi-file code blocks for Workspace Tab Drawer
+  const { files: projectFiles } = parseMultiFiles(cleanContent);
 
   // Widget parser
   const renderMessageContent = (text: string) => {
@@ -190,6 +194,11 @@ export function ChatMessage({ message, username, assistantName, avatarUrl }: Cha
                   </div>
                 </details>
               </div>
+            )}
+
+            {/* Multi-File Project Workspace Drawer (When 2+ files generated) */}
+            {projectFiles && projectFiles.length > 1 && (
+              <MultiFileWorkspace files={projectFiles} />
             )}
 
             {/* Markdown response */}
