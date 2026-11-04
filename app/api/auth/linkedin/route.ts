@@ -7,7 +7,12 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-  const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
+  
+  // If host is production domain or running on https, always resolve to standard production callback
+  let appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://clarity.indevs.in");
+  if (host?.includes("clarity.indevs.in")) {
+    appUrl = "https://clarity.indevs.in";
+  }
 
   const user = await getSessionUser();
   if (!user?.userId) {
@@ -29,7 +34,7 @@ export async function GET(request: NextRequest) {
   const token = signJwt({ userId: user.userId, username: user.username, email: user.email });
   response.cookies.set("mindmate_session", token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" || appUrl.startsWith("https"),
     sameSite: "lax",
     path: "/",
     maxAge: 7 * 24 * 60 * 60,

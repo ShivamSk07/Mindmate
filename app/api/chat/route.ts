@@ -322,12 +322,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Autonomous Real-Time Web Search Trigger (Instant Fast Heuristic)
+    // 7. Autonomous Real-Time Web Search Trigger (Instant Fast Heuristic + Fallback AI Intent)
     let searchDecision = { needsSearch: false, searchQuery: userQuery };
     if (finalForceSearch) {
       searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
-    } else if (detectedUrls.length === 0 && !attachedDocument && needsWebSearch(userQuery)) {
-      searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
+    } else if (detectedUrls.length === 0 && !attachedDocument) {
+      if (needsWebSearch(userQuery)) {
+        searchDecision = { needsSearch: true, searchQuery: extractSearchQuery(userQuery) };
+      } else {
+        // Fallback to AI intent check for nuanced queries (e.g. sports matches, recent happenings)
+        const aiIntent = await detectSearchIntentWithAI(userQuery);
+        if (aiIntent.needsSearch) {
+          searchDecision = aiIntent;
+        }
+      }
     }
 
     let searchResults: any[] = [];

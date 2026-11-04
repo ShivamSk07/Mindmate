@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) {
   let user = await getSessionUser();
   const host = request.headers.get("x-forwarded-host") || request.headers.get("host");
   const proto = request.headers.get("x-forwarded-proto") || (host?.includes("localhost") ? "http" : "https");
-  const appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
+  let appUrl = host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_APP_URL || "https://clarity.indevs.in");
+  if (host?.includes("clarity.indevs.in")) {
+    appUrl = "https://clarity.indevs.in";
+  }
 
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
@@ -33,6 +36,10 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  if (!user) {
+    return NextResponse.redirect(new URL("/login?error=Session expired. Please log in first.", appUrl));
+  }
+
   const sendRedirect = (path: string) => {
     const response = NextResponse.redirect(new URL(path, appUrl));
     if (user) {
@@ -47,10 +54,6 @@ export async function GET(request: NextRequest) {
     }
     return response;
   };
-
-  if (!user) {
-    return NextResponse.redirect(new URL("/login?error=Session expired. Please log in first.", appUrl));
-  }
 
   if (error) {
     console.error("[LinkedIn OAuth Callback Error]", error, errorDescription);

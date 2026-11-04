@@ -42,8 +42,6 @@ export default function IntegrationsModal({
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [canvaManualToken, setCanvaManualToken] = useState("");
   const [isConnectingCanvaToken, setIsConnectingCanvaToken] = useState(false);
-  const [linkedinManualToken, setLinkedinManualToken] = useState("");
-  const [isConnectingLinkedinToken, setIsConnectingLinkedinToken] = useState(false);
 
   if (!isOpen) return null;
 
@@ -426,64 +424,15 @@ export default function IntegrationsModal({
                           {isProcessing ? <Loader2 size={12} className="animate-spin" /> : "Disconnect"}
                         </button>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <a
-                            href="/api/auth/linkedin"
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-medium transition-colors shadow-sm"
-                          >
-                            <Linkedin size={13} />
-                            <span>1-Click OAuth</span>
-                          </a>
-                        </div>
+                        <a
+                          href="/api/auth/linkedin"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a66c2] hover:bg-[#004182] text-white text-xs font-medium transition-colors shadow-sm"
+                        >
+                          <Linkedin size={13} />
+                          <span>Connect LinkedIn</span>
+                        </a>
                       )}
                     </div>
-
-                    {!linkedinIntegration?.connected && (
-                      <div className="pt-3 border-t border-zinc-900/60 space-y-2">
-                        <p className="text-[11px] text-zinc-400">
-                          Or connect directly via Access Token:
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="password"
-                            placeholder="Enter LinkedIn OAuth / Access Token"
-                            value={linkedinManualToken}
-                            onChange={(e) => setLinkedinManualToken(e.target.value)}
-                            className="flex-1 bg-zinc-900 border border-zinc-800 rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 placeholder-zinc-600 outline-none focus:border-[#0a66c2]"
-                          />
-                          <button
-                            onClick={async () => {
-                              if (!linkedinManualToken.trim()) return;
-                              setIsConnectingLinkedinToken(true);
-                              setMessage(null);
-                              try {
-                                const res = await fetch("/api/cowork/linkedin/connect", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ token: linkedinManualToken.trim() }),
-                                });
-                                const data = await res.json();
-                                if (res.ok) {
-                                  setMessage({ type: "success", text: data.message || "LinkedIn connected successfully" });
-                                  setLinkedinManualToken("");
-                                  onStatusChange();
-                                } else {
-                                  setMessage({ type: "error", text: data.error || "Failed to connect token" });
-                                }
-                              } catch (err: any) {
-                                setMessage({ type: "error", text: err.message || "Failed to connect token" });
-                              } finally {
-                                setIsConnectingLinkedinToken(false);
-                              }
-                            }}
-                            disabled={isConnectingLinkedinToken || !linkedinManualToken.trim()}
-                            className="px-3 py-1.5 rounded-lg bg-[#0a66c2] text-white font-medium text-xs hover:opacity-90 disabled:opacity-40"
-                          >
-                            {isConnectingLinkedinToken ? <Loader2 size={12} className="animate-spin" /> : "Save"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
